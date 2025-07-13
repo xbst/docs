@@ -122,7 +122,7 @@ nav:
   - "KUSBA USB Accelerometers":
     - KUSBA:
       - "KUSBA GitHub Repository": "https://github.com/xbst/KUSBA/"
-      - "KUSBA-USB-Accelerometers/KUSBA/KUSBA-Instructions.md"
+      - "KUSBA Instructions": "https://github.com/xbst/KUSBA/blob/main/Docs/v2-Rampon-Firmware.md"
       - "KUSBA Store Page": "https://store.isiks.tech/products/kusba-klipper-usb-accelerometer"
     - KUSBA Pro:
       - "KUSBA Pro GitHub Repository": "https://github.com/xbst/KUSBA-PRO/"
