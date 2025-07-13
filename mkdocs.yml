@@ -74,6 +74,9 @@ plugins:
 
 extra:
   generator: false
+  analytics:
+    provider: google
+    property: G-D9R9ZZFJKC
   social:
     - icon: material/youtube
       link: https://www.youtube.com/c/isikstech
