@@ -56,7 +56,7 @@ This guide covers upgrading X and Y motors of a Klipper 3D printer with closed l
        Clock Reference (25 MHz crystal)  --->
        Communication interface (USB (on PA11/PA12))  --->
        USB ids  --->
-   [*] Optimize stepper code for 'step on both edges'
+   [ ] Optimize stepper code for 'step on both edges'
    ()  GPIO pins to set at micro-controller startup
    ``````
 
