@@ -158,5 +158,6 @@ nav:
     - "Firmware Setup": "Ouroboros/Firmware-Setup.md"
     - "Motor Setup":
       - "Stepper Motor Setup": "Ouroboros/Stepper-Setup.md"
+    - Ouroboros/gibberish.md
     - "GitHub Repository (SOON)": "."
     - "Store Page": "https://store.isiks.tech/products/ouroboros"

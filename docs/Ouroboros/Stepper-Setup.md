@@ -8,14 +8,6 @@ hide:
 
 This guide covers upgrading X and Y motors of a Klipper 3D printer with closed loop FOC using Ouroboros and stepper motors with built-in encoders.
 
-## Requirements
-
-- 3D Printer Running [Klipper](https://www.klipper3d.org/) or [Kalico](https://kalico.gg/)
-- [Ouroboros PCB](.)
-- Steppers with Built-in AB Encoders Like fekwjsbnfşıkujesbfkşdsjhbfıowub
-- Datasheet of Your Encoder Stepper Motors
-- If Currently Using Sensorless Homing, Limit Switch Parts for X and Y
-
 ---
 ## Klipper Config
 
