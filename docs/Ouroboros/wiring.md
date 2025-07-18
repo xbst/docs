@@ -97,6 +97,16 @@ Repeat for both motors.
 | ---- | ------ | ----- | ----- | ----- | ---- | ----- | ----- |
 | 5V   | YW+    | YW-   | VN+   | VN-   | UX+  | UX-   | GND   |
 
+### Endstop Connector
+
+![Ouroboros Optical Encoder Wiring](../assets/ouroboros/sw.png)
+
+**Pinout**
+
+| Grey             | Black | Red  |
+| ---------------- | ----- | ---- |
+| Switch (PD7/PB3) | GND   | 3.3V |
+
 ### Expansion Connector
 
 This connector is designed for adding more features to Ouroboros. It has some power pins, and many pins connectors connected to the STM32 MCU, including CAN bus, UART, and other GPIO pins. It's a standard 1.27mm pitch female header, which can be mated with a standard 1.27mm pin header on an expansion board, or with male jumper wires using the same size connector.
