@@ -68,6 +68,7 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - admonition
   - pymdownx.details
+  - md_in_html
 
 plugins:
   - mkdocs-pdf
@@ -99,38 +100,39 @@ copyright: Copyright &copy; 2025 XBST LLC
 repo_url: https://github.com/xbst
 repo_name: Isik's Tech GitHub
 
+
 nav:
   - index.md
-  - "Birds' Nest Toolchanger Boards":
+  - "Birds' Nest Boards":
     - "Birds' Nest (USB)":
-      - "Birds' Nest GitHub Repository": "https://github.com/xbst/Birds-Nest/"
-      - "Birds-Nests/Birds-Nest/Birds-Nest-Manual.md"
-      - "Birds' Nest Store Page": "https://store.isiks.tech/products/birds-nest"
+      - "Manual": "Birds-Nests/Birds-Nest/Birds-Nest-Manual.md"
+      - "GitHub Repository": "https://github.com/xbst/Birds-Nest/"
+      - "Store Page": "https://store.isiks.tech/products/birds-nest"
     - "Birds' Nest CAN":
-      - "Birds' Nest GitHub Repository": "https://github.com/xbst/Birds-Nest-CAN/"
-      - "Birds-Nests/Birds-Nest-CAN/Birds-Nest-CAN-Manual.md"
-      - "Birds' Nest Store Page": "https://store.isiks.tech/products/birds-nest-CAN"
+      - "Manual": "Birds-Nests/Birds-Nest-CAN/Birds-Nest-CAN-Manual.md"
+      - "GitHub Repository": "https://github.com/xbst/Birds-Nest-CAN/"
+      - "Store Page": "https://store.isiks.tech/products/birds-nest-CAN"
   - "Box Turtle Controllers":
     - "AFC-Lite":
-      - "AFC-Lite GitHub Repository": "https://github.com/xbst/AFC-Lite/"
-      - "Box-Turtle-Controllers/AFC-Lite/AFC-Lite-Manual.md"
-      - "AFC-Lite Store Page": "https://store.isiks.tech/products/AFC-Lite"
+      - "Manual": "Box-Turtle-Controllers/AFC-Lite/AFC-Lite-Manual.md"
+      - "GitHub Repository": "https://github.com/xbst/AFC-Lite/"
+      - "Store Page": "https://store.isiks.tech/products/AFC-Lite"
     - "AFC-Pro":
-      - "AFC-Pro GitHub Repository": "https://github.com/xbst/AFC-Pro/"
-      - "Box-Turtle-Controllers/AFC-Pro/AFC-Pro-Manual.md"
-      - "AFC-Pro Store Page": "https://store.isiks.tech/products/AFC-Pro"
-  - "KUSBA USB Accelerometers":
+      - "Manual": "Box-Turtle-Controllers/AFC-Pro/AFC-Pro-Manual.md"
+      - "GitHub Repository": "https://github.com/xbst/AFC-Pro/"
+      - "Store Page": "https://store.isiks.tech/products/AFC-Pro"
+  - "KUSBA":
     - KUSBA:
-      - "KUSBA GitHub Repository": "https://github.com/xbst/KUSBA/"
-      - "KUSBA Instructions": "https://github.com/xbst/KUSBA/blob/main/Docs/v2-Rampon-Firmware.md"
-      - "KUSBA Store Page": "https://store.isiks.tech/products/kusba-klipper-usb-accelerometer"
+      - "Instructions": "https://github.com/xbst/KUSBA/blob/main/Docs/v2-Rampon-Firmware.md"
+      - "GitHub Repository": "https://github.com/xbst/KUSBA/"
+      - "Store Page": "https://store.isiks.tech/products/kusba-klipper-usb-accelerometer"
     - KUSBA Pro:
-      - "KUSBA Pro GitHub Repository": "https://github.com/xbst/KUSBA-PRO/"
       - "Instructions":
-        - "KUSBA-USB-Accelerometers/KUSBA-Pro/Instructions/LIS2DW.md"
-        - "KUSBA-USB-Accelerometers/KUSBA-Pro/Instructions/ADXL345.md"
-        - "KUSBA-USB-Accelerometers/KUSBA-Pro/Instructions/Mount.md"
-      - "KUSBA Pro Store Page": "https://store.isiks.tech/products/KUSBA-PRO"
+        - "LIS2DW Instructions": "KUSBA-USB-Accelerometers/KUSBA-Pro/Instructions/LIS2DW.md"
+        - "ADXL345 Instructions": "KUSBA-USB-Accelerometers/KUSBA-Pro/Instructions/ADXL345.md"
+        - "Mount Assembly": "KUSBA-USB-Accelerometers/KUSBA-Pro/Instructions/Mount.md"
+      - "GitHub Repository": "https://github.com/xbst/KUSBA-PRO/"
+      - "Store Page": "https://store.isiks.tech/products/KUSBA-PRO"
   - "Nevermore PCBs":
     - "Nevermore Max & Stealthmax PCBs": "https://github.com/xbst/Nevermore-PCB"
     - "Nevermore BME280 & SGP40 Sensors": "https://github.com/xbst/Nevermore-Sensors"
@@ -139,18 +141,22 @@ nav:
       - "Nevermore Mini & Stealthmax PCB": "https://store.isiks.tech/products/nevermore-stealthmax-pcb"
       - "Nevermore Stealthmax PCB 2": "https://store.isiks.tech/products/nevermore-stealthmax-2-pcb"
       - "Nevermore Sensors": "https://store.isiks.tech/products/bme280-sgp40-air-quality-sensors-for-nevermore-air-filters"
-  - "PiCAN: Tiny USB CAN Adapter":
-    - "PiCAN GitHub Repository (Instructions)": "https://github.com/xbst/PiCAN"
-    - "PiCAN Store Page": "https://store.isiks.tech/products/pican-usb-to-can-bus-adapter"
+  - "PiCAN":
+    - "GitHub Repository (Instructions)": "https://github.com/xbst/PiCAN"
+    - "Store Page": "https://store.isiks.tech/products/pican-usb-to-can-bus-adapter"
   - "ToqueCAN":
-    - "ToqueCAN GitHub Repository": "https://github.com/xbst/ToqueCAN/"
-    - "ToqueCAN/ToqueCAN-Manual.md"
-    - "ToqueCAN Store Page": "https://store.isiks.tech/products/toquecan"
-  - "MOAR_CAN 9-Port CAN Hub":
-    - "MOAR_CAN GitHub Repository": "https://github.com/xbst/MOAR_CAN"
-    - "MOAR_CAN/MOAR_CAN-Manual.md"
-    - "MOAR_CAN Store Page": "https://store.isiks.tech/products/MOAR_CAN"
-  - "Ouroboros FOC Servo Controller":
-    - "Ouroboros GitHub Repository (SOON)": "."
-    - "Ouroboros Docs (SOON)": "."
-    - "Ouroboros Store Page": "https://store.isiks.tech/products/ouroboros"
+    - "Manual": "ToqueCAN/ToqueCAN-Manual.md"
+    - "GitHub Repository": "https://github.com/xbst/ToqueCAN/"
+    - "Store Page": "https://store.isiks.tech/products/toquecan"
+  - "MOAR_CAN":
+    - "Manual": "MOAR_CAN/MOAR_CAN-Manual.md"
+    - "GitHub Repository": "https://github.com/xbst/MOAR_CAN"
+    - "Store Page": "https://store.isiks.tech/products/MOAR_CAN"
+  - "WIP":
+    - "Introduction"
+    - "Mount & Wiring": "Ouroboros/wiring.md"
+    - "Firmware Setup": "Ouroboros/Firmware-Setup.md"
+    - "Motor Setup":
+      - "Stepper Motor Setup": "Ouroboros/Stepper-Setup.md"
+    - "GitHub Repository (SOON)": "."
+    - "Store Page": "https://store.isiks.tech/products/ouroboros"

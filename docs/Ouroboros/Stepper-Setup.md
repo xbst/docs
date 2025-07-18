@@ -17,58 +17,11 @@ This guide covers upgrading X and Y motors of a Klipper 3D printer with closed l
 - If Currently Using Sensorless Homing, Limit Switch Parts for X and Y
 
 ---
-## Setup
+## Klipper Config
 
-1. Make sure your 3D printer is off and disconnected from power.
-2. Mount your Ouroboros, do the wiring according to this diagram:
+1. Find the serial address of your Ouroboros using `ls /dev/serial/by-id/*`. It'll show up as a STM32H723 device. 
 
-    ![]()
-
-3. Make sure the slide switch on your Ouroboros is set to `Buck`.
-
-4. Turn on your 3D printer and SSH into it.
-
-5. Install [andrewmcgr's TMC4671 Klipper Plugin](https://github.com/andrewmcgr/tmc-4671) using:
-   ```
-   wget -O - https://raw.githubusercontent.com/andrewmcgr/tmc-4671/main/install.sh | bash
-   ```
-
-6. Do not close your SSH terminal yet, open your web browser and go to your 3D printer's interface (like Mainsail).
-
-7. Edit your `moonraker.conf` file. Add this: 
-   ```ini
-   [update_manager tmc-4671]
-   type: git_repo
-   channel: dev
-   path: ~/tmc-4671
-   origin: https://github.com/andrewmcgr/tmc-4671.git
-   managed_services: klipper
-   primary_branch: main
-   install_script: install.sh
-   ```
-
-8. On your SSH terminal, go to the Klipper directory (`cd ~/Klipper`), clean previous build files (`make clean`), and configure Klipper for Ouroboros (`make menuconfig`). Use these settings:
-   ``````
-   [*] Enable extra low-level configuration options
-       Micro-controller Architecture (STMicroelectronics STM32)  --->
-       Processor model (STM32H723)  --->
-       Bootloader offset (No bootloader)  --->
-       Clock Reference (25 MHz crystal)  --->
-       Communication interface (USB (on PA11/PA12))  --->
-       USB ids  --->
-   [ ] Optimize stepper code for 'step on both edges'
-   ()  GPIO pins to set at micro-controller startup
-   ``````
-
-9. Press `Q`. If prompted to save, press `Y`.
-
-10. On your Ouroboros, press and hold the `BOOT` button. While holding it down, press and release the `RESET` button, then release the `BOOT` button.
-
-11. Flash firmware to your Ouroboros using `make flash FLASH_DEVICE=0483:df11`.
-
-12. Find the serial address of your Ouroboros using `ls /dev/serial/by-id/*`. It'll show up as a STM32H723 device. If you don't see it, press and release the `RESET` button on your Ouroboros and try again.
-
-13. Open your `printer.cfg` file. In it: 
+2. Open your `printer.cfg` file. In it: 
 
     1. Add: 
        ``````ini
@@ -217,7 +170,7 @@ This guide covers upgrading X and Y motors of a Klipper 3D printer with closed l
        enable_force_move: True
        ``````
 
-14. Save and close. `FIRMWARE_RESTART` your 3D printer.
+3. Save and close. `FIRMWARE_RESTART` your 3D printer.
 
 ---
 ## Calibration
