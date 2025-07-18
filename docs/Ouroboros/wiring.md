@@ -93,7 +93,7 @@ Repeat for both motors.
 
 **Pinout**
 
-| Red  | Yellow | Black | Green | Black | Blue | Black | Black |
+| Red  | Yellow | Dark Grey | Black | Green | Blue | White | Light Grey |
 | ---- | ------ | ----- | ----- | ----- | ---- | ----- | ----- |
 | 5V   | YW+    | YW-   | VN+   | VN-   | UX+  | UX-   | GND   |
 
@@ -101,7 +101,7 @@ Repeat for both motors.
 
 This connector is designed for adding more features to Ouroboros. It has some power pins, and many pins connectors connected to the STM32 MCU, including CAN bus, UART, and other GPIO pins. It's a standard 1.27mm pitch female header, which can be mated with a standard 1.27mm pin header on an expansion board, or with male jumper wires using the same size connector.
 
-There are currently no official expansion boards available.
+Currently there are no official expansion boards available.
 
 <style type="text/css">
 .tg  {border-collapse:collapse;border-spacing:0;}
