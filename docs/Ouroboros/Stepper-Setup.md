@@ -144,16 +144,22 @@ This guide covers upgrading X and Y motors of a Klipper 3D printer with closed l
        ``````ini
        [temperature_sensor Ouroboros_MCU_Temp]
        sensor_type: ouroboros:temperature_mcu
+       min_temp: 0
+       max_temp: 80
        
        [temperature_sensor Ouroboros_TMC1_MOS_Temp]
        sensor_type: Generic 3950
        sensor_pin: ouroboros:PC4
        pullup_resistor: 4700
+       min_temp: 0
+       max_temp: 100
        
        [temperature_sensor Ouroboros_TMC2_MOS_Temp]
        sensor_type: Generic 3950
        sensor_pin: ouroboros:PC5
        pullup_resistor: 4700
+       min_temp: 0
+       max_temp: 100
        ``````
 
     7. Add these lines to enable `FORCE_MOVE`:
