@@ -152,12 +152,17 @@ nav:
     - "Manual": "MOAR_CAN/MOAR_CAN-Manual.md"
     - "GitHub Repository": "https://github.com/xbst/MOAR_CAN"
     - "Store Page": "https://store.isiks.tech/products/MOAR_CAN"
-  - "WIP":
+  - "Ouroboros":
     - "Introduction"
     - "Mount & Wiring": "Ouroboros/wiring.md"
     - "Firmware Setup": "Ouroboros/Firmware-Setup.md"
     - "Motor Setup":
-      - "Stepper Motor Setup": "Ouroboros/Stepper-Setup.md"
+      - "Stepper Motor Setup":
+        - "Stepper Motor Setup": "Ouroboros/Stepper-Setup.md"
+        - "Calibration":
+          - "Isik's Tech Encoder Steppers": "Ouroboros/IT.md"
+          - "LDO 42STH48-2504B-EN1000": "Ouroboros/LDO.md"
+          - "Manual Calibration": "Ouroboros/Stepper-Calibration.md"
     - Ouroboros/gibberish.md
     - "GitHub Repository (SOON)": "."
     - "Store Page": "https://store.isiks.tech/products/ouroboros"

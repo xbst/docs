@@ -74,14 +74,14 @@ This guide covers upgrading X and Y motors of a Klipper 3D printer with closed l
        foc_abn_direction: 0
        
        # PID
-       foc_pid_flux_i: 0.485
-       foc_pid_flux_p: 9.66
-       foc_pid_torque_i: 0.485
-       foc_pid_torque_p: 9.66
-       foc_pid_velocity_i: 0.00826
-       foc_pid_velocity_p: 1.408
-       foc_pid_position_i: 0.00277
-       foc_pid_position_p: 2.82
+       foc_pid_flux_p: 17.1
+       foc_pid_flux_i: 0.067
+       foc_pid_torque_p: 17.1
+       foc_pid_torque_i: 0.067
+       foc_pid_velocity_p: 1.07063
+       foc_pid_velocity_i: 0.00498
+       foc_pid_position_p: 1.27522
+       foc_pid_position_i: 0.00125
        
        # Biquad Filter
        biquad_flux_frequency: 0
@@ -120,14 +120,14 @@ This guide covers upgrading X and Y motors of a Klipper 3D printer with closed l
        foc_abn_direction: 0
        
        # PID
-       foc_pid_flux_p: 9.66
-       foc_pid_flux_i: 0.485
-       foc_pid_torque_p: 9.66
-       foc_pid_torque_i: 0.485
-       foc_pid_velocity_p: 1.0
-       foc_pid_velocity_i: 0
-       foc_pid_position_p: 1.0
-       foc_pid_position_i: 0
+       foc_pid_flux_p: 17.1
+       foc_pid_flux_i: 0.067
+       foc_pid_torque_p: 17.1
+       foc_pid_torque_i: 0.067
+       foc_pid_velocity_p: 1.07063
+       foc_pid_velocity_i: 0.00498
+       foc_pid_position_p: 1.27522
+       foc_pid_position_i: 0.00125
        
        # Biquad Filter
        biquad_flux_frequency: 0
@@ -193,7 +193,7 @@ Follow the next steps in order:
    M84
    ``````
    This will output a line like `PID stepper_y parameters: Kc=9.76 Ki=0.481`. 
-   <br><br>IIf your printer is a CoreXY system, make sure the values for X and Y are similar. **Pick the values for one motor and use them for both in the config.**
+   <br><br>If your printer is a CoreXY system, make sure the values for X and Y are similar. **Pick the values for one motor and use them for both in the config.**
    <br><br>
 2. Edit your config with these new values.   
    `Kc` is used for `foc_pid_flux_p` and `foc_pid_torque_p`. 
