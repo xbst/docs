@@ -47,14 +47,13 @@ Make sure:
    - Motor doesn't get really hot really fast.
      <br> 
 
- !!! success "Looks Good"
-     If everything looks good, disable the motor using `M84`, then repeat the above for `stepper_y`. If that's good to, you can move on to the next step.
- !!! question "Motor moves fine, but doesn't stop after a few seconds"
-     If everything seems good, except your stepper doesn't stop spinning after a few seconds, your `foc_abn_direction` value is wrong. If it's set to `0`, set it to `1`, or vice versa, then `FIRMWARE_RESTART` and try again.
- !!! failure "Fail"
-     If the motor isn't moving, isn't moving smoothly, getting too hot really fast or sounding unhealthy, your velocity and position PID values might be wrong. Try following the manual tuning document on this website (from the beginning).
+    !!! success "Looks Good"
+        If everything looks good, disable the motor using `M84`, then repeat the above for `stepper_y`. If that's good to, you can move on to the next step.
+    !!! question "Motor moves fine, but doesn't stop after a few seconds"
+        If everything seems good, except your stepper doesn't stop spinning after a few seconds, your `foc_abn_direction` value is wrong. If it's set to `0`, set it to `1`, or vice versa, then `FIRMWARE_RESTART` and try again.
+    !!! failure "Fail"
+        If the motor isn't moving, isn't moving smoothly, getting too hot really fast or sounding unhealthy, your velocity and position PID values might be wrong. Try following the manual tuning document on this website (from the beginning). 
 
-<br>
 
 Once your motors are moving healthily, it's time to install them on your gantry. Power your printer off, mount your motors, do the belt tensioning, and power your printer back on. **Move both axis to roughly the middle by hand to avoid crashes if something goes wrong.**
 
