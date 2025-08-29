@@ -153,7 +153,6 @@ nav:
     - "GitHub Repository": "https://github.com/xbst/MOAR_CAN"
     - "Store Page": "https://store.isiks.tech/products/MOAR_CAN"
   - "Ouroboros":
-    - "Introduction"
     - "Mount & Wiring": "Ouroboros/wiring.md"
     - "Firmware Setup": "Ouroboros/Firmware-Setup.md"
     - "Motor Setup":
@@ -164,5 +163,4 @@ nav:
           - "LDO 42STH48-2504B-EN1000": "Ouroboros/LDO.md"
           - "Manual Calibration": "Ouroboros/Stepper-Calibration.md"
     - Ouroboros/gibberish.md
-    - "GitHub Repository (SOON)": "."
     - "Store Page": "https://store.isiks.tech/products/ouroboros"
