@@ -66,3 +66,7 @@ Unlike traditional stepper drivers, TMC4671 drivers won't skip steps if the moto
 This is of course a very nice feature to have to avoid crashes, and failed prints. But this will come at the cost of print quality. What'll happen is, the motor will take a "shortcut" when printing a corner to catch up, resulting in lower print quality. Because of this, it's not a good idea to use a speed test macro like Ellis3D's macro to figure out your maximum print speeds. You will need to actually print with it to figure out IRL practical speeds and accelerations.
 
 The FOC system used on Ouroboros, when tuned well, should reduce resonances originating on the stepper motor. This will help with print quality, just remember to recalibrate your `input_shaper`. It's also a good idea to recalibrate your `pressure_advance`.
+
+---
+
+If you'd like to further tune your setup, manually tuning your PID values can help improve vibrations, noise, heat, speeds, accelerations and more. Check out the manual calibration document on this website for more info.
