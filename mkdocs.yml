@@ -156,7 +156,7 @@ nav:
     - "Mount & Wiring": "Ouroboros/wiring.md"
     - "Firmware Setup": "Ouroboros/Firmware-Setup.md"
     - "Motor Setup":
-      - "Stepper Motor Setup":
+      - "Motor Setup":
         - "Stepper Motor Setup": "Ouroboros/Stepper-Setup.md"
         - "Calibration":
           - "Isik's Tech Encoder Steppers": "Ouroboros/IT.md"
