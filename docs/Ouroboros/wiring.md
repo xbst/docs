@@ -7,7 +7,7 @@ hide:
 # Ouroboros Wiring & Mount
 
 ## Ouroboros Mounts
-**To be added** (refer to the repo)
+- [Voron DIN Rail Mount by hartk](./Ouroboros_Mount_hartk.zip)
 
 ## Ouroboros Wiring
 
