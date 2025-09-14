@@ -13,7 +13,7 @@ hide:
 
 ### Power In
 
-Motor power (24V-60V) can be connected to the Ouroboros using the middle 2 pins on its screw terminal.
+Motor power (24V-48V) can be connected to the Ouroboros using the middle 2 pins on its screw terminal.
 
 ![Ouroboros VIN](../assets/ouroboros/power.png)
 
