@@ -143,7 +143,8 @@ This guide covers upgrading X and Y motors of a Klipper 3D printer with closed l
     6. Add these lines to see your board temperatures on your interface:
        ``````ini
        [temperature_sensor Ouroboros_MCU_Temp]
-       sensor_type: ouroboros:temperature_mcu
+       sensor_type: temperature_mcu
+       sensor_mcu: ouroboros
        min_temp: 0
        max_temp: 80
        
