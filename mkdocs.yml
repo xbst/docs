@@ -160,7 +160,6 @@ nav:
         - "Stepper Motor Setup": "Ouroboros/Stepper-Setup.md"
         - "Calibration":
           - "Isik's Tech Encoder Steppers": "Ouroboros/IT.md"
-          - "LDO 42STH48-2504B-EN1000": "Ouroboros/LDO.md"
           - "Manual Calibration": "Ouroboros/Stepper-Calibration.md"
     - Ouroboros/gibberish.md
     - "Store Page": "https://store.isiks.tech/products/ouroboros"
