@@ -8,6 +8,10 @@ hide:
 
 This guide covers both the initial calibration and tuning of your TMC4671 setup, using values we use on our test setup to save you calibration time. If these values don't work for your setup, or if you want to further fine-tune them, check out the manual calibration document on this website.
 
+**[Motor Datasheet](../Ouroboros-Stepper.pdf)
+
+
+
 ### PID & Biquad Filter values
 
 !!! warning "Don't install motors on your gantry yet! We need to make sure the motors can move and stop fine before installing them."
