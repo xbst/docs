@@ -71,7 +71,7 @@ This guide covers upgrading X and Y motors of a Klipper 3D printer with closed l
        
        # Encoder
        foc_abn_decoder_ppr: 4000
-       foc_abn_direction: 0
+       foc_abn_direction: 1
        
        # PID
        foc_pid_flux_p: 17.1
@@ -117,7 +117,7 @@ This guide covers upgrading X and Y motors of a Klipper 3D printer with closed l
        
        # Encoder
        foc_abn_decoder_ppr: 4000
-       foc_abn_direction: 0
+       foc_abn_direction: 1
        
        # PID
        foc_pid_flux_p: 17.1
