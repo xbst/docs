@@ -5,9 +5,7 @@ hide:
 # Home
 Welcome to the Isik's Tech documentation website. You can find a list of our 3D printer PCBs, and links to their documentation and store pages below. 
 
-
-
-*Docs links currently go to Github repos, this will be fixed later. You can use the links on the left menu for now.*
+*Some docs links currently go to Github repos, this will be fixed later. You can use the links on the left menu for now.*
 
 ## Boards
 <style type="text/css">
@@ -48,7 +46,7 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
     <tr>
       <th width="12.5%"><a href="https://github.com/xbst/PiCAN">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/pican-usb-to-can-bus-adapter">Store</a></th>
-      <th width="12.5%"><a href="https://github.com/xbst/ToqueCAN">Docs</a></th>
+      <th width="12.5%"><a href="https://docs.isiks.tech/ToqueCAN/ToqueCAN-Manual/">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/toquecan">Store</a></th>
     </tr>
     <tr><th colspan="6" style="font-size: 32px">KUSBA Accelerometers</th></tr>
