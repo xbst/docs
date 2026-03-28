@@ -121,6 +121,9 @@ nav:
       - "Manual": "Box-Turtle-Controllers/AFC-Pro/AFC-Pro-Manual.md"
       - "GitHub Repository": "https://github.com/xbst/AFC-Pro/"
       - "Store Page": "https://store.isiks.tech/products/AFC-Pro"
+  - "Hedgehog":
+    - "Manual": "Hedgehog/Hedgehog.md"
+    - "Store Page": "https://store.isiks.tech/products/hedgehog"
   - "KUSBA":
     - KUSBA:
       - "Instructions": "https://github.com/xbst/KUSBA/blob/main/Docs/v2-Rampon-Firmware.md"

@@ -5,8 +5,6 @@ hide:
 # Home
 Welcome to the Isik's Tech documentation website. You can find a list of our 3D printer PCBs, and links to their documentation and store pages below. 
 
-*Some docs links currently go to Github repos, this will be fixed later. You can use the links on the left menu for now.*
-
 ## Boards
 <style type="text/css">
 .tg  {border-collapse:collapse;border-spacing:0;}
@@ -27,9 +25,9 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
       <td colspan="2">AFC-Pro is a Box Turtle AFC controller PCB supporting 8 lanes and more switches, LEDs and more extra features.</td>
       </tr>
     <tr>
-      <th width="12.5%"><a href="https://github.com/xbst/AFC-Lite/">Docs</a></th>
+      <th width="12.5%"><a href="Box-Turtle-Controllers/AFC-Lite/AFC-Lite-Manual/">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/afc-lite">Store</a></th>
-      <th width="12.5%"><a href="https://github.com/xbst/AFC-Pro/">Docs</a></th>
+      <th width="12.5%"><a href="Box-Turtle-Controllers/AFC-Pro/AFC-Pro-Manual/">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/afc-pro">Store</a></th>
     </tr>
     <tr><th colspan="6" style="font-size: 32px">CAN Bus Adapters</th></tr>
@@ -46,7 +44,7 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
     <tr>
       <th width="12.5%"><a href="https://github.com/xbst/PiCAN">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/pican-usb-to-can-bus-adapter">Store</a></th>
-      <th width="12.5%"><a href="https://docs.isiks.tech/ToqueCAN/ToqueCAN-Manual/">Docs</a></th>
+      <th width="12.5%"><a href="ToqueCAN/ToqueCAN-Manual/">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/toquecan">Store</a></th>
     </tr>
     <tr><th colspan="6" style="font-size: 32px">KUSBA Accelerometers</th></tr>
@@ -95,7 +93,7 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
       <td colspan="2"></td>
       </tr>
     <tr>
-      <th width="12.5%"><a href="https://docs.isiks.tech/Ouroboros/wiring/">Docs</a></th>
+      <th width="12.5%"><a href="Ouroboros/wiring/">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/ouroboros">Store</a></th>
       <th width="12.5%"></th>
       <th width="12.5%"></th>
@@ -112,9 +110,9 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
       <td colspan="2">Birds' Nest CAN is a USB CAN hub PCB designed for toolchanger printers. It features 6 CAN ports connected to a USB CAN adapter. It also features filament sensor, RGB and thermistor ports.</td>
       </tr>
     <tr>
-      <th width="12.5%"><a href="https://github.com/xbst/Birds-Nest">Docs</a></th>
+      <th width="12.5%"><a href="Birds-Nests/Birds-Nest/Birds-Nest-Manual/">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/birds-nest">Store</a></th>
-      <th width="12.5%"><a href="https://github.com/xbst/Birds-Nest-CAN">Docs</a></th>
+      <th width="12.5%"><a href="Birds-Nests/Birds-Nest-CAN/Birds-Nest-CAN-Manual/">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/birds-nest-can">Store</a></th>
     </tr>
       <tr>
@@ -128,8 +126,25 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
       <td colspan="2"></td>
       </tr>
     <tr>
-      <th width="12.5%"><a href="https://github.com/xbst/MOAR_CAN">Docs</a></th>
+      <th width="12.5%"><a href="MOAR_CAN/MOAR_CAN-Manual/">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/moar_can">Store</a></th>
+      <th width="12.5%"></th>
+      <th width="12.5%"></th>
+    </tr>
+    <tr><th colspan="6" style="font-size: 32px">Other</th></tr>
+    <tr>
+      <td width="25%" rowspan="3"><img src="../assets/hedgehog/square.jpg"></td>
+      <th colspan="2" style="font-size: 24px">Hedgehog</th>
+      <td width="25%" rowspan="3"></td>
+      <th colspan="2" style="font-size: 24px"></th>
+    </tr>
+    <tr>
+      <td colspan="2">Hedgehog is a simple Klipper PCB with IO, designed for cases when you need a simple board to connect a few things to your printer.</td>
+      <td colspan="2"></td>
+      </tr>
+    <tr>
+      <th width="12.5%"><a href="Hedgehog/Hedgehog/">Docs</a></th>
+      <th width="12.5%"><a href="https://store.isiks.tech/products/hedgehog">Store</a></th>
       <th width="12.5%"></th>
       <th width="12.5%"></th>
     </tr>
