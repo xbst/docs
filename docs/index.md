@@ -76,7 +76,7 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
       <td colspan="2">A tiny PCB with a BME280 (TEMP & HUM) and a SGP40 (VOC) sensor, designed for use in Nevermore air filters, Home Assistant projects and more.</td>
       </tr>
     <tr>
-      <th width="12.5%"><a href="https://github.com/xbst/Nevermore-PCB">Docs</a></th>
+      <th width="12.5%"><a href="Nevermore/Controller/">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/nevermore-stealthmax-2-pcb">Store</a></th>
       <th width="12.5%"><a href="https://github.com/xbst/Nevermore-Sensors">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/bme280-sgp40-air-quality-sensors-for-nevermore-air-filters">Store</a></th>

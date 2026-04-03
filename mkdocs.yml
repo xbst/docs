@@ -137,7 +137,7 @@ nav:
       - "GitHub Repository": "https://github.com/xbst/KUSBA-PRO/"
       - "Store Page": "https://store.isiks.tech/products/KUSBA-PRO"
   - "Nevermore PCBs":
-    - "Nevermore Max & Stealthmax PCBs": "https://github.com/xbst/Nevermore-PCB"
+    - "Nevermore PCB Docs": "Nevermore/Controller.md"
     - "Nevermore BME280 & SGP40 Sensors": "https://github.com/xbst/Nevermore-Sensors"
     - "Store Pages":
       - "Nevermore Max PCB": "https://store.isiks.tech/products/nevermore-max-controller-pcb"
