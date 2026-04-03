@@ -155,6 +155,7 @@ To be updated after Stealthmax PCB 3 release.
 4. Go to the Klipper directory. `cd klipper`
 5. Clean remaining files from previous build. `make clean`
 6. Choose the options for the build. `make menuconfig` Use the following options:
+
 ??? info "USB Serial Communication"
     ```
     [*] Enable extra low-level configuration options
@@ -182,7 +183,8 @@ Press `Q` then `Y` to save and quit the menu.
 
 7. Build. `make`
 8. Flash firmware:
-   ??? info "USB Serial Communication"
+
+??? info "USB Serial Communication"
     1. Flash Klipper. `make flash FLASH_DEVICE=0483:df11`
     2. When finished, press the `RESET` button on your Nevermore Stealthmax PCB.
     3. Use  `ls /dev/serial/by-id/*` to find the path starting with `/dev/serial/by-id/usb-Klipper_stm32g0b1`. This is the serial path of your Nevermore Stealthmax PCB.
