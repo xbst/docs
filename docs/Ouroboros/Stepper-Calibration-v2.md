@@ -12,7 +12,7 @@ hide:
 
 This guide covers calibrating PI values of X and Y motors of a Klipper 3D printer with closed loop FOC using Ouroboros and stepper motors with built-in encoders.
 
-Field oriented control works works very differently than the typical stepper driver setup we're more used to on Klipper 3D printers, so the terminology here may be confusing. Basically we're using PI control loops for driving the stepper instead of fully powering it on at a time. When tuned well, this can help improve print quality by reducing resonances, allowing you to print high quality prints at higher speeds. Unfortunately this tuning takes more effort than a typical stepper driver, so expect this to take some time, with some trial and error.
+Field oriented control works very differently than the typical stepper driver setup we're more used to on Klipper 3D printers, so the terminology here may be confusing. Basically we're using PI control loops for driving the stepper instead of fully powering it on at a time. When tuned well, this can help improve print quality by reducing resonances, allowing you to print high quality prints at higher speeds. Unfortunately this tuning takes more effort than a typical stepper driver, so expect this to take some time, with some trial and error.
 
 Field oriented control (FOC) on TMC4671s use 4 separate PI loops to control your stepper motor:
 
@@ -30,7 +30,7 @@ A good analogy for PI is, imagine a captain steering a ship. Captain first check
 
 <!--- Above is a simplified description FOC and PI parameters. For more information you can check out this (-----insert resource link-----) -->
 
-!!! warning "Please read this document to the end and before attempting tuning, otherwise you may waste many frustrating hours."
+!!! warning "Please read this document to the end before attempting tuning, otherwise you may waste many frustrating hours."
 
 ### Torque (Quadrature Current)
 
@@ -86,7 +86,7 @@ This loop takes position error and commands a velocity setpoint. This is what ul
 | I (`foc_pid_position_i`) | You may want to keep this value at zero. If the I value is too high, you may get integral windup. This means the toolhead will overshoot a corner, realize it went too far, and hook backward to fix it, ruining your sharp edges. | You might get accumulated drift during prints, resulting in layers being slightly offset to one side. |
 
 ## FOC Tuning
-FOC control loops are cascaded, so we need top tune them in a specific order. For example, if you tune Position P aggressively before the torque loop is stable, the instability compounds and you get violent oscillation.
+FOC control loops are cascaded, so we need to tune them in a specific order. For example, if you tune Position P aggressively before the torque loop is stable, the instability compounds and you get violent oscillation.
 
 Biquad filters (helps reduce audible noise) can influence motion, so they need to be tuned last, after figuring out all the PI values we need to figure out.
 
@@ -144,7 +144,7 @@ We'll start by tuning flux and torque.
 
    `Ki` is used for `foc_pid_flux_i` and `foc_pid_torque_i`. 
 
-   So if the line says ``PID stepper_x parameters: Kc=9.66 Ki=0.485`, these are the values to use in the config: 
+   So if the line says `PID stepper_x parameters: Kc=9.66 Ki=0.485`, these are the values to use in the config: 
    ``````ini
    foc_pid_flux_p: 9.66
    foc_pid_flux_i: 0.485
@@ -175,15 +175,15 @@ We'll start by tuning flux and torque.
         
         If reversing `foc_abn_direction` didn't help, you may need to try different torque and flux PI values.
 
-6. Turn off your printer, mount the motors on your gantry, with your toolhead toughly in the middle, and power back on.
+6. Turn off your printer, mount the motors on your gantry, with your toolhead roughly in the middle, and power back on.
 
 7. Home X and Y. **Be ready to emergency stop** if something goes wrong.
 
-    !!! failure "If your printer fails to home safely, you need to try different PI values for velocity PI before moving to the next step."
+    !!! failure "If your printer fails to home safely, you need to try different PI values for torque before moving to the next step."
 
 8. Move your toolhead to near, but not touching, a corner of your gantry. For example: `50, 50`
 
-9. Determine a safe distance for your toolhead to travel. You should try to make sure you have sufficient buffer space in case it overshoots. For example, on a 350mm gantry, you might want to make it move 250mm. 50mm initial distance, plus 250mm movement, leaves 50mm in case of a overshoot. Figure this out for X and Y.
+9. Determine a safe distance for your toolhead to travel. You should try to make sure you have sufficient buffer space in case it overshoots. For example, on a 350mm gantry, you might want to make it move 250mm. 50mm initial distance, plus 250mm movement, leaves 50mm in case of an overshoot. Figure this out for X and Y.
 
 10. Mark this location on your gantry with a permanent marker on the linear rail, or some other location, for both X and Y.
 
@@ -219,7 +219,7 @@ We'll start by tuning flux and torque.
 4. Move your toolhead to near, but not touching, a corner of your gantry. Use the same location as before. We'll do the same test to start.
 5. Start slow, make your motors move this distance linearly (no corners yet), and see if there's any overshoot.
 6. Gradually increase the speed until you reach the maximum speed you'll make the gantry move at. You can use your phone's slow motion camera when checking faster speeds.
-7. Run an input shaper test. Check the graph to see if the lines are smooth. If not, you may need to increase `velocity_p`.
+7. Run an input shaper test. Check the graph to see if the lines are smooth. If not, you may need to increase `foc_pid_velocity_p`.
 
     ??? info "Needs Tuning"
         You need to change velocity and position PI values. Start by optimizing velocity values, position should be tuned last. You can refer to the PI tuning information from earlier in this document for velocity and position to see what you may need to change.
