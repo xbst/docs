@@ -6,6 +6,11 @@ hide:
 
 # Ouroboros Encoder Stepper Manual Calibration
 
+!!! info "Improved Beta Document Available"
+    We've created a document that walks you through this process, and explains what each setting does better. We're looking for feedback before replacing this doc with the new one.
+    
+    If you'd prefer the new doc, **[click here](../Stepper-Calibration-v2)**.
+
 This guide covers calibrating PI values of X and Y motors of a Klipper 3D printer with closed loop FOC using Ouroboros and stepper motors with built-in encoders.
 
 Field oriented control works works very differently than the typical stepper driver setup we're more used to on Klipper 3D printers, so the terminology here may be confusing. Basically we're using PID control loops for driving the stepper instead of fully powering it on at a time. When tuned well, this can help improve print quality by reducing resonances, allowing you to print high quality prints at higher speeds. Unfortunately this tuning takes more effort than a typical stepper driver, so expect this to take some time, with some trial and error.
