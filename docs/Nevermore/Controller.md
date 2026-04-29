@@ -150,7 +150,7 @@ To be updated after Stealthmax PCB 3 release.
 !!! info "If you sourced your PCB from an unofficial source, ensure nBOOT_SEL is set to enable BOOT0 before firmware flashing. Official Isik's Tech boards will already have this setting set so you can skip this step."
 
 1. SSH into your Klipper SBC (Raspberry Pi).
-2. Connect your PCB with a USB cablw
+2. Connect your PCB with a USB cable.
 3. Hold down the `BOOT` button on your PCB. While holding it down, press `RESET`, then release `BOOT`. Alternatively, you can unplug the PCB then plug it in again while holding down the `BOOT` button. Use `lsusb` again to make sure you can see the device in DFU mode.
 4. Go to the Klipper directory. `cd klipper`
 5. Clean remaining files from previous build. `make clean`

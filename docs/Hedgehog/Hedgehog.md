@@ -71,7 +71,7 @@ Hedgehog uses a STM32G0B1 MCU, supporting Klipper, STM32Duino and many other fir
 
 ![Hedgehog PCB](../assets/hedgehog/backside.jpg)
 
-- "CAN TERM" pins are for terminating CAN bus. Populate a jumper across these pins to terminate CAN bust with a 120 ohm resistor.
+- "CAN TERM" pins are for terminating CAN bus. Populate a jumper across these pins to terminate CAN bus with a 120 ohm resistor.
 - "VIN" pin can be used to supply the board with power, or to pass VIN power of the board to something else. 
 - Pins marked with * feature a 4.7 kiloohm pull-up resistor and protection for thermistor applications. There are other ADC pins available which can be used for more thermistors, with the pull-up done externally.
 - There are SPI and I2C pins available, refer to below table or STM32G0B1 datasheet for more info.
