@@ -12,13 +12,77 @@ This guide covers both the initial calibration and tuning of your TMC4671 setup,
 
 
 
-### PID & Biquad Filter values
+### Config Values
 
 !!! warning "Don't install motors on your gantry yet! We need to make sure the motors can move and stop fine before installing them."
 
-Use these values for **both** motors, then save and `FIRMWARE_RESTART`:
+Add the `[tmc4671]` sections to your config, then `FIRMWARE_RESTART`:
 
 ``````ini
+[tmc4671 stepper_x]
+# Ouroboros-specific Config
+cs_pin: ouroboros:PD0
+spi_bus: spi2
+spi_speed: 2000000
+current_scale_ma_lsb: 1.272
+
+# TMC4671 Settings - Leave As-Is or Refer to Config Reference Page for More Info 
+foc_pwm_sv: 0
+foc_adc_i_ux_select: 0
+foc_adc_i_v_select: 2
+foc_adc_i_wy_select: 1
+foc_phi_e_selection: 3
+foc_position_selection: 9
+foc_velocity_selection: 9
+
+# Motor Info
+foc_motor_type: 2
+foc_n_pole_pairs: 50
+run_current: 3.5
+flux_current: 0.02
+foc_abn_decoder_ppr: 4000
+foc_abn_direction: 1
+       
+# PID
+foc_pid_flux_p: 17.1
+foc_pid_flux_i: 0.067
+foc_pid_torque_p: 17.1
+foc_pid_torque_i: 0.067
+foc_pid_velocity_p: 1.07063
+foc_pid_velocity_i: 0.00498
+foc_pid_position_p: 1.27522
+foc_pid_position_i: 0.00125
+
+# Biquad Filter
+biquad_flux_frequency: 300
+biquad_torque_frequency: 1200
+biquad_velocity_frequency: 0
+biquad_position_frequency: 0
+
+[tmc4671 stepper_y]
+# Ouroboros-specific Config
+cs_pin: ouroboros:PD2
+spi_bus: spi2
+spi_speed: 2000000
+current_scale_ma_lsb: 1.272
+
+# TMC4671 Settings - Leave As-Is or Refer to Config Reference Page for More Info 
+foc_pwm_sv: 0
+foc_adc_i_ux_select: 0
+foc_adc_i_v_select: 2
+foc_adc_i_wy_select: 1
+foc_phi_e_selection: 3
+foc_position_selection: 9
+foc_velocity_selection: 9
+
+# Motor Info
+foc_motor_type: 2
+foc_n_pole_pairs: 50
+run_current: 3.5
+flux_current: 0.02
+foc_abn_decoder_ppr: 4000
+foc_abn_direction: 1
+       
 # PID
 foc_pid_flux_p: 17.1
 foc_pid_flux_i: 0.067
@@ -63,14 +127,14 @@ Once your motors are moving healthily, it's time to install them on your gantry.
 
 Verify both endstops are working as expected, then try to home your X and Y axis. **Be ready to emergency stop** if something goes wrong. If it works well, you can move on to speed and acceleration tuning. If not, try following the manual tuning document on this website (from the beginning).
 
----
-### Print Speed & Acceleration Tuning
-Unlike traditional stepper drivers, TMC4671 drivers won't skip steps if the motors can't do the motion you requested. Because they have encoders on the back, they can know exactly where the motor is, and they can compensate for skipped steps.
 
-This is of course a very nice feature to have to avoid crashes, and failed prints. But this will come at the cost of print quality. What'll happen is, the motor will take a "shortcut" when printing a corner to catch up, resulting in lower print quality. Because of this, it's not a good idea to use a speed test macro like Ellis3D's macro to figure out your maximum print speeds. You will need to actually print with it to figure out IRL practical speeds and accelerations.
 
-The FOC system used on Ouroboros, when tuned well, should reduce resonances originating on the stepper motor. This will help with print quality, just remember to recalibrate your `input_shaper`. It's also a good idea to recalibrate your `pressure_advance`.
+## Fine Tuning
 
----
+Calibrate your input shaper and pressure advance.
 
-If you'd like to further tune your setup, manually tuning your PID values can help improve vibrations, noise, heat, speeds, accelerations and more. Check out the manual calibration document on this website for more info.
+Time to finally print!
+
+Print some files at moderate speeds, accelerations and SCV, and gradually increase them until you hit your printer's limits. Currently this is the best way to determine maximum speeds, accelerations and SCV, as TMC4671 drivers won't skip steps if the motors can't do the motion you requested unlike traditional stepper drivers. They have encoders on the back, they know exactly where the motor is, and they compensate for skipped steps. This is of course a very nice feature to have to avoid crashes and failed prints, but this will come at the cost of print quality. What'll happen is, the motor will take a "shortcut" when printing a corner to catch up, resulting in lower print quality.
+
+Based on your prints, you may want to do adjustments to your config values. Refer to the manual tuning document for info about how to edit these values.

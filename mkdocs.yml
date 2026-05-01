@@ -159,10 +159,8 @@ nav:
     - "Mount & Wiring": "Ouroboros/wiring.md"
     - "Firmware Setup": "Ouroboros/Firmware-Setup.md"
     - "Motor Setup":
-      - "Stepper Motor Setup":
-        - "Stepper Motor Setup": "Ouroboros/Stepper-Setup.md"
-        - "Calibration":
-          - "Isik's Tech Encoder Steppers": "Ouroboros/IT.md"
-          - "Manual Calibration": "Ouroboros/Stepper-Calibration.md"
+      - "Stepper Motors":
+        - "Isik's Tech Encoder Stepper Presets": "Ouroboros/IT.md"
+        - "Manual Calibration": "Ouroboros/Stepper-Calibration.md"
     - Ouroboros/gibberish.md
     - "Store Page": "https://store.isiks.tech/products/ouroboros"
