@@ -273,7 +273,7 @@ We'll start by tuning flux and torque.
     ??? info "Needs Tuning"
         If you're currently using autotuned values, this is not uncommon. Unfortunately the autotuned values the TMC4671 Klipper plugin provides can be far from ideal. You will need to try different values if this is the case.
         
-        Refer to the PI tuning information from earlier in this document for flux and torque. You will likely need to increase `foc_pid_torque_p`, but feel free to change the other 3 variables as well based on how your gantry performed. Usually you can safely double/halve the values without anything going wrong (other than performance possibly getting worse). Just keep an eye on your gantry and be ready to emergency stop just in case.
+        Refer to the PI tuning information from earlier in this document for flux and torque. You will likely need to increase `foc_pid_torque_p` and `foc_pid_flux_p` (keep them equal). Usually you can safely double/halve the values without anything going wrong (other than performance possibly getting worse). Just keep an eye on your gantry and be ready to emergency stop just in case.
         
         Repeat steps 7-13 until you're satisfied with flux and torque values.
 
