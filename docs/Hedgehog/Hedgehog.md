@@ -122,8 +122,7 @@ Below is the board outline and locations of the IO pins of Hedgehog. Hedgehog us
 
 ## Source Files
 
-~~Hedgehog source files can be found on [Github](https://github.com/xbst/Hedgehog). It's licensed under a
-[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-nc-sa].~~ **Coming soon**
+Hedgehog source files can be found on [Github](https://github.com/xbst/Hedgehog). They're licensed under a [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-nc-sa].
 
 [![CC BY-NC-SA 4.0][cc-by-nc-sa-image]][cc-by-nc-sa]
 
