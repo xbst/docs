@@ -6,6 +6,9 @@ hide:
 
 # Ouroboros Klipper Firmware Setup
 
+!!! info "Plugin getting frequent updates"
+    The TMC4671 Klipper plugin is updated frequently. This page may lag behind the plugin's code. If something here doesn't work, the [plugin README](https://github.com/andrewmcgr/tmc-4671) may help. Updated 23 JUN 2026
+
 This guide covers installing the TMC4671 plugin on your Klipper 3D printer, and firmware flashing of Ouroboros.
 
 
