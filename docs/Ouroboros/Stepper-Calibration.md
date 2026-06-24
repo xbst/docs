@@ -8,6 +8,9 @@ hide:
 
 !!! info "This is a beta of a better manual tuning document. Please let us know if you see any errors, or if you have any suggestions for improving it."
 
+!!! info "Plugin getting frequent updates"
+    The TMC4671 Klipper plugin is updated frequently. This page may lag behind the plugin's code. If something here doesn't work, the [plugin README](https://github.com/andrewmcgr/tmc-4671) may help. Updated 23 JUN 2026
+
 This guide covers calibrating PI values of X and Y motors of a Klipper 3D printer with closed loop FOC using Ouroboros and stepper motors with built-in encoders.
 
 ## FOC & PI Values
@@ -205,7 +208,15 @@ We'll start by tuning flux and torque.
    TMC_TUNE_PID STEPPER=stepper_x
    M84
    ``````
-   This will output a line like `PID stepper_x parameters: Kc=9.66 Ki=0.485`. It will also prompt you to save these values using `SAVE_CONFIG`. **Don't do this yet.**
+   This will output something like:
+   ``````
+   PID stepper_x parameters:
+     Flux biquad LPF: 1200 Hz
+     Torque biquad LPF: 1200 Hz
+     Flux:   Kc=9.6600 Ki=0.4850
+     Torque: Kc=9.6600 Ki=0.4850
+   ``````
+   The plugin tunes the flux and torque current loops separately and also stages the flux/torque biquad LPF frequencies for `SAVE_CONFIG`. It will prompt you to save these values using `SAVE_CONFIG`. **Don't do this yet.**
 
 3. Repeat the above steps for your Y motor:
    ``````
@@ -213,27 +224,32 @@ We'll start by tuning flux and torque.
    TMC_TUNE_PID STEPPER=stepper_y
    M84
    ``````
-   This will output a line like `PID stepper_y parameters: Kc=9.76 Ki=0.481`.  If your printer is a CoreXY system, make sure the values for X and Y are similar. **Pick the values for one motor and use them for both in the config.**
+   You'll get a similar output. If your printer is a CoreXY system, make sure the values for X and Y are similar. **Pick the values for one motor and use them for both in the config.**
 
 4. Edit your config with these new values.
 
-    `Kc` is used for `foc_pid_flux_p` and `foc_pid_torque_p`. 
+    Flux `Kc` is used for `foc_pid_flux_p`. Flux `Ki` is used for `foc_pid_flux_i`.
 
-    `Ki` is used for `foc_pid_flux_i` and `foc_pid_torque_i`. 
+    Torque `Kc` is used for `foc_pid_torque_p`. Torque `Ki` is used for `foc_pid_torque_i`.
 
-    So if the line says `PID stepper_x parameters: Kc=9.66 Ki=0.485`, these are the values to use in the config: 
+    So if the output says:
+    ``````
+    Flux:   Kc=9.6600 Ki=0.4850
+    Torque: Kc=9.6600 Ki=0.4850
+    ``````
+    These are the values to use in the config:
     ``````ini
     foc_pid_flux_p: 9.66
     foc_pid_flux_i: 0.485
     foc_pid_torque_p: 9.66
     foc_pid_torque_i: 0.485
     ``````
-    Edit both `[tmc4671]` sections with the correct PID values, save and `FIRMWARE_RESTART`.
+    The plugin will also suggest flux and torque biquad LPF frequencies. Note them down or add them to the config with **commented lines** for now. Edit both `[tmc4671]` sections with the correct PID values, save and `FIRMWARE_RESTART`.
 
 5. Use this command to move your X motor to confirm it's moving fine:
-   ``````
-   FORCE_MOVE STEPPER=stepper_x DISTANCE=100 VELOCITY=50
-   ``````
+    ``````
+    FORCE_MOVE STEPPER=stepper_x DISTANCE=100 VELOCITY=50
+    ``````
     Make sure:
 
     - It's moving.
@@ -271,9 +287,7 @@ We'll start by tuning flux and torque.
 13. Figure out if you need to adjust your torque and flux PI values. If there was overshoot, you likely need to. It is better to solve it now, before tuning velocity and position.
 
     ??? info "Needs Tuning"
-        If you're currently using autotuned values, this is not uncommon. Unfortunately the autotuned values the TMC4671 Klipper plugin provides can be far from ideal. You will need to try different values if this is the case.
-        
-        Refer to the PI tuning information from earlier in this document for flux and torque. You will likely need to increase `foc_pid_torque_p` and `foc_pid_flux_p` (keep them equal). Usually you can safely double/halve the values without anything going wrong (other than performance possibly getting worse). Just keep an eye on your gantry and be ready to emergency stop just in case.
+        If you're currently using autotuned values, this is not uncommon. Refer to the PI tuning information from earlier in this document for flux and torque. You will likely need to increase `foc_pid_torque_p` and `foc_pid_flux_p` (adjust by the same amount). Usually you can safely double/halve the values without anything going wrong (other than performance possibly getting worse). Just keep an eye on your gantry and be ready to emergency stop just in case.
         
         Repeat steps 7-13 until you're satisfied with flux and torque values.
 
@@ -286,7 +300,8 @@ We'll start by tuning flux and torque.
       ``````
       TMC_TUNE_MOTION_PID LAMBDA_V=100 LAMBDA_P=400 HOLDING_CURRENT=2.5 HOLDING_TORQUE=0.055 STEPPER=stepper_x
       ``````
-      `LAMBDA_V` and `LAMBDA_P` are measures of how aggressive the tuning will be. The default values are `LAMBDA_V`=100 and `LAMBDA_P`=400. We will try different values later. The command will also suggest filter frequencies, **ignore these for now.**
+      `LAMBDA_V` and `LAMBDA_P` are measures of how aggressive the tuning will be. The default values are `LAMBDA_V`=100 and `LAMBDA_P`=400. We will try different values later. The plugin will also suggest velocity biquad LPF frequencies. Note them down or add them to the config with **commented lines** for now.
+
       <br><br>If your setup isn't CoreXY, repeat above instructions for `stepper_y`. For CoreXY, you should use the same values for both motors.
       <br>
 
@@ -310,7 +325,7 @@ We'll start by tuning flux and torque.
         ``````
         TMC_TUNE_MOTION_PID LAMBDA_V=100 LAMBDA_P=400 HOLDING_CURRENT=2.5 HOLDING_TORQUE=0.055 STEPPER=stepper_x
         ``````
-        If your setup isn't CoreXY, repeat above for `stepper_y`. For CoreXY, you should use the same values for both motors. Again, ignore the biquad filter values for now.
+        If your setup isn't CoreXY, repeat above for `stepper_y`. For CoreXY, you should use the same values for both motors.
         
         Edit your config with the values suggested by the algorithm, save and `FIRMWARE_RESTART`, then try again.
 
@@ -318,13 +333,15 @@ We'll start by tuning flux and torque.
 
 Your printer is pretty loud currently, right? Time to fix that.
 
-You can either manually tune `biquad_torque_frequency` and `biquad_flux_frequency`, or use the calculated values if you used the `TMC_TUNE_MOTION_PID` method for calculating velocity and position PI values. It's recommended to leave `biquad_velocity_frequency` and `biquad_position_frequency` at `0`, as they can introduce problems.
+Biquad filters were already calculated in the previous steps:
 
-If you're manually tuning, this paragraph from the [TMC4671 Klipper plugin repo](https://github.com/andrewmcgr/tmc-4671) may be helpful:
+- `TMC_TUNE_PID` calculated `biquad_flux_frequency` and `biquad_torque_frequency` (LPF type, default Q of 0.707).
+- `TMC_TUNE_MOTION_PID` calculated `biquad_velocity_frequency` (LPF type, default Q of 0.707).
+- `biquad_position_frequency` is left at `0` — it's recommended to leave it off.
 
-For tuning `biquad_torque_frequency` and `biquad_flux_frequency` adjust the digital filters for current measurement. Reasonable values range from about 40 Hz to about 5000 Hz, with most NEMA 17 motors liking values near 1600 Hz for torque and 800 Hz for flux. If the frequency is too high, the motor will make hissing noises while moving, if the frequency is too low it will tend to make noise while stationary, and to round off corners when printing fast. Flux frequencies can be a lot lower than torque frequencies, as the flux current does not need to change as dynamically.
+You can now enter these in the config, or uncomment the lines, and `FIRMWARE_RESTART`.
 
-Change your biquad filter values, save then `FIRMWARE_RESTART`. Test if your printer still moves well, and if it's quiet now. If not, you may need to adjust these values.
+You can also experiment with biquad values live (no restart required) using `SET_TMC_BIQUAD_FILTER` — see the [Plugin Reference](../gibberish/) page. Change your biquad filter values in the config, save then `FIRMWARE_RESTART` once you've found values you like.
 
 ## Fine Tuning
 
