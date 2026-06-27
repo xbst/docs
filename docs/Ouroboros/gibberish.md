@@ -7,7 +7,7 @@ hide:
 # TMC4671 Plugin Reference
 
 !!! info "Plugin getting frequent updates"
-    The TMC4671 Klipper plugin is updated frequently. This page may lag behind the plugin's code. If something here doesn't work, the [plugin README](https://github.com/andrewmcgr/tmc-4671) may help. Updated 23 JUN 2026
+    The TMC4671 Klipper plugin is updated frequently. This page may lag behind the plugin's code. If something here doesn't work, the [plugin README](https://github.com/andrewmcgr/tmc-4671) may help. Updated 27 JUN 2026
 
 ## G-Code Commands
 
@@ -205,14 +205,52 @@ Available groups: `default`, `hall`, `abn`, `adc`, `aenc`, `pwm`, `pidconf`, `pi
 
 ## Config Reference
 
+### Profiles
+
+Profiles let you reference a named bundle of board or motor parameters instead of setting them individually. Two built-in board profiles (`OpenFFBoard`, `Ouroboros`) and two built-in motor profiles (`LDO_2504b-EN1000`, `Ouroboros_Stepper`) are available without any extra config sections. The Ouroboros encoder stepper setup guide uses these by default — see it for the recommended config.
+
+| Parameter      | Description                                                  | Note                                                         |
+| -------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| board_profile  | Name of a built-in or user-defined board profile.            | Use `Ouroboros` for Ouroboros. Sets `voltage_scale_ratio`, `current_scale_ma_lsb`, the ADC selects, BBM dead times, and the voltage limit. |
+| motor_profile  | Name of a built-in or user-defined motor profile.            | Use `Ouroboros_Stepper` for Isik's Tech encoder steppers, or `LDO_2504b-EN1000` for the LDO equivalent. Sets `motor_type`, `n_pole_pairs`, `motor_kt`, `jmotor`, `abn_decoder_ppr`, `abn_direction`, and `rated_current`. |
+
+For motors that aren't in the built-in list, define your own:
+
+```ini
+[foc_motor my_stepper]
+n_pole_pairs: 50
+holding_current: 2.0
+holding_torque: 0.045
+rated_current: 2.0
+abn_decoder_ppr: 4000
+abn_direction: 0
+
+[tmc4671 stepper_x]
+motor_profile: my_stepper
+# ... rest of config ...
+```
+
+Any field set in a profile can be overridden by setting it explicitly in the `[tmc4671]` section. Profile values silently fill in as defaults; instance values always win.
+
+### Startup Autotuning
+
+| Parameter        | Description                                                  | Note              |
+| ---------------- | ------------------------------------------------------------ | ----------------- |
+| tune_current_pid | When `True`, runs the equivalent of `TMC_TUNE_PID` automatically at every Klipper restart, after motor R/L measurement. Results are staged for `SAVE_CONFIG`. | Default: `False`. |
+| tune_motion_pid  | When `True`, runs the equivalent of `TMC_TUNE_MOTION_PID` (bandwidth path) automatically at every Klipper restart. Results are staged for `SAVE_CONFIG`. | Default: `False`. |
+
+When either is enabled and the corresponding biquad cutoff is not explicitly set, it defaults to 0 (off) until the autotune runs and sets it to the tuned bandwidth.
+
+### Core Parameters
+
 | Parameter                                                    | Description                                                  | Note                                                         |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | cs_pin                                                       | The pin number for the SPI chip select pin.                  | The correct value for Ouroboros is provided on the motor setup guides. |
 | spi_bus                                                      | The name of the SPI bus TMC4671 is connected to on the MCU.  | The correct value is spi2 for Ouroboros.                     |
 | spi_speed                                                    | The speed of the SPI bus.                                    | Should not be edited.                                        |
-| current_scale_ma_lsb                                         | TMC4671 relies on external (not built-into the TMC4671 chip) current sense sensors. This setting is for setting how much sense voltage varies, based on the current sense setup used on the PCB. | The correct value is 1.272 for Ouroboros.                    |
+| current_scale_ma_lsb                                         | TMC4671 relies on external (not built-into the TMC4671 chip) current sense sensors. This setting is for setting how much sense voltage varies, based on the current sense setup used on the PCB. | Set automatically by `board_profile: Ouroboros`. Otherwise the correct value is 1.272 for Ouroboros. |
 | voltage_scale_ratio                                          | The VM supply voltage divider ratio used to convert the raw ADC reading to volts. | Ouroboros uses the same VM voltage divider as the OpenFFBoard, so the plugin's default (40.875) is correct and you don't need to set this. To verify: run `TMC_DEBUG_VOLTAGE` and check the reported VM matches your actual supply voltage. If for any reason it doesn't, recalibrate by reading raw `ADC_VM_RAW` via `DUMP_TMC` and calculating `voltage_scale_ratio = VM_actual * 13107 / (ADC_VM_RAW - 32768)`. |
-| run_current                                                  | This is the peak current used by the TMC4671 driver to make the motor move. <br/> Unlike common Klipper stepper drivers, this isn't RMS current, it's peak current, so higher values are needed here. | For stepper motors, recommended starting value is 1.4 times the rated current of the stepper motor, as specified on its datasheet. For example, if the rated current of the stepper motor is 2.5A on its datasheet, a good starting value for run_current is **3.5A**. For BLDC, calculate this from the peak power dissipation, if no rated current is given, then multiply by 2.8. |
+| run_current                                                  | This is the peak current used by the TMC4671 driver to make the motor move. <br/> Unlike common Klipper stepper drivers, this isn't RMS current, it's peak current, so higher values are needed here. | When a motor profile sets `rated_current`, `run_current` defaults to `rated_current × √2` automatically. For example, the `Ouroboros_Stepper` profile (`rated_current: 2.5`) produces a default `run_current` of 3.54 A. For BLDC, calculate this from the peak power dissipation, if no rated current is given, then multiply by 2.8. |
 | flux_current                                                 |                                                              |                                                              |
 | foc_motor_type                                               | This is used to let TMC4671 know what type of motor is connected to it. | 1: Single-Phase DC<br />2: Two-Phase Stepper<br />3: Three-Phase BLDC |
 | foc_n_pole_pairs                                             | This is the number of pole pairs the motor connected to TMC4671 has. | For 1.8° stepper motors, the correct value is 50.            |
@@ -227,13 +265,13 @@ Available groups: `default`, `hall`, `abn`, `adc`, `aenc`, `pwm`, `pidconf`, `pi
 | biquad_flux_frequency<br/>biquad_torque_frequency<br/>biquad_velocity_frequency<br/>biquad_position_frequency | Cutoff frequency in Hz for each filter. 0 disables the filter. Float values are accepted. | Refer to the motor setup guides here to calibrate these values. |
 | biquad_flux_filter<br/>biquad_torque_filter<br/>biquad_velocity_filter<br/>biquad_position_filter | Filter topology: `lpf` (low-pass), `notch`, or `apf` (all-pass). | Default: `lpf`.                                              |
 | biquad_flux_slope<br/>biquad_torque_slope<br/>biquad_velocity_slope<br/>biquad_position_slope | Q factor / slope.                                            | Default: 0.707 (Butterworth).                                |
-| jmotor           | Motor rotor moment of inertia in kg·m².              | 8.45e-6  |
-| jload            | Estimated reflected load inertia in kg·m².           | 5e-5     |
-| motor_kt         | Motor torque constant in Nm/A.                       | 0.0156   |
-| velocity_alpha   | Velocity loop damping coefficient (dimensionless).   | 0.35     |
-| diag_pin       | MCU GPIO connected to the TMC4671 STATUS output for stall detection. | For Ouroboros: `^ouroboros:PE2` (X motor), `^ouroboros:PA2` (Y motor). The `^` enables the input pull-up. |
-| homing_current | Current limit in A during homing moves. Stall is detected when the velocity PID demands more than this. | Typical NEMA-17 range: 0.5–1.5 A. Start at 0.5 A and tune up. |
-| homing_mask    | Comma-separated list of `STATUS_FLAGS` bits that activate the STATUS pin. | Default is suitable for most installations.                  |
+| jmotor                                                       | Motor rotor moment of inertia in kg·m².                      | Set automatically by motor profiles. Default: 8.45e-6.       |
+| jload                                                        | Estimated reflected load inertia in kg·m².                   | 5e-5                                                         |
+| motor_kt                                                     | Motor torque constant in Nm/A.                               | Set automatically by motor profiles. Required for `TMC_TUNE_MOTION_PID` and `tune_motion_pid`. |
+| velocity_alpha                                               | Velocity loop damping coefficient (dimensionless).           | 0.35                                                         |
+| diag_pin                                                     | MCU GPIO connected to the TMC4671 STATUS output for stall detection. | For Ouroboros: `^ouroboros:PE2` (X motor), `^ouroboros:PA2` (Y motor). The `^` enables the input pull-up. |
+| homing_current                                               | Current limit in A during homing moves. Stall is detected when the velocity PID demands more than this. | Typical NEMA-17 range: 0.5–1.5 A. Start at 0.5 A and tune up. |
+| homing_mask                                                  | Comma-separated list of `STATUS_FLAGS` bits that activate the STATUS pin. | Default is suitable for most installations.                  |
 
 ~~[More info](https://www.youtube.com/watch?v=RXJKdh1KZ0w)~~
 
