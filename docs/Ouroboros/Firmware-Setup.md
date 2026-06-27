@@ -76,8 +76,11 @@ This guide covers installing the TMC4671 plugin on your Klipper 3D printer, and 
 	        | X     | ouroboros:PD4  | ouroboros:PD3  | ouroboros:PD6 | ^ouroboros:PD7 |
 	        | Y     | ouroboros:PC12 | ouroboros:PC11 | ouroboros:PD1 | ^ouroboros:PB3 |
 
-	        !!! note "Using Existing Physical Endstop Setup"
+	        !!! info "Using Existing Physical Endstop Setup"
 	            You only need to edit your `endstop_pin` setting if you are using the endstop connector on your Ouroboros. You don't need to edit your existing `endstop_pin` setting if you were already using physical endstop switches wired to boards you're not planning to remove. For example, if your X endstop switch is connected to your toolhead board, you can keep it connected there and use your existing setting for that pin.
+	        !!! info "Sensorless Homing Option"
+                Physical endstops are recommended, but sensorless homing is an option if you prefer. You can find more info [here](./Sensorless-Homing.md).
+
 
 	    3. Keep your existing `rotation_distance`, `homing_speed`, `homing_retract_dist`, `position_min`, `position_max`, `position_endstop` and any other parameters not covered here as-is.
 
