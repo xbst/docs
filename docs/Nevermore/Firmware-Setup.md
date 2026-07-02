@@ -41,10 +41,10 @@ Use the following options:
             USB ids  --->
         ()  GPIO pins to set at micro-controller startup
         ```
-
+    
     ??? info "CAN Bus Communication (with Katapult)"
         !!! warning "CAN bus is not available for the Nevermore Max 2 PCB."
-
+    
         ```
         [*] Enable extra low-level configuration options
             Micro-controller Architecture (STMicroelectronics STM32)  --->
@@ -55,7 +55,7 @@ Use the following options:
         (1000000) CAN bus speed
         ()  GPIO pins to set at micro-controller startup
         ```
-
+    
     Press `Q` then `Y` to save and quit the menu.
 
 7. Build.
@@ -158,3 +158,40 @@ managed_services: klipper
 | Nevermore Mini & Stealthmax PCB | [Download Config](https://raw.githubusercontent.com/xbst/Nevermore-PCB/refs/heads/master/Firmware/Max.cfg) |
 | Nevermore Stealthmax PCB 2 | [Download Config](https://raw.githubusercontent.com/xbst/Nevermore-PCB/refs/heads/master/Firmware/SM2.cfg) |
 | Nevermore Stealthmax PCB 3 | TBD |
+
+## SGP40 Calibration
+
+!!! info "The printer cannot be used during calibration."
+
+    Calibration establishes a baseline corresponding to "clean air", where "clean air" means as clean as the air in the room. This will take at least 8 hours and ideally 24 hours.
+
+!!! info "Panel off gassing may affect calibration"
+    Wash your printer if there is _any_ smell prior to calibration. There is no point calibrating a baseline if it is dirty and off gassing. Use hot water & soap to scrub the panels, enclosures, print sheets, beds, etc.
+    
+    A dirty printer will result in VOC readings that start around 100, but then rise to 400+. The air is steadily getting dirtier from whatever is off-gassing. The air will keep getting worse until it reaches saturation. If you were to plot the raw response, you’d see it steadily degrade over time.
+    
+    The initial plateau at 100 VOC Index is because the system will assume the initial conditions are nominal before adjusting the expected range; this is when the VOC Index will begin to increase.
+
+1. Cool down the printer
+2. Turn off any air filter fans.
+3. Open the printer enclosure
+4. (_Optional_) Remove any filter material (e.g. carbon).
+   This helps ensure all sensors are exposed to the same air and reach similar calibrations.
+5. Let some fresh air into the room for a minute or two.
+   Open a window for a few minutes, flap a hand towel in the doorway, whatever.
+   The objective is to get clean air into the enclosure.
+   **This air will serve as reference for the baseline.**
+   If you’re not happy breathing it, it isn't clean air.
+6. Close the printer enclosure.
+7. Run the `RESET_SGP40`command for each configured sensor.
+8. Leave the printer alone for at least 8 hours, and up to 24 hours if possible.
+9. Run the `CALIBRATE_SGP40` command for each configured sensor.
+10. Run the `SAVE_CONFIG` command.
+    This will add the baseline values to `printer.cfg`.
+11. Reinstall any filter media removed in step 4.
+
+The system should now have a good baseline for the sensors.
+
+!!! info "Sensor readings may drift over time requiring recalibration."
+
+SGP40 calibration info is based on [SGP40 plugin repo](https://github.com/thetic/klipper-sgp40), licensed under GPLv3.
