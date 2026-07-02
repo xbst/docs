@@ -8,8 +8,8 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
 ## Boards
 <style type="text/css">
 .tg  {border-collapse:collapse;border-spacing:0;}
-.tg td{border-color:grey;border-style:solid;border-width:0.5px;overflow:hidden;padding:6px 6px;word-break:normal;text-align:left;vertical-align:center}
-.tg th{border-color:grey;border-style:solid;border-width:0.5px;overflow:hidden;padding:6px 6px;word-break:normal;text-align:center;vertical-align:center}
+.tg td{border-color:grey;border-style:solid;border-width:0px;overflow:hidden;padding:6px 6px;word-break:normal;text-align:left;vertical-align:center}
+.tg th{border-color:grey;border-style:solid;border-width:0px;overflow:hidden;padding:6px 6px;word-break:normal;text-align:center;vertical-align:center}
 </style>
 <table class="tg">
   <tbody>
