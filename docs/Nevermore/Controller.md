@@ -13,7 +13,6 @@ hide:
 <table class="tg">
   <thead>
     <tr>
-      <th></th>
       <th>Nevermore Max 2 PCB</th>
       <th>Nevermore Mini & Stealthmax PCB</th>
       <th>Nevermore Stealthmax PCB 2</th>
@@ -22,109 +21,10 @@ hide:
   </thead>
   <tbody>
     <tr>
-      <th></th>
       <td><img src="https://raw.githubusercontent.com/xbst/Nevermore-PCB/refs/heads/master/Images/Max.jpg" width="360"/></td>
       <td><img src="https://raw.githubusercontent.com/xbst/Nevermore-PCB/refs/heads/master/Images/SM.jpg" width="360"/></td>
       <td><img src="https://raw.githubusercontent.com/xbst/Nevermore-PCB/refs/heads/master/Images/SM2.jpg" width="360"/></td>
       <td></td>
-    </tr>
-    <tr>
-      <th>MCU</th>
-      <td>STM32G0B1</td>
-      <td>STM32G0B1</td>
-      <td>STM32G0B1</td>
-      <td>STM32G0B1</td>
-    </tr>
-    <tr>
-      <th>Sensors</th>
-      <td>2x HW I2C</td>
-      <td>2x HW I2C<br>1x Optional Sensor Module Mount</td>
-      <td>2x HW I2C</td>
-      <td>2x HW I2C</td>
-    </tr>
-    <tr>
-      <th>Fan Control</th>
-      <td>1x 4-pin, VIN<br>1x 3/2-pin, VIN</td>
-      <td>1x 4-pin, VIN</td>
-      <td>1x 4-pin, 12V</td>
-      <td>1x 4-pin, VIN</td>
-    </tr>
-    <tr>
-      <th>Peltier Control</th>
-      <td>-</td>
-      <td>-</td>
-      <td>1x MOSFET</td>
-      <td>1x MOSFET</td>
-    </tr>
-    <tr>
-      <th>Servo Control</th>
-      <td>-</td>
-      <td>-</td>
-      <td>-</td>
-      <td>1x Port, 5V</td>
-    </tr>
-    <tr>
-      <th>UV LED Control</th>
-      <td>-</td>
-      <td>-</td>
-      <td>1x MOSFET<br>1x PWM</td>
-      <td>1x Constant Current</td>
-    </tr>
-    <tr>
-      <th>ARGB LED Control</th>
-      <td>1x Port</td>
-      <td>1x Port</td>
-      <td>-</td>
-      <td>1x Port</td>
-    </tr>
-    <tr>
-      <th>Thermistors</th>
-      <td>-</td>
-      <td>-</td>
-      <td>1x On-PCB 3950<br>1x Port</td>
-      <td>1x On-PCB 3950<br>3x Port</td>
-    </tr>
-    <tr>
-      <th>CAN Bus</th>
-      <td>-</td>
-      <td>Yes</td>
-      <td>Yes</td>
-      <td>Yes</td>
-    </tr>
-    <tr>
-      <th>VIN</th>
-      <td>12-24V</td>
-      <td>12-24V</td>
-      <td>24V</td>
-      <td>12-24V</td>
-    </tr>
-    <tr>
-      <th>12V Rail</th>
-      <td>-</td>
-      <td>-</td>
-      <td>5A</td>
-      <td>-</td>
-    </tr>
-    <tr>
-      <th>5V Rail</th>
-      <td>From USB</td>
-      <td>From USB or external supply</td>
-      <td>From USB or regulated from VIN</td>
-      <td>From USB or regulated from VIN</td>
-    </tr>
-    <tr>
-      <th>3.3V Rail</th>
-      <td>Onboard LDO</td>
-      <td>Onboard LDO</td>
-      <td>Onboard LDO</td>
-      <td>Onboard LDO</td>
-    </tr>
-    <tr>
-      <th>Connectors</th>
-      <td>XH, USB C</td>
-      <td>PH, USB Micro B</td>
-      <td>PH, USB C, XT30(2+2), MX3.0</td>
-      <td>PH, USB C, MX3.0</td>
     </tr>
   </tbody>
 </table>
