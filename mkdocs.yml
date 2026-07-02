@@ -136,8 +136,15 @@ nav:
         - "Mount Assembly": "KUSBA-USB-Accelerometers/KUSBA-Pro/Instructions/Mount.md"
       - "GitHub Repository": "https://github.com/xbst/KUSBA-PRO/"
       - "Store Page": "https://store.isiks.tech/products/KUSBA-PRO"
-  - "Nevermore PCBs":
-    - "Nevermore PCB Docs": "Nevermore/Controller.md"
+  - "Nevermore Electronics":
+    - "Nevermore PCBs":
+      - "Nevermore PCBs": "Nevermore/Controller.md"
+      - "Mounts & Wiring":
+        - "Max 2 PCB": "Nevermore/Max-2-PCB.md"
+        - "Mini & Stealthmax PCB": "Nevermore/SM-PCB.md"
+        - "Stealthmax PCB 2": "Nevermore/SM2-PCB.md"
+        - "Stealthmax PCB 3": "Nevermore/SM3-PCB.md"
+      - "Firmware & Software Setup": "Nevermore/Firmware-Setup.md"
     - "Nevermore BME280 & SGP40 Sensors": "https://github.com/xbst/Nevermore-Sensors"
     - "Store Pages":
       - "Nevermore Max PCB": "https://store.isiks.tech/products/nevermore-max-controller-pcb"
