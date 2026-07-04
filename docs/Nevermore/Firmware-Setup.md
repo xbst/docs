@@ -157,7 +157,7 @@ managed_services: klipper
 | Nevermore Max 2 PCB | [Download Config](https://raw.githubusercontent.com/xbst/Nevermore-PCB/refs/heads/master/Firmware/Max.cfg) |
 | Nevermore Mini & Stealthmax PCB | [Download Config](https://raw.githubusercontent.com/xbst/Nevermore-PCB/refs/heads/master/Firmware/Max.cfg) |
 | Nevermore Stealthmax PCB 2 | [Download Config](https://raw.githubusercontent.com/xbst/Nevermore-PCB/refs/heads/master/Firmware/SM2.cfg) |
-| Nevermore Stealthmax PCB 3 | TBD |
+| Nevermore Stealthmax PCB 3 | [Download Config](https://raw.githubusercontent.com/xbst/Stealthmax-PCB-3/refs/heads/master/Firmware/SM3.cfg) |
 
 ## SGP40 Calibration
 
