@@ -74,6 +74,9 @@ markdown_extensions:
 
 plugins:
   - mkdocs-pdf
+  - redirects:
+      redirect_maps:
+        Ouroboros/gibberish.md: Ouroboros/Plugin-Reference.md
 
 extra:
   generator: false
@@ -171,5 +174,5 @@ nav:
       - "Stepper Motors": "Ouroboros/Stepper-Calibration.md"
     - "Other Docs":
         - "Sensorless Homing": "Ouroboros/Sensorless-Homing.md"
-        - Ouroboros/gibberish.md
+        - Ouroboros/Plugin-Reference.md
     - "Store Page": "https://store.isiks.tech/products/ouroboros"

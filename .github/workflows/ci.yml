@@ -28,4 +28,5 @@ jobs:
       - run: pip install mkdocs-material
       - run: pip install mkdocs-pdf
       - run: pip install neoteroi-mkdocs
+      - run: pip install mkdocs-redirects
       - run: mkdocs gh-deploy --force
