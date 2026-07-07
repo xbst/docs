@@ -21,12 +21,15 @@ jobs:
       - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
       - uses: actions/cache@v4
         with:
-          key: mkdocs-material-${{ env.cache_id }}
+          key: zensical-${{ env.cache_id }}
           path: .cache
           restore-keys: |
-            mkdocs-material-
-      - run: pip install mkdocs-material
-      - run: pip install mkdocs-pdf
-      - run: pip install neoteroi-mkdocs
-      - run: pip install mkdocs-redirects
-      - run: mkdocs gh-deploy --force
+            zensical-
+      - run: pip install zensical
+      - run: pip install ./extensions/pdf_embed
+      - run: zensical build --clean 
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - uses: actions/deploy-pages@v5
+        id: deployment

@@ -1,0 +1,6 @@
+pdf_embed.py
+pyproject.toml
+pdf_embed.egg-info/PKG-INFO
+pdf_embed.egg-info/SOURCES.txt
+pdf_embed.egg-info/dependency_links.txt
+pdf_embed.egg-info/top_level.txt
