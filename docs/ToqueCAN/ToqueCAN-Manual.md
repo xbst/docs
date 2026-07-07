@@ -165,7 +165,7 @@ Power the ToqueCAN using the screw terminal. Ferrules are recommended.
 
 ### 7. Firmware
 
-### Klipper Bridge Mode (Recommended)
+#### Klipper Bridge Mode (Recommended)
 
 1. SSH into your Raspberry Pi.
 2. Navigate to the Klipper directory: `cd ~/klipper`

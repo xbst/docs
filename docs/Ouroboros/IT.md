@@ -4,7 +4,7 @@ hide:
   - footer
 ---
 
-To be deleted when "beta2-stepper-calibration" replaces the old doc.
+!!! info "This document is outdated and will be removed soon."
 
 # Ouroboros Isik's Tech Encoder Stepper Setup
 

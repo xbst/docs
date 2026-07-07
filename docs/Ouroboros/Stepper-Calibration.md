@@ -4,351 +4,280 @@ hide:
   - footer
 ---
 
-# Ouroboros Encoder Stepper Manual Calibration
+# Ouroboros Encoder Stepper Calibration
 
-!!! info "This is a beta of a better manual tuning document. Please let us know if you see any errors, or if you have any suggestions for improving it."
+!!! info "Beta Document"
+    This is a beta of an improved manual tuning document using many of the recent (as of 27 JUN 2026) additions to the TMC4671 Klipper plugin. The plugin is updated frequently, so this page may lag behind the plugin's code. If something here doesn't work, the [plugin README](https://github.com/andrewmcgr/tmc-4671) may help.
+    
+    Previous docs are still available, but keep in mind they are outdated and will be removed soon:
+    
+    - [Manual Stepper Calibration](./Beta1-Stepper-Calibration.md)
+    - [Isik's Tech Stepper Presets](./IT.md)
 
-!!! info "Plugin getting frequent updates"
-    The TMC4671 Klipper plugin is updated frequently. This page may lag behind the plugin's code. If something here doesn't work, the [plugin README](https://github.com/andrewmcgr/tmc-4671) may help. Updated 23 JUN 2026
+This guide covers setting up and tuning Ouroboros with closed-loop FOC stepper motors using the plugin's built-in board and motor profiles, and the plugin's automatic startup tuning.
 
-This guide covers calibrating PI values of X and Y motors of a Klipper 3D printer with closed loop FOC using Ouroboros and stepper motors with built-in encoders.
+If you have BLDC motors, follow the BLDC document instead. (coming soon)
 
-## FOC & PI Values
+## Before You Start
 
-Field oriented control works very differently than the typical stepper driver setup we're more used to on Klipper 3D printers, so the terminology here may be confusing. Basically we're using PI control loops for driving the stepper instead of fully powering it on at a time. When tuned well, this can help improve print quality by reducing resonances, allowing you to print high quality prints at higher speeds. Unfortunately this tuning takes more effort than a typical stepper driver, so expect this to take some time, with some trial and error.
+You need:
 
-Field oriented control (FOC) on TMC4671s use 4 separate PI loops to control your stepper motor:
+- Ouroboros installed in your printer and wired up. See the [Mount & Wiring](../wiring/) page.
+- The TMC4671 plugin installed. See the [Firmware Setup](../Firmware-Setup/) page.
+- Encoder steppers physically connected to Ouroboros (phase wires + encoder cable), but **not mounted on your gantry yet**. We'll mount them after the first round of tuning.
 
-- **Torque**: This is the PI loop and current that drives the motor by affecting how much torque it produces. This is what's making your motor move.
-- **Flux**: Flux current is the current that's going into the motor that's not being used for creating torque. This PI loop tries to eliminate this wasted energy if flux current is set to zero.
-- **Velocity**: This is the PI loop that determines how much torque to apply to make the motor move at the desired speed. 
-- **Position**: This loop is used for position error correction (encoder position vs desired position). PI values determine how aggressively the error is corrected.
+This guide defaults to **Ouroboros Steppers**. If you have a different motor, you can find more info about using other steppers in the [Other Motors](#other-motors) section at the bottom of this page. Just replace `Ouroboros_Stepper` with your motor in the config.
 
-Each PI loop has these 2 variables:
+**[Ouroboros Stepper Datasheet](../Ouroboros-Stepper.pdf)**
 
-- **Proportional**: This is the value that's making the biggest change in the output of the loop. Bigger number, faster response to error (current vs desired value), but if you go high, it will overshoot, over-correct in the other direction and oscillate until stable. P (proportional) reacts to the current error (offset), and cannot compensate for errors continuously being added to the control loop.
-- **Integral**: Integral (I) keeps track of previous errors, and this way compensates for these continuous errors.
+## What the Tuning Is Doing
 
-A good analogy for PI is, imagine a captain steering a ship. Captain first checks how far off course he is. If he's too far to the left, he'll steer to the right. This is what P does, and bigger number means he turns faster. Now imagine there's something continuously pushing the ship to the left, like cross-current. The captain needs to compensate for this, so he'll turn the wheel a bit further to the right. This is what I does.
-
-!!! warning "Please read this document to the end before attempting tuning, otherwise you may waste many frustrating hours."
-
-### Torque (Quadrature Current)
-
-This is the PI loop and current that drives the motor by affecting how much torque it produces. This is what's making your motor move, higher PI numbers will make your moves more "aggressive", great for high speed/acceleration printing. But it is possible to go too high.
-
-#### Torque Current (`run_current`)
-
-This should be set to 1.4 times your stepper motor's RMS current. This peak current will only be used briefly to make the motor move if/when needed when PI is tuned right.
-
-#### PI Loop
-| Value                  | Too High                                                     | Too Low                                                      |
-| ---------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| P (`foc_pid_torque_p`) | If this value is too high, it can introduce a high-pitched whine and oscillations. You might see vibration marks on perimeters. In these cases you should try decreasing this value. | If this value is too low you might see overshoots on fast movements, or skipped steps. Increasing this value will make torque response faster. This should help with sharp corners, reducing overshoots. |
-| I (`foc_pid_torque_i`) | If this value is too high it may introduce buzzing sounds and instability when steady. | If this value is too low, you may see your motor slowly lose position when steady when under load. The closed loop system (position loop) will then compensate for this, so you'll see it lose position, then do error correction. |
-
-### Flux (Direct Current)
-
-Flux control regulates the magnetic field alignment. Flux current is essentially the current that's going into the motor that's not being used for creating torque from misalignment of magnetic fields. Because of this, the goal is to keep the flux current at or near zero. PI control tries to achieve this. 
-
-Poor flux tuning primarily causes excess heat in the motor and driver. You'll notice the motor running warm/hot even at low loads.
-
-#### Flux Current (`flux_current`)
-
-This should be set very low, ideally zero. The reason you may not want to set this at exactly zero is, while zero is the ideal value, and you're intentionally introducing some inefficiency when not set to zero, a small non-zero value provides a stabilizing preload, at the cost of slightly more heat. Try to aim for zero if you're able to.
-
-#### PI Loop
-
-| Value                | Too High                                                     | Too Low                                                      |
-| -------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| P (`foc_pid_flux_p`) | If this value is too high, you might notice audible noise and heat. Remember that this is the current that's NOT being used to make the motor move, and energy does not simply disappear, it'll turn into heat and vibrations (noise). You should try to decrease this value if that is the case. | If you notice you're hitting a speed cap, or getting reduced torque output, increasing this value might help. |
-| I (`foc_pid_flux_i`) | Too high I values will overshoot and oscillate, which can also cause overheating until flux current stabilizes. | If this value is too low, it'll slow the offset elimination (what I does in PI) of flux current. It'll waste power as heat with no torque benefit. If I is too slow, you're more likely to see increased heat when PI needs to act faster, like when doing rapid movements. |
-
-### Velocity
-
-This loop governs how smoothly and responsively the motor tracks speed changes.
-
-#### PI Loop
-
-| Value                    | Too High                                                     | Too Low                                                      |
-| ------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| P (`foc_pid_velocity_p`) | Speed will oscillate at target speed. You'll see ringing-like print artifacts when printing. | You may see jagged lines in your input shaper graphs. Motor may lag behind the target speed, resulting in rounded corners and other print defects. |
-| I (`foc_pid_velocity_i`) | Speed oscillations may happen.                               | Motor may run slightly slower than commanded under load. This may be especially visible on long fast print segments. |
-
-### Position
-
-This loop takes position error and commands a velocity setpoint. This is what ultimately determines dimensional accuracy.
-
-#### PI Loop
-
-| Value                    | Too High                                                     | Too Low                                                      |
-| ------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| P (`foc_pid_position_p`) | Overshoots may happen, and may oscillate when stopping. You may hear a loud buzzing sound as well. | Large errors vs commanded position may occur, potentially resulting in rounded corners. Your print's dimensional accuracy will be off, you'll likely get smaller prints. |
-| I (`foc_pid_position_i`) | You may want to keep this value at zero. If the I value is too high, you may get integral windup. This means the toolhead will overshoot a corner, realize it went too far, and hook backward to fix it, ruining your sharp edges. | You might get accumulated drift during prints, resulting in layers being slightly offset to one side. |
-
-## TMC4671 Plugin Config
-
-Add the below config to your `printer.cfg`. We're starting with all P values set to `1`, all I values set to `0`, and all biquad filters off for both motors.
-``````ini
-[tmc4671 stepper_x]
-# Ouroboros-specific Config
-cs_pin: ouroboros:PD0
-spi_bus: spi2
-spi_speed: 2000000
-current_scale_ma_lsb: 1.272
-
-# TMC4671 Settings - Leave As-Is or Refer to Config Reference Page for More Info 
-foc_pwm_sv: 0
-foc_adc_i_ux_select: 0
-foc_adc_i_v_select: 2
-foc_adc_i_wy_select: 1
-foc_phi_e_selection: 3
-foc_position_selection: 9
-foc_velocity_selection: 9
-
-# Motor Info
-foc_motor_type: 2
-foc_n_pole_pairs: 50
-run_current: 3.5
-flux_current: 0.02
-foc_abn_decoder_ppr: 4000
-foc_abn_direction: 1
-       
-# PID
-foc_pid_flux_p: 1
-foc_pid_flux_i: 0
-foc_pid_torque_p: 1
-foc_pid_torque_i: 0
-foc_pid_velocity_p: 1
-foc_pid_velocity_i: 0
-foc_pid_position_p: 1
-foc_pid_position_i: 0
-
-# Biquad Filter
-biquad_flux_frequency: 0
-biquad_torque_frequency: 0
-biquad_velocity_frequency: 0
-biquad_position_frequency: 0
-
-[tmc4671 stepper_y]
-# Ouroboros-specific Config
-cs_pin: ouroboros:PD2
-spi_bus: spi2
-spi_speed: 2000000
-current_scale_ma_lsb: 1.272
-
-# TMC4671 Settings - Leave As-Is or Refer to Config Reference Page for More Info 
-foc_pwm_sv: 0
-foc_adc_i_ux_select: 0
-foc_adc_i_v_select: 2
-foc_adc_i_wy_select: 1
-foc_phi_e_selection: 3
-foc_position_selection: 9
-foc_velocity_selection: 9
-
-# Motor Info
-foc_motor_type: 2
-foc_n_pole_pairs: 50
-run_current: 3.5
-flux_current: 0.02
-foc_abn_decoder_ppr: 4000
-foc_abn_direction: 1
-       
-# PID
-foc_pid_flux_p: 1
-foc_pid_flux_i: 0
-foc_pid_torque_p: 1
-foc_pid_torque_i: 0
-foc_pid_velocity_p: 1
-foc_pid_velocity_i: 0
-foc_pid_position_p: 1
-foc_pid_position_i: 0
-
-# Biquad Filter
-biquad_flux_frequency: 0
-biquad_torque_frequency: 0
-biquad_velocity_frequency: 0
-biquad_position_frequency: 0
-``````
-You need to edit the "Motor Info" section before moving to the next step:
-
-- `foc_motor_type`: Leave at 2 for stepper servos. If you're setting up BLDC servos, you're following the wrong document.
-- `foc_n_pole_pairs`: Number of pole pairs in your stepper motor. For most 3D printer steppers, the correct value is 50.
-- `run_current`: As explained above, this should be set to 1.4 times your stepper motor's RMS current.
-- `flux_current`: As explained above, this should be set very low, ideally zero. <img align="right" width="300" src="https://upload.wikimedia.org/wikipedia/commons/1/1e/Incremental_directional_encoder.gif">
-- `foc_abn_decoder_ppr`: This should be set to 4 times the CPR of your optical encoder. This is the number of pulse combinations your encoder will send as illustrated by the gif on the right.
-- `foc_abn_direction`: The direction your encoder moves in relative to motor rotation. Needs to be set to 0 or 1.
-
-Make sure to edit this section in both motor configs, then move on to FOC tuning.
-
-## FOC Tuning
-
-FOC control loops are cascaded, so we need to tune them in a specific order. For example, if you tune Position P aggressively before the torque loop is stable, the instability compounds and you get violent oscillation.
-
-Biquad filters (helps reduce audible noise) can influence motion, so they need to be tuned last, after figuring out all the PI values we need to figure out.
+Field-Oriented Control (FOC) uses four cascaded PI control loops to drive the motor:
 
 ```
 Position P/I  →  Velocity setpoint
                     ↓
               Velocity P/I  →  Torque setpoint
                                    ↓
-                             Torque P/I  →  Iq (motor current)
-                             Flux P/I    →  Id (= ~0 target)
+                             Torque P/I  →  Iq (motor current that produces motion)
+                             Flux P/I    →  Id (motor current target = 0)
 ```
 
-We'll start by tuning flux and torque.
+Tuning means finding the right Proportional (P) and Integral (I) gains for each loop. Wrong gains mean the motor either responds too slowly (sluggish, lags behind your moves) or too aggressively (overshoots, oscillates, makes noise). Good news: the plugin can compute these gains for you automatically.
 
-### Tuning Flux & Torque
+??? info "More about PI loops (optional reading)"
+    Each PI loop has two parameters:
 
-!!! warning "Don't install motors on your gantry yet! We need to make sure the motors can move and stop fine before installing them."
-
-1. Power on your printer with motors not mounted on your gantry. Start by autotuning the X stepper:
-   ``````
-   SET_STEPPER_ENABLE STEPPER=stepper_x
-   TMC_TUNE_PID STEPPER=stepper_x
-   M84
-   ``````
-   This will output something like:
-   ``````
-   PID stepper_x parameters:
-     Flux biquad LPF: 1200 Hz
-     Torque biquad LPF: 1200 Hz
-     Flux:   Kc=9.6600 Ki=0.4850
-     Torque: Kc=9.6600 Ki=0.4850
-   ``````
-   The plugin tunes the flux and torque current loops separately and also stages the flux/torque biquad LPF frequencies for `SAVE_CONFIG`. It will prompt you to save these values using `SAVE_CONFIG`. **Don't do this yet.**
-
-3. Repeat the above steps for your Y motor:
-   ``````
-   SET_STEPPER_ENABLE STEPPER=stepper_y
-   TMC_TUNE_PID STEPPER=stepper_y
-   M84
-   ``````
-   You'll get a similar output. If your printer is a CoreXY system, make sure the values for X and Y are similar. **Pick the values for one motor and use them for both in the config.**
-
-4. Edit your config with these new values.
-
-    Flux `Kc` is used for `foc_pid_flux_p`. Flux `Ki` is used for `foc_pid_flux_i`.
-
-    Torque `Kc` is used for `foc_pid_torque_p`. Torque `Ki` is used for `foc_pid_torque_i`.
-
-    So if the output says:
-    ``````
-    Flux:   Kc=9.6600 Ki=0.4850
-    Torque: Kc=9.6600 Ki=0.4850
-    ``````
-    These are the values to use in the config:
-    ``````ini
-    foc_pid_flux_p: 9.66
-    foc_pid_flux_i: 0.485
-    foc_pid_torque_p: 9.66
-    foc_pid_torque_i: 0.485
-    ``````
-    The plugin will also suggest flux and torque biquad LPF frequencies. Note them down or add them to the config with **commented lines** for now. Edit both `[tmc4671]` sections with the correct PID values, save and `FIRMWARE_RESTART`.
-
-5. Use this command to move your X motor to confirm it's moving fine:
-    ``````
-    FORCE_MOVE STEPPER=stepper_x DISTANCE=100 VELOCITY=50
-    ``````
-    Make sure:
-
-    - It's moving.
-    - It's moving smoothly.
-    - It's not loud enough to suggest something isn't right. If it's loud but otherwise sounding "healthy", it's good. We will tune noise later.
-    - The motor stops spinning in a few seconds.
-    - Motor doesn't get really hot really fast.
-
-    !!! success "Looks Good"
-        If everything looks good, disable the motor using `M84`, then repeat the above for `stepper_y`. If that's good too, you can move on to the next step.
-    !!! failure "Fail"
-        If the motor isn't moving, isn't moving smoothly, getting too hot really fast or sounding unhealthy, either your torque and flux PI values are wrong, or your `foc_abn_direction` value is wrong. 
-        
-
-        Try reversing `foc_abn_direction` (if `1`, set to `0`, if `0`, set to `1`) first. `FIRMWARE_RESTART`, then repeat steps 2-5.
-        
-        If reversing `foc_abn_direction` didn't help, you may need to try different torque and flux PI values.
-
-6. Turn off your printer, mount the motors on your gantry, with your toolhead roughly in the middle, and power back on.
-
-7. Home X and Y. **Be ready to emergency stop** if something goes wrong.
-
-    !!! failure "If your printer fails to home safely, you need to try different PI values for torque before moving to the next step."
-
-8. Move your toolhead to near, but not touching, a corner of your gantry. For example: `50, 50`
-
-9. Determine a safe distance for your toolhead to travel. You should try to make sure you have sufficient buffer space in case it overshoots. For example, on a 350mm gantry, you might want to make it move 250mm. 50mm initial distance, plus 250mm movement, leaves 50mm in case of an overshoot. Figure this out for X and Y.
-
-10. Mark this location on your gantry with a permanent marker on the linear rail, or some other location, for both X and Y.
-
-11. Start slow, make your motors move this distance linearly (no corners yet), and see if there's any overshoot.
-
-12. Gradually increase the speed until you reach the maximum speed you'll make the gantry move at. You can use your phone's slow motion camera when checking faster speeds.
-
-13. Figure out if you need to adjust your torque and flux PI values. If there was overshoot, you likely need to. It is better to solve it now, before tuning velocity and position.
-
-    ??? info "Needs Tuning"
-        If you're currently using autotuned values, this is not uncommon. Refer to the PI tuning information from earlier in this document for flux and torque. You will likely need to increase `foc_pid_torque_p` and `foc_pid_flux_p` (adjust by the same amount). Usually you can safely double/halve the values without anything going wrong (other than performance possibly getting worse). Just keep an eye on your gantry and be ready to emergency stop just in case.
-        
-        Repeat steps 7-13 until you're satisfied with flux and torque values.
-
-### Tuning Velocity & Position
-
-1. Start by calculating these values using the default lambda values. Check the datasheet of your encoder stepper motor to find its `Holding Torque` and `Rated Current` values. Different manufacturers use different units for `Holding Torque`, if the unit on your datasheet isn't `Nm`, you'll need to convert it to `Nm`.
-
-    Use this command to calculate PI values for velocity and position. Use the `Rated Current` in A as `HOLDING_CURRENT`.
-
-      ``````
-      TMC_TUNE_MOTION_PID LAMBDA_V=100 LAMBDA_P=400 HOLDING_CURRENT=2.5 HOLDING_TORQUE=0.055 STEPPER=stepper_x
-      ``````
-      `LAMBDA_V` and `LAMBDA_P` are measures of how aggressive the tuning will be. The default values are `LAMBDA_V`=100 and `LAMBDA_P`=400. We will try different values later. The plugin will also suggest velocity biquad LPF frequencies. Note them down or add them to the config with **commented lines** for now.
-
-      <br><br>If your setup isn't CoreXY, repeat above instructions for `stepper_y`. For CoreXY, you should use the same values for both motors.
-      <br>
-
-2. Edit your config with the values suggested by the algorithm, save and `FIRMWARE_RESTART`. 
-3. Home X and Y. **Be ready to emergency stop** if something goes wrong.
-
-4. Move your toolhead to near, but not touching, a corner of your gantry. Use the same location as before. We'll do the same test to start.
-5. Start slow, make your motors move this distance linearly (no corners yet), and see if there's any overshoot.
-6. Gradually increase the speed until you reach the maximum speed you'll make the gantry move at. You can use your phone's slow motion camera when checking faster speeds.
-7. Run an input shaper test. Check the graph to see if the lines are smooth. If not, you may need to increase `foc_pid_velocity_p`.
-
-    ??? info "Needs Tuning"
-        You need to change velocity and position PI values. Start by optimizing velocity values, position should be tuned last. You can refer to the PI tuning information from earlier in this document for velocity and position to see what you may need to change.
-        
+    - **Proportional (P)** is the value that's making the biggest change in the output. Bigger number = faster response to error, but if it's too high it will overshoot, over-correct in the other direction, and oscillate until stable.
+    - **Integral (I)** keeps track of accumulated past error, so it can compensate for a steady-state offset (e.g. constant load) that P alone can't fix.
     
-        You can manually change these values, or use the algorithm we used earlier and change the lambda values to try to get a change in the right direction. Lambda values are measures of how aggressive the tuning will be. The default values didn't work well for you, so now you can try different values.
-        
-        `LAMBDA_V` can go from 45 up, and `LAMBDA_P` should be at least twice `LAMBDA_V` (typically 3-5x), but can be much higher than that.
-        
-        Try different lambda values this time. Make sure to use the correct `HOLDING_CURRENT` and `HOLDING_TORQUE`values like before.
-        ``````
-        TMC_TUNE_MOTION_PID LAMBDA_V=100 LAMBDA_P=400 HOLDING_CURRENT=2.5 HOLDING_TORQUE=0.055 STEPPER=stepper_x
-        ``````
-        If your setup isn't CoreXY, repeat above for `stepper_y`. For CoreXY, you should use the same values for both motors.
-        
-        Edit your config with the values suggested by the algorithm, save and `FIRMWARE_RESTART`, then try again.
+    Analogy: a captain steers a ship. If it's drifting left, he steers right to compensate — this is P. If a steady crosswind keeps pushing the ship left, he holds the wheel slightly right of center indefinitely — this is I.
+    
+    The four loops in order of nesting:
+    
+    - **Torque** (Iq): the current that actually produces motion. Tuning affects how snappy your accelerations are.
+    - **Flux** (Id): current that *doesn't* produce motion, wasted as heat. Target is zero. Tuning affects how well the loop suppresses unwanted flux current.
+    - **Velocity**: how the motor tracks speed changes. Tuning affects smoothness and corner behavior.
+    - **Position**: how the motor corrects position error. Tuning affects dimensional accuracy.
+    
+    The loops are cascaded: position outputs a velocity target, velocity outputs a torque target, torque outputs a current. If an inner loop is unstable, all the outer ones will be too. That's why tuning order matters — and why the plugin does them in that order automatically.
 
-### Tuning Biquad Filter
+## Step 1: Config
 
-Your printer is pretty loud currently, right? Time to fix that.
+Add the following to your `printer.cfg`. The `board_profile: Ouroboros` and `motor_profile: Ouroboros_Stepper` lines pull in all the hardware-specific defaults so you don't have to enter them manually. You can find a list of these hardware-specific parameters in the `TMC4671 Plugin Reference`.
 
-Biquad filters were already calculated in the previous steps:
+```ini
+[tmc4671 stepper_x]
+cs_pin: ouroboros:PD0
+spi_bus: spi2
+spi_speed: 2000000
+board_profile: Ouroboros
+motor_profile: Ouroboros_Stepper
+tune_current_pid: True
+tune_motion_pid: True
 
-- `TMC_TUNE_PID` calculated `biquad_flux_frequency` and `biquad_torque_frequency` (LPF type, default Q of 0.707).
-- `TMC_TUNE_MOTION_PID` calculated `biquad_velocity_frequency` (LPF type, default Q of 0.707).
-- `biquad_position_frequency` is left at `0` — it's recommended to leave it off.
+[tmc4671 stepper_y]
+cs_pin: ouroboros:PD2
+spi_bus: spi2
+spi_speed: 2000000
+board_profile: Ouroboros
+motor_profile: Ouroboros_Stepper
+tune_current_pid: True
+tune_motion_pid: True
+```
 
-You can now enter these in the config, or uncomment the lines, and `FIRMWARE_RESTART`.
+The two `tune_*_pid: True` options tell the plugin to automatically run its tuning routines every time Klipper starts. The first time it runs, the staged values will be empty in your config; after `SAVE_CONFIG` they're saved and re-applied on every boot. You can turn these off later if you want fully stable values (see [Disabling Autotune](#disabling-autotune)).
 
-You can also experiment with biquad values live (no restart required) using `SET_TMC_BIQUAD_FILTER` — see the [Plugin Reference](../gibberish/) page. Change your biquad filter values in the config, save then `FIRMWARE_RESTART` once you've found values you like.
+Save your config and `FIRMWARE_RESTART`.
+
+## Step 2: Let the Plugin Tune
+
+When Klipper restarts:
+
+1. The plugin measures motor resistance and inductance by injecting brief test currents into the windings. The motor will buzz quietly for a second or two — this is normal.
+2. The plugin computes flux/torque PI gains analytically from the measured electrical properties (this is `tune_current_pid` doing its thing).
+3. The plugin computes velocity/position PI gains from the motor profile's physics parameters (this is `tune_motion_pid`).
+4. All four sets of PI gains, plus the matching biquad filter cutoff frequencies, are written directly to the TMC4671, so motors are now running with the autotuned values. The same values are also queued for `SAVE_CONFIG`, which is how they get persisted across the next restart (see Step 4).
+
+You'll see a notice in the web interface that there are pending config updates. **Don't save yet.**
+
+## Step 3: Verify the Motors Move
+
+With motors still **not mounted on the gantry**, test each one in turn:
+
+```
+SET_STEPPER_ENABLE STEPPER=stepper_x
+FORCE_MOVE STEPPER=stepper_x DISTANCE=100 VELOCITY=50
+M84
+```
+
+Check:
+
+- It's moving.
+- It's moving smoothly.
+- It stops when commanded (the motor shaft holds position after the move completes, until `M84`).
+- It's not getting hot quickly.
+- It's not making a really loud or grinding noise. Some hiss or whine is normal at this stage — we'll quiet it down by the end.
+
+!!! success "Looks Good"
+    Repeat for `stepper_y`. If both motors are happy, continue.
+
+!!! failure "Motor doesn't move, runs rough, or overheats"
+    The most common cause is that your encoder's direction doesn't match the motor's direction. The `Ouroboros_Stepper` profile sets `foc_abn_direction: 1`. If your motor isn't behaving, try overriding it:
+
+    ```ini
+    [tmc4671 stepper_x]
+    # ... your existing config ...
+    foc_abn_direction: 0
+    ```
+    
+    `FIRMWARE_RESTART` and test again. If that also doesn't work, double-check your encoder cable wiring against the [Mount & Wiring](../wiring/) page — an A↔B swap or polarity inversion will produce these symptoms.
+
+## Step 4: Save & Mount
+
+Run `SAVE_CONFIG`. Klipper will write the autotuned values into your `printer.cfg` and restart. With `tune_current_pid: True` still set, the plugin will autotune again on this restart. You can disable this later, as covered in the [Disabling Autotune](#disabling-autotune) section below.
+
+Power off, mount the motors on your gantry with belts, then power back on.
+
+## Step 5: Home and Test Moves
+
+1. Home X and Y. **Be ready to emergency stop** in case the gantry doesn't behave.
+
+2. Move your toolhead to near, but not touching, a corner of your gantry. For example: `50, 50`
+3. Determine a safe distance for your toolhead to travel. You should try to make sure you have sufficient buffer space in case it overshoots. For example, on a 350mm gantry, you might want to make it move 250mm. 50mm initial distance, plus 250mm movement, leaves 50mm in case of an overshoot. Figure this out for X and Y.
+4. Mark this location on your gantry with a permanentStart slow, make your motors move this distance linearly (no corners yet), and see if there's any overshoot.
+5. Gradually increase the speed until you reach the maximum speed you'll make the gantry move at. You can use your phone's slow motion camera when checking faster speeds. marker on the linear rail, or some other location, for both X and Y.
+
+Look for:
+
+- Smooth motion at all speeds.
+- No overshoot at end-of-move.
+- No buzzing, screeching, or grinding.
+
+If everything looks good, you're done with basic tuning. Move on to the next section.
+
+!!! failure "Overshoots, oscillation, or loud noise"
+    The autotuned values may need to be adjusted. Jump to [Manual Adjustment](#manual-pi-adjustment) below.
+
+## Disabling Autotune
+
+Keeping `tune_current_pid` and `tune_motion_pid` enabled means the plugin re-tunes every Klipper restart, using whatever the motor measures look like that day. There will be slight variance to these measurements. 
+
+There's no harm to keeping this enabled, it can even help compensate for drifting values or act as a warning if something goes wrong (if you see very different values, or sounds different at startup). However this also means your PI values and therefore your system's performance will slightly vary from restart to restart, and you'll see a prompt to `SAVE_CONFIG` every time.
+
+To disable autotune: change both options to `False` in both `TMC4671` sections:
+
+```ini
+tune_current_pid: False
+tune_motion_pid: False
+```
+
+`FIRMWARE_RESTART`. The plugin will keep using your saved PI values without re-tuning.
 
 ## Fine Tuning
 
-Calibrate your input shaper and pressure advance.
+Most users get good enough results from the autotune output that no further work is needed. If you want to push performance further:
 
-Time to finally print!
+### Input shaper & Pressure Advance
 
-Print some files at moderate speeds, accelerations and SCV, and gradually increase them until you hit your printer's limits. Currently this is the best way to determine maximum speeds, accelerations and SCV, as TMC4671 drivers won't skip steps if the motors can't do the motion you requested unlike traditional stepper drivers. They have encoders on the back, they know exactly where the motor is, and they compensate for skipped steps. This is of course a very nice feature to have to avoid crashes and failed prints, but this will come at the cost of print quality. What'll happen is, the motor will take a "shortcut" when printing a corner to catch up, resulting in lower print quality.
+You should recalibrate input shaper and pressure advance. Ignore the maximum accelerations shown with the input shaper graphs, these values assume a regular stepper driver, you will need to print with your printer to figure out the actual maximum accelerations and speeds.
 
-Based on your prints, you may want to do minor adjustments to your PI values. Refer to the earlier PI tuning information in this document to see how you should change these values. If you end up having to do a major adjustment to your torque and flux PI values, you should redo your velocity and position PI value and biquad filter tuning.
+### Finding Maximum Speeds & Accelerations
+
+Print some files at moderate speeds, accelerations and SCV, and gradually increase them until you hit your printer's limits. Currently this is the best way to determine maximum speeds, accelerations and SCV, as TMC4671 drivers won't skip steps if the motors can't do the requested motion unlike traditional stepper drivers. They have encoders on the back, they know exactly where the motor is, and they compensate for skipped steps. This is of course a very nice feature to have to avoid crashes and failed prints, but this will come at the cost of print quality. They'll "cheat" by taking shortcuts on corners or letting the toolhead lag, and this will be visible on prints.
+
+## Manual PI Adjustment
+
+If autotuning doesn't give you good behavior, here's the lookup table for tweaking each PI value. **Tune in this order: torque → flux → velocity → position.** Changing an inner loop usually requires re-tuning the outer loops on top of it.
+
+### Torque (driving current)
+
+This is what produces motion. Higher gains = more aggressive moves.
+
+| Value                  | Too High                                           | Too Low                                                      |
+| ---------------------- | -------------------------------------------------- | ------------------------------------------------------------ |
+| P (`foc_pid_torque_p`) | High-pitched whine, vibration marks on perimeters. | Overshoots on fast moves. Increasing helps with sharp corners. |
+| I (`foc_pid_torque_i`) | Buzzing when stationary, instability.              | Motor slowly loses position under static load (the position loop will correct it, but you'll see the wobble). |
+
+### Flux (wasted current)
+
+Flux current should ideally be zero. PI here tries to keep it there.
+
+| Value                | Too High                                                     | Too Low                                                      |
+| -------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| P (`foc_pid_flux_p`) | Audible noise, motor running hot for no reason.              | Reduced top speed or torque output.                          |
+| I (`foc_pid_flux_i`) | Overshoots and oscillates, causes heat during stabilization. | Slow elimination of flux error, more heat during rapid moves. |
+
+### Velocity
+
+Tracks commanded speed.
+
+| Value                    | Too High                                                     | Too Low                                                      |
+| ------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| P (`foc_pid_velocity_p`) | Speed oscillates at target. Ringing-like print artifacts.    | Jagged input shaper graphs. Lags behind target speed → rounded corners. |
+| I (`foc_pid_velocity_i`) | Speed oscillations.                                          | Slightly slower than commanded under load — visible on long, fast print segments. |
+
+### Position
+
+Final position accuracy.
+
+| Value                    | Too High                                                     | Too Low                                                      |
+| ------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| P (`foc_pid_position_p`) | Overshoots, oscillates on stops. Loud buzzing.               | Large position error → rounded corners, smaller prints than commanded. |
+| I (`foc_pid_position_i`) | Integral windup: overshoots corners then hooks back to fix them, ruining sharp edges. Best left at 0. | Accumulated drift during prints → slightly offset layers.    |
+
+### Workflow
+
+1. Disable startup autotuning (`tune_current_pid: False`, `tune_motion_pid: False`) so your edits aren't overwritten.
+2. Change one or two PI values at a time.
+3. `FIRMWARE_RESTART`.
+4. Test moves and listen / watch for the symptoms in the tables.
+5. Adjust again.
+
+You can also use the plugin's tuning commands by hand — see the [Plugin Reference](../gibberish/) page for `TMC_TUNE_PID`, `TMC_TUNE_MOTION_PID`, and the per-loop `BANDWIDTH` parameters.
+
+### Live biquad tuning
+
+Biquad filter frequencies smooth out the measured currents and velocity. The autotune sets them to reasonable values, but you can experiment live (no restart required) with `SET_TMC_BIQUAD_FILTER`. See the [Plugin Reference](../gibberish/) for details. Rough guidance:
+
+- `biquad_flux_frequency`: around 800 Hz for typical NEMA-17.
+- `biquad_torque_frequency`: around 1600 Hz.
+- `biquad_velocity_frequency`: matches the velocity loop bandwidth (around 450 Hz default).
+- `biquad_position_frequency`: leave at 0.
+
+Too high → hissing noises during motion. Too low → noise at rest and rounded corners at speed.
+
+## Other Motors
+
+### LDO motors
+
+If you have LDO 2504b-EN1000 steppers instead, just change the motor profile:
+
+```ini
+motor_profile: LDO_2504b-EN1000
+```
+
+Everything else in the config above stays the same.
+
+### Custom motors
+
+If you have a stepper that doesn't match either built-in profile, define your own profile from your motor's datasheet:
+
+```ini
+[foc_motor my_stepper]
+motor_type: 2                 # 2 means this is a stepper motor
+n_pole_pairs: 50              # 50 for any standard 1.8° NEMA stepper
+rated_current: 2.0            # A RMS, from datasheet
+holding_current: 2.0          # A, usually same as rated_current
+holding_torque: 0.0555        # Nm, from datasheet (convert from N·cm or kg·cm if needed)
+jmotor: 8.2e-6                # Rotor inertia, from datasheet (example value is 82g·cm2 in datasheet)
+abn_decoder_ppr: 4000         # 4 × encoder CPR (e.g. 1000 line quadrature optical encoder = 4000)
+abn_direction: 0              # try 0 first; if motor misbehaves, change to 1
+
+[tmc4671 stepper_x]
+...
+motor_profile: my_stepper
+...
+```
+
+The motor profile sets defaults for the matching `[tmc4671]` fields, so the rest of the setup follows the same flow as the rest of this page.
