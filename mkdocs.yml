@@ -75,6 +75,7 @@ markdown_extensions:
   - pymdownx.details
   - md_in_html
   - pdf_embed
+  - pinout_embed
 
 extra:
   generator: false
