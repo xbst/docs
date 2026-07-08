@@ -55,7 +55,7 @@ theme:
       accent: deep purple
       
 extra_css:
-  - stylesheets/extra.css
+  - assets/stylesheets/extra.css
   
 markdown_extensions:
   - pymdownx.highlight:
