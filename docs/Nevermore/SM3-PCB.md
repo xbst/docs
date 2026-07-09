@@ -51,7 +51,10 @@ There's a slide switch on the bottom side. Slide it left (toward the CAN+VIN con
 ### Port Cover Pinouts
 
 #### Micro-Fit CAN Daisy-Chain Port Cover
-![Pinout](../../pinouts/SM3-PC-MX/sm3_pc_mx.html){ type=application/pinout style="min-height:40vh;width:100%" }
+![Pinout](../../pinouts/SM3-PC-MX/sm3_pc_mx.html){ type=application/pinout style="min-height:50vh;width:100%" }
+
+#### XT30(2+2) CAN Port Cover
+![Pinout](../../pinouts/SM3-PC-XT/sm3-pc-xt30.html){ type=application/pinout style="min-height:50vh;width:100%" }
 
 ## Next Steps
 
