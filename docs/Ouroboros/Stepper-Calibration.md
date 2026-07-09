@@ -28,7 +28,7 @@ You need:
 
 This guide defaults to **Ouroboros Steppers**. If you have a different motor, you can find more info about using other steppers in the [Other Motors](#other-motors) section at the bottom of this page. Just replace `Ouroboros_Stepper` with your motor in the config.
 
-**[Ouroboros Stepper Datasheet](../Ouroboros-Stepper.pdf)**
+**[Ouroboros Stepper Datasheet](./Ouroboros-Stepper.pdf)**
 
 ## What the Tuning Is Doing
 

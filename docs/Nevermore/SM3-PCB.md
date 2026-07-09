@@ -48,6 +48,11 @@ All internal connectors except peltier are JST-PH, peltier is MX3.0. The CAN/VIN
 
 There's a slide switch on the bottom side. Slide it left (toward the CAN+VIN connector) to terminate the CAN bus (120 Ohm resistor).
 
+### Port Cover Pinouts
+
+#### Micro-Fit CAN Daisy-Chain Port Cover
+![Pinout](../../pinouts/SM3-PC-MX/sm3_pc_mx.html){ type=application/pinout style="min-height:40vh;width:100%" }
+
 ## Next Steps
 
 Proceed to [Firmware & Software Setup](Firmware-Setup.md) for flashing instructions, SGP40 plugin installation, and Klipper config.
