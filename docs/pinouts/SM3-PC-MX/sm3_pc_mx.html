@@ -46,7 +46,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);
   font-family:Roboto,system-ui,sans-serif}
 body{display:flex;height:100%;overflow:hidden}
 .bd{flex:1;display:flex;align-items:center;justify-content:center;
-  min-width:0;height:100%;overflow:hidden}
+  min-width:0;height:100%;overflow:hidden;position:relative}
 .pw{position:relative;display:inline-block;line-height:0;max-width:100%}
 .pw img{display:block;width:auto;height:auto;max-width:100%;max-height:100vh;user-select:none;-webkit-user-drag:none}
 .po{position:absolute;inset:0;width:100%;height:100%}
@@ -65,11 +65,13 @@ body{display:flex;height:100%;overflow:hidden}
 .tt-s{display:flex;justify-content:center;padding:4px 0}
 .tt-d{font-size:12.5px;color:var(--desc-color);margin-top:10px;padding-top:8px;
   border-top:1px solid var(--divider);line-height:1.5}
-.hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
-  background:var(--hint-bg);color:var(--hint-text);padding:7px 18px;
-  border-radius:20px;font-size:13px;font-family:Roboto,sans-serif;
-  pointer-events:none;opacity:1;transition:opacity .6s;white-space:nowrap}
-.hint.hid{opacity:0}
+.bb{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  background:var(--tip-bg);color:var(--type-color);border:1px solid var(--tip-border);
+  padding:7px 18px;border-radius:12px;font-size:12px;font-family:Roboto,sans-serif;
+  box-shadow:0 2px 8px var(--tip-shadow);
+  display:flex;align-items:center;gap:8px;white-space:nowrap}
+.bb a{color:var(--text);text-decoration:none;font-weight:500}
+.bb a:hover{text-decoration:underline}
 .sb-btn{position:absolute;right:10px;top:10px;z-index:600;width:36px;height:36px;
   background:var(--tip-bg);border:1px solid var(--tip-border);border-radius:8px;
   cursor:pointer;box-shadow:0 2px 8px var(--tip-shadow);font-size:18px;
@@ -100,8 +102,12 @@ body{display:flex;height:100%;overflow:hidden}
     <rect class="hs" data-id="CAN2" x="1098" y="422" width="321" height="320" rx="3"/>
     </svg>
     <div class="tt" id="tt"></div>
-    <div class="hint" id="hint">Click or tap a connector to see its pinout</div>
     <button class="sb-btn" id="sb-btn" title="Toggle connector list">&#9776;</button>
+  </div>
+  <div class="bb">
+    <span>Click or tap a connector to see its pinout</span>
+    <span>&middot;</span>
+    <span>Created with <a href="https://github.com/xbst/PinConnect" target="_blank" rel="noopener">PinConnect</a></span>
   </div>
 </div>
 <div class="sb hid" id="sb">
@@ -114,8 +120,7 @@ body{display:flex;height:100%;overflow:hidden}
 <script>
 const C={"CAN1": {"name": "CAN 1", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 42.0 76.8\" width=\"126\" height=\"230\" style=\"font-family:Roboto,sans-serif\">\n<line x1=\"15.0\" y1=\"45.5\" x2=\"15.0\" y2=\"70.2\" stroke=\"#E74C3C\" stroke-width=\"1\" stroke-opacity=\"0.65\"/>\n<line x1=\"27.0\" y1=\"45.5\" x2=\"27.0\" y2=\"70.2\" stroke=\"#2C3E50\" stroke-width=\"1\" stroke-opacity=\"0.65\"/>\n<line x1=\"15.0\" y1=\"33.3\" x2=\"15.0\" y2=\"6.6\" stroke=\"#FFBF00\" stroke-width=\"1\" stroke-opacity=\"0.65\"/>\n<line x1=\"27.0\" y1=\"33.3\" x2=\"27.0\" y2=\"6.6\" stroke=\"#2ECC71\" stroke-width=\"1\" stroke-opacity=\"0.65\"/>\n<g transform=\"translate(21.0,38.4) rotate(0) translate(-16.0,-16.8)\">\n<path d=\"M 0,4.0 L 11.8,4.0 L 11.8,0 L 20.2,0 L 20.2,4.0 L 32.0,4.0 L 32.0,31.6 L 20.8,31.6 L 20.8,33.6 L 17.6,33.6 L 17.6,31.6 L 14.4,31.6 L 14.4,33.6 L 11.2,33.6 L 11.2,31.6 L 0,31.6 Z\" fill=\"var(--conn-body,#e8e8e0)\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"1.3\" stroke-linejoin=\"round\"/>\n<rect x=\"4.8\" y=\"18.6\" width=\"10.5\" height=\"10.5\" fill=\"var(--conn-cavity,#d0d0c8)\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.7\"/>\n<rect x=\"4.8\" y=\"6.4\" width=\"10.5\" height=\"10.5\" fill=\"var(--conn-cavity,#d0d0c8)\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.7\"/>\n<rect x=\"16.8\" y=\"18.6\" width=\"10.5\" height=\"10.5\" fill=\"var(--conn-cavity,#d0d0c8)\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.7\"/>\n<rect x=\"16.8\" y=\"6.4\" width=\"10.5\" height=\"10.5\" fill=\"var(--conn-cavity,#d0d0c8)\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.7\"/>\n</g>\n<circle cx=\"15.0\" cy=\"45.5\" r=\"1.8\" fill=\"#E74C3C\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.9\"/>\n<text x=\"15.0\" y=\"74.8\" font-size=\"3.6\" font-weight=\"500\" text-anchor=\"middle\" dominant-baseline=\"auto\" fill=\"var(--label-color,#333)\">VIN</text>\n<circle cx=\"27.0\" cy=\"45.5\" r=\"1.8\" fill=\"#2C3E50\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.9\"/>\n<text x=\"27.0\" y=\"74.8\" font-size=\"3.6\" font-weight=\"500\" text-anchor=\"middle\" dominant-baseline=\"auto\" fill=\"var(--label-color,#333)\">GND</text>\n<circle cx=\"15.0\" cy=\"33.3\" r=\"1.8\" fill=\"#FFBF00\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.9\"/>\n<text x=\"15.0\" y=\"3.6\" font-size=\"3.6\" font-weight=\"500\" text-anchor=\"middle\" dominant-baseline=\"auto\" fill=\"var(--label-color,#333)\">CAN_H</text>\n<circle cx=\"27.0\" cy=\"33.3\" r=\"1.8\" fill=\"#2ECC71\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.9\"/>\n<text x=\"27.0\" y=\"3.6\" font-size=\"3.6\" font-weight=\"500\" text-anchor=\"middle\" dominant-baseline=\"auto\" fill=\"var(--label-color,#333)\">CAN_L</text>\n</svg>", "description": "", "typeName": "Micro-Fit", "pinCount": 4}, "CAN2": {"name": "CAN 2", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 42.0 76.8\" width=\"126\" height=\"230\" style=\"font-family:Roboto,sans-serif\">\n<line x1=\"15.0\" y1=\"45.5\" x2=\"15.0\" y2=\"70.2\" stroke=\"#E74C3C\" stroke-width=\"1\" stroke-opacity=\"0.65\"/>\n<line x1=\"27.0\" y1=\"45.5\" x2=\"27.0\" y2=\"70.2\" stroke=\"#2C3E50\" stroke-width=\"1\" stroke-opacity=\"0.65\"/>\n<line x1=\"15.0\" y1=\"33.3\" x2=\"15.0\" y2=\"6.6\" stroke=\"#FFBF00\" stroke-width=\"1\" stroke-opacity=\"0.65\"/>\n<line x1=\"27.0\" y1=\"33.3\" x2=\"27.0\" y2=\"6.6\" stroke=\"#2ECC71\" stroke-width=\"1\" stroke-opacity=\"0.65\"/>\n<g transform=\"translate(21.0,38.4) rotate(0) translate(-16.0,-16.8)\">\n<path d=\"M 0,4.0 L 11.8,4.0 L 11.8,0 L 20.2,0 L 20.2,4.0 L 32.0,4.0 L 32.0,31.6 L 20.8,31.6 L 20.8,33.6 L 17.6,33.6 L 17.6,31.6 L 14.4,31.6 L 14.4,33.6 L 11.2,33.6 L 11.2,31.6 L 0,31.6 Z\" fill=\"var(--conn-body,#e8e8e0)\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"1.3\" stroke-linejoin=\"round\"/>\n<rect x=\"4.8\" y=\"18.6\" width=\"10.5\" height=\"10.5\" fill=\"var(--conn-cavity,#d0d0c8)\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.7\"/>\n<rect x=\"4.8\" y=\"6.4\" width=\"10.5\" height=\"10.5\" fill=\"var(--conn-cavity,#d0d0c8)\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.7\"/>\n<rect x=\"16.8\" y=\"18.6\" width=\"10.5\" height=\"10.5\" fill=\"var(--conn-cavity,#d0d0c8)\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.7\"/>\n<rect x=\"16.8\" y=\"6.4\" width=\"10.5\" height=\"10.5\" fill=\"var(--conn-cavity,#d0d0c8)\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.7\"/>\n</g>\n<circle cx=\"15.0\" cy=\"45.5\" r=\"1.8\" fill=\"#E74C3C\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.9\"/>\n<text x=\"15.0\" y=\"74.8\" font-size=\"3.6\" font-weight=\"500\" text-anchor=\"middle\" dominant-baseline=\"auto\" fill=\"var(--label-color,#333)\">VIN</text>\n<circle cx=\"27.0\" cy=\"45.5\" r=\"1.8\" fill=\"#2C3E50\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.9\"/>\n<text x=\"27.0\" y=\"74.8\" font-size=\"3.6\" font-weight=\"500\" text-anchor=\"middle\" dominant-baseline=\"auto\" fill=\"var(--label-color,#333)\">GND</text>\n<circle cx=\"15.0\" cy=\"33.3\" r=\"1.8\" fill=\"#FFBF00\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.9\"/>\n<text x=\"15.0\" y=\"3.6\" font-size=\"3.6\" font-weight=\"500\" text-anchor=\"middle\" dominant-baseline=\"auto\" fill=\"var(--label-color,#333)\">CAN_H</text>\n<circle cx=\"27.0\" cy=\"33.3\" r=\"1.8\" fill=\"#2ECC71\" stroke=\"var(--conn-stroke,#555)\" stroke-width=\"0.9\"/>\n<text x=\"27.0\" y=\"3.6\" font-size=\"3.6\" font-weight=\"500\" text-anchor=\"middle\" dominant-baseline=\"auto\" fill=\"var(--label-color,#333)\">CAN_L</text>\n</svg>", "description": "", "typeName": "Micro-Fit", "pinCount": 4}};
 const pw=document.getElementById('pw'),tt=document.getElementById('tt'),
-      hint=document.getElementById('hint'),sb=document.getElementById('sb'),
-      sbBtn=document.getElementById('sb-btn');
+      sb=document.getElementById('sb'),sbBtn=document.getElementById('sb-btn');
 let aId=null,pinned=false;
 sbBtn.addEventListener('click',e=>{e.stopPropagation();sb.classList.toggle('hid');
   if(aId){const el=hs(aId);if(el)setTimeout(()=>pos(el),0)}});
@@ -129,7 +134,7 @@ function show(id,el){
   tt.innerHTML=`<div class="tt-h"><span class="tt-n">${d.name}</span>`+
     `<span class="tt-t">${d.typeName} · ${d.pinCount}-pin</span></div>`+
     `<div class="tt-s">${d.svg}</div>`+dh;
-  pos(el); tt.classList.add('vis'); aId=id; hint.classList.add('hid');
+  pos(el); tt.classList.add('vis'); aId=id;
 }
 function hide(){tt.classList.remove('vis');unmark();aId=null;pinned=false}
 function pos(el){
@@ -164,7 +169,6 @@ document.querySelectorAll('.cl-i').forEach(el=>{
 document.addEventListener('click',e=>{
   if(pinned&&!tt.contains(e.target)&&!e.target.closest('.cl-i')&&!e.target.closest('.hs'))hide();
 });
-setTimeout(()=>hint.classList.add('hid'),4000);
 document.querySelectorAll('.hs').forEach(el=>{el.classList.add('pulse');setTimeout(()=>el.classList.remove('pulse'),2000)});
 window.addEventListener('resize',()=>{if(aId){const el=hs(aId);if(el)pos(el)}});
 </script>
