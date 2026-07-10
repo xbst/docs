@@ -38,15 +38,9 @@ Below are all the printed parts you can print for your Nevermore Stealthmax PCB 
 
 All internal connectors except peltier are JST-PH, peltier is MX3.0. The CAN/VIN connector is also MX3.0.
 
-### PH Connectors
+![Pinout](../../pinouts/SM3/sm3-pinout.html){ type=application/pinout style="min-height:60vh;width:100%" }
 
-![Pinout](https://github.com/xbst/docs/raw/master/docs/assets/nevermore/SM3-PH-Pinout.png)
-
-### Other Connectors
-
-![Pinout](https://github.com/xbst/docs/raw/master/docs/assets/nevermore/SM3-MX-Pinout.png)
-
-There's a slide switch on the bottom side. Slide it left (toward the CAN+VIN connector) to terminate the CAN bus (120 Ohm resistor).
+There's a slide switch on the bottom side. Slide it left (toward the "Power & CAN" connector) to terminate the CAN bus (120 Ohm resistor).
 
 ### Port Cover Pinouts
 
