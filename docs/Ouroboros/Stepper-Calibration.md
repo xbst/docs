@@ -7,12 +7,15 @@ hide:
 # Ouroboros Encoder Stepper Calibration
 
 !!! info "Beta Document"
-    This is a beta of an improved manual tuning document using many of the recent (as of 27 JUN 2026) additions to the TMC4671 Klipper plugin. The plugin is updated frequently, so this page may lag behind the plugin's code. If something here doesn't work, the [plugin README](https://github.com/andrewmcgr/tmc-4671) may help.
+    This is a beta of an improved manual tuning document using many of the recent (as of 11 JUL 2026) additions to the TMC4671 Klipper plugin. The plugin is updated frequently, so this page may lag behind the plugin's code. If something here doesn't work, the [plugin README](https://github.com/andrewmcgr/tmc-4671) may help.
     
     Previous docs are still available, but keep in mind they are outdated and will be removed soon:
     
     - [Manual Stepper Calibration](./Beta1-Stepper-Calibration.md)
     - [Isik's Tech Stepper Presets](./IT.md)
+
+!!! warning "Upgrading from an older plugin version?"
+    As of 11 JUL 2026 the plugin has fixed a scaling bug in the position P and velocity P formulas. If you have manually-tuned values for `foc_pid_position_p` or `foc_pid_velocity_p` from before this date, they are off by a constant factor. The fix: run through the autotune flow below once to overwrite them with corrected values.
 
 This guide covers setting up and tuning Ouroboros with closed-loop FOC stepper motors using the plugin's built-in board and motor profiles, and the plugin's automatic startup tuning.
 
@@ -143,10 +146,11 @@ Power off, mount the motors on your gantry with belts, then power back on.
 
 1. Home X and Y. **Be ready to emergency stop** in case the gantry doesn't behave.
 
-2. Move your toolhead to near, but not touching, a corner of your gantry. For example: `50, 50`
+2. Move your toolhead to near, but not touching, a corner of your gantry. For example: `50, 50`.
 3. Determine a safe distance for your toolhead to travel. You should try to make sure you have sufficient buffer space in case it overshoots. For example, on a 350mm gantry, you might want to make it move 250mm. 50mm initial distance, plus 250mm movement, leaves 50mm in case of an overshoot. Figure this out for X and Y.
-4. Mark this location on your gantry with a permanentStart slow, make your motors move this distance linearly (no corners yet), and see if there's any overshoot.
-5. Gradually increase the speed until you reach the maximum speed you'll make the gantry move at. You can use your phone's slow motion camera when checking faster speeds. marker on the linear rail, or some other location, for both X and Y.
+4. Mark this location on your gantry with a permanent marker on the linear rail, or some other location, for both X and Y.
+5. Start slow: make your motors move this distance linearly (no corners yet) and check for overshoot.
+6. Gradually increase the speed until you reach the maximum speed you'll make the gantry move at. You can use your phone's slow motion camera when checking faster speeds.
 
 Look for:
 
@@ -234,11 +238,11 @@ Final position accuracy.
 4. Test moves and listen / watch for the symptoms in the tables.
 5. Adjust again.
 
-You can also use the plugin's tuning commands by hand — see the [Plugin Reference](../gibberish/) page for `TMC_TUNE_PID`, `TMC_TUNE_MOTION_PID`, and the per-loop `BANDWIDTH` parameters.
+You can also use the plugin's tuning commands by hand — see the [Plugin Reference](../Plugin-Reference/) page for `TMC_TUNE_PID`, `TMC_TUNE_MOTION_PID`, and the per-loop `BANDWIDTH` parameters.
 
 ### Live biquad tuning
 
-Biquad filter frequencies smooth out the measured currents and velocity. The autotune sets them to reasonable values, but you can experiment live (no restart required) with `SET_TMC_BIQUAD_FILTER`. See the [Plugin Reference](../gibberish/) for details. Rough guidance:
+Biquad filter frequencies smooth out the measured currents and velocity. The autotune sets them to reasonable values, but you can experiment live (no restart required) with `SET_TMC_BIQUAD_FILTER`. See the [Plugin Reference](../Plugin-Reference/) for details. Rough guidance:
 
 - `biquad_flux_frequency`: around 800 Hz for typical NEMA-17.
 - `biquad_torque_frequency`: around 1600 Hz.

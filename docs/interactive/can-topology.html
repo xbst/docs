@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CAN Bus Topology Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --text:#1a1a1a;
+  --tip-bg:#ffffff; --tip-border:#d0d0d0; --tip-shadow:rgba(0,0,0,.12);
+  --hs-hover:rgba(59,130,246,.13); --hs-stroke:rgba(59,130,246,.5);
+  --hs-active:rgba(59,130,246,.22);
+  --hint-bg:rgba(30,30,30,.75); --hint-text:#fff;
+  --divider:#e5e5e5;
+  --conn-body:#e8e8e0; --conn-cavity:#d0d0c8; --conn-stroke:#555;
+  --line-color:#777; --label-color:#333;
+  --desc-color:#555; --type-color:#888;
+  --pair-a:#E67E22; --pair-b:#27AE60;
+  --ok:#15803d; --err:#dc2626; --warn:#d97706;
+  --pulse:#3b82f6; --reflect:#dc2626;
+  --bus-glow:rgba(59,130,246,.14);
+  --scope-bg:#fafafa; --scope-grid:#e5e5e5; --scope-trace:#0284c7;
+  --jumper-cap:#2C3E50;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#131313; --text:#e0e0e0;
+  --tip-bg:#1e1e1e; --tip-border:#3a3a3a; --tip-shadow:rgba(0,0,0,.4);
+  --hs-hover:rgba(96,165,250,.15); --hs-stroke:rgba(96,165,250,.5);
+  --hs-active:rgba(96,165,250,.25);
+  --hint-bg:rgba(240,240,240,.85); --hint-text:#131313;
+  --divider:#333;
+  --conn-body:#3a3a35; --conn-cavity:#2e2e28; --conn-stroke:#aaa;
+  --line-color:#888; --label-color:#ddd;
+  --desc-color:#aaa; --type-color:#888;
+  --pair-a:#F39C12; --pair-b:#2ECC71;
+  --ok:#4ade80; --err:#f87171; --warn:#fbbf24;
+  --pulse:#60a5fa; --reflect:#f87171;
+  --bus-glow:rgba(96,165,250,.16);
+  --scope-bg:#0d0d0d; --scope-grid:#2a2a2a; --scope-trace:#38bdf8;
+  --jumper-cap:#94a3b8;
+}}
+[data-theme="dark"]{
+  --bg:#131313; --text:#e0e0e0;
+  --tip-bg:#1e1e1e; --tip-border:#3a3a3a; --tip-shadow:rgba(0,0,0,.4);
+  --hs-hover:rgba(96,165,250,.15); --hs-stroke:rgba(96,165,250,.5);
+  --hs-active:rgba(96,165,250,.25);
+  --hint-bg:rgba(240,240,240,.85); --hint-text:#131313;
+  --divider:#333;
+  --conn-body:#3a3a35; --conn-cavity:#2e2e28; --conn-stroke:#aaa;
+  --line-color:#888; --label-color:#ddd;
+  --desc-color:#aaa; --type-color:#888;
+  --pair-a:#F39C12; --pair-b:#2ECC71;
+  --ok:#4ade80; --err:#f87171; --warn:#fbbf24;
+  --pulse:#60a5fa; --reflect:#f87171;
+  --bus-glow:rgba(96,165,250,.16);
+  --scope-bg:#0d0d0d; --scope-grid:#2a2a2a; --scope-trace:#38bdf8;
+  --jumper-cap:#94a3b8;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:var(--bg);color:var(--text);
+  font-family:Roboto,system-ui,sans-serif}
+body{overflow:hidden}
+.app{display:flex;flex-direction:column;height:100%;padding:8px 10px;gap:8px}
+.tb{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.seg{display:flex;border:1px solid var(--tip-border);border-radius:8px;overflow:hidden;flex-shrink:0}
+.seg button{background:var(--tip-bg);color:var(--desc-color);border:0;padding:6px 12px;
+  font:500 12.5px Roboto,sans-serif;cursor:pointer;transition:background .15s}
+.seg button+button{border-left:1px solid var(--tip-border)}
+.seg button[aria-pressed="true"]{background:var(--hs-active);color:var(--text)}
+@media(hover:hover){.seg button:hover{background:var(--hs-hover)}}
+.tb label{font-size:12px;color:var(--type-color);display:flex;align-items:center;gap:6px}
+.tb select,.btn{background:var(--tip-bg);color:var(--text);border:1px solid var(--tip-border);
+  border-radius:8px;padding:6px 10px;font:500 12.5px Roboto,sans-serif;cursor:pointer}
+@media(hover:hover){.btn:hover{background:var(--hs-hover)}}
+.stage{flex:1;min-height:200px;display:flex;overflow:hidden}
+.stage svg{width:100%;height:100%;display:block}
+.panels{display:flex;gap:8px;height:196px;flex-shrink:0;min-height:0}
+.card{background:var(--tip-bg);border:1px solid var(--tip-border);border-radius:12px;
+  box-shadow:0 2px 8px var(--tip-shadow);padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.scopecard{width:44%;min-width:300px}
+.scopecard canvas{flex:1;width:100%;min-height:0;border-radius:6px;background:var(--scope-bg)}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card-h span{font-weight:600;font-size:13px}
+.mini{background:var(--tip-bg);color:var(--desc-color);border:1px solid var(--tip-border);
+  border-radius:6px;padding:3px 8px;font:500 11px Roboto,sans-serif;cursor:pointer;white-space:nowrap}
+@media(hover:hover){.mini:hover{background:var(--hs-hover)}}
+.card-f{font-size:10.5px;color:var(--type-color)}
+.statuscard{flex:1;overflow-y:auto;min-width:0}
+.st-h{font-weight:600;font-size:13.5px;display:flex;gap:8px;align-items:baseline;line-height:1.35}
+.st-h.pass{color:var(--ok)} .st-h.fail,.st-h.broken{color:var(--err)}
+.st-l{list-style:none;display:flex;flex-direction:column;gap:5px}
+.st-l li{font-size:12px;line-height:1.45;color:var(--desc-color);display:flex;gap:7px}
+.st-l li::before{content:"";flex-shrink:0;width:7px;height:7px;border-radius:50%;margin-top:5px}
+.st-l li.err::before{background:var(--err)} .st-l li.warn::before{background:var(--warn)}
+.st-l li.info::before{background:var(--pulse)}
+.st-l li .lv{font-weight:600;flex-shrink:0}
+.st-l li.err .lv{color:var(--err)} .st-l li.warn .lv{color:var(--warn)}
+.st-l li.info .lv{color:var(--pulse)}
+.stats{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.stat{font-size:11px;color:var(--desc-color);border:1px solid var(--tip-border);
+  border-radius:10px;padding:2.5px 9px;white-space:nowrap}
+.stat.bad{color:var(--err);border-color:var(--err)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:2px;padding-top:6px;border-top:1px solid var(--divider)}
+.legend span{font-size:10.5px;color:var(--type-color);display:flex;align-items:center;gap:5px}
+.legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+.bb{align-self:center;background:var(--tip-bg);color:var(--type-color);border:1px solid var(--tip-border);
+  padding:5px 16px;border-radius:12px;font-size:11.5px;box-shadow:0 2px 8px var(--tip-shadow);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;flex-shrink:0}
+/* SVG scene */
+svg text{font-family:Roboto,system-ui,sans-serif;fill:var(--label-color);user-select:none}
+.hublbl{font-size:16px;font-weight:600;fill:var(--type-color)}
+.portlbl{font-size:13px;fill:var(--type-color)}
+.boxlbl{font-size:13.5px;font-weight:500;fill:var(--label-color)}
+.sublbl{font-size:11.5px;fill:var(--type-color)}
+.cardt{font-size:14px;font-weight:600}
+.chipt{font-size:12.5px;font-weight:500}
+.wire{stroke:var(--line-color);stroke-width:2;fill:none;stroke-linecap:round}
+.wire.out{stroke:var(--pair-a)} .wire.ret{stroke:var(--pair-b)}
+.wire.ghostw{stroke-dasharray:5 5;opacity:.45}
+.glow{stroke:var(--bus-glow);stroke-width:10;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.hubbody{fill:var(--tip-bg);stroke:var(--tip-border);stroke-width:1.5}
+.boxbody{fill:var(--tip-bg);stroke:var(--tip-border);stroke-width:1.5}
+.cardr{fill:var(--tip-bg);stroke:var(--tip-border);stroke-width:1.5}
+.cardr.off{opacity:.55}
+.ghostcard{fill:none;stroke:var(--tip-border);stroke-width:1.5;stroke-dasharray:6 5}
+.connb{fill:var(--conn-body);stroke:var(--conn-stroke);stroke-width:1.2}
+.connc{fill:var(--conn-cavity);stroke:var(--conn-stroke);stroke-width:.7}
+.jpin{fill:var(--conn-cavity);stroke:var(--conn-stroke);stroke-width:.8}
+.jcap{fill:var(--jumper-cap);stroke:var(--conn-stroke);stroke-width:.8;rx:3}
+.termoff{fill:none;stroke:var(--type-color);stroke-width:1.3;stroke-dasharray:3 3}
+.chip{fill:var(--tip-bg);stroke:var(--tip-border);stroke-width:1.2}
+.chip.on{fill:var(--hs-active);stroke:var(--hs-stroke)}
+.chip.bad{stroke:var(--err)}
+.led{fill:var(--divider)} .led.on{fill:var(--ok)}
+.probe{fill:var(--tip-bg);stroke:var(--pulse);stroke-width:2}
+.probe.sel{fill:var(--pulse)}
+.probering{fill:none;stroke:var(--pulse);stroke-width:1.5;opacity:.6}
+.brk{font-size:14px;font-weight:600;fill:var(--err)}
+.chev{fill:var(--pulse);opacity:.55}
+.bang circle{fill:none;stroke:var(--err);stroke-width:1.6}
+.bang text{font-size:12px;font-weight:600;fill:var(--err);text-anchor:middle}
+.pu{pointer-events:none}
+.pu.sig{fill:var(--pulse)} .pu.refl{fill:var(--reflect)}
+.fl{pointer-events:none;fill:none;stroke:var(--ok);stroke-width:2}
+.hit{fill:transparent;stroke:transparent;stroke-width:2;cursor:pointer;transition:fill .18s,stroke .18s}
+.hit.pulse{fill:var(--hs-hover);stroke:var(--hs-stroke)}
+@media(hover:hover){.hit:hover{fill:var(--hs-hover);stroke:var(--hs-stroke)}}
+.hit:focus-visible{outline:none;fill:var(--hs-hover);stroke:var(--hs-stroke)}
+#fx,#pl{pointer-events:none}
+@media(pointer:coarse){.tb select{font-size:16px}}
+@media(max-width:720px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100%}
+  .stage{overflow-x:auto;overflow-y:hidden;min-height:300px;flex:none;height:320px}
+  .stage svg{min-width:760px}
+  .panels{flex-direction:column;height:auto}
+  .scopecard{width:100%;min-width:0}
+  .scopecard canvas{height:130px;flex:none}
+  .statuscard{overflow-y:visible}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="tb">
+    <div class="seg" role="group" aria-label="Hub board">
+      <button id="b-moar" data-board="moar_can" aria-pressed="true">MOAR_CAN</button>
+      <button id="b-bnc" data-board="bnc" aria-pressed="false">Birds' Nest CAN</button>
+    </div>
+    <label>Preset
+      <select id="preset" aria-label="Configuration preset">
+        <option value="recommended">Recommended 6-wire</option>
+        <option value="typical">Typical 4-wire hub</option>
+        <option value="lastterm">Last toolhead terminated</option>
+        <option value="custom" disabled>Custom</option>
+      </select>
+    </label>
+    <button class="btn" id="play" aria-label="Pause signal animation">&#10074;&#10074; Pause</button>
+  </div>
+  <div class="stage">
+    <svg id="scene" viewBox="0 0 1160 470" preserveAspectRatio="xMidYMid meet" role="group"
+         aria-label="CAN bus topology diagram">
+      <g id="sc"></g>
+      <g id="fx"></g>
+      <g id="pl"></g>
+    </svg>
+  </div>
+  <div class="panels">
+    <div class="card scopecard">
+      <div class="card-h">
+        <span id="probeName">Signal at: USB/CAN adapter</span>
+        <button class="mini" id="probeCycle" aria-label="Cycle probe point">Probe &#9656;</button>
+      </div>
+      <canvas id="scope" role="img" aria-label="Oscilloscope trace of the differential CAN signal at the selected probe point"></canvas>
+      <div class="card-f">Differential voltage (CAN_H &minus; CAN_L) &middot; timing exaggerated for visibility</div>
+    </div>
+    <div class="card statuscard" aria-live="polite">
+      <div class="st-h" id="stHead"></div>
+      <ul class="st-l" id="stList"></ul>
+      <div class="stats" id="stStats"></div>
+      <div class="legend">
+        <span><i style="background:var(--pair-a)"></i>CAN pair out</span>
+        <span><i style="background:var(--pair-b)"></i>CAN pair back</span>
+        <span><i style="background:var(--pulse)"></i>signal</span>
+        <span><i style="background:var(--reflect)"></i>reflection</span>
+      </div>
+    </div>
+  </div>
+  <div class="bb">Tap the toolheads, bypass jumpers and 120&Omega; termination jumpers to reconfigure the bus</div>
+</div>
+<script>
+'use strict';
+/* ---------------- constants ---------------- */
+const NPORTS=6;
+const MM={cable:1000, adapter:300, nodeStub:20, hubTrace:15, jumper:5};
+const LIM={stubMm:300, busMm:40000, nodes:30};
+const PORT_CX=[330,456,582,708,834,960];
+const BUS_Y=88, PIN_DY=14;           // port pins at cx +/- PIN_DY
+const CARD_Y=330, CARD_H=96, CARD_W=112, PROBE_Y=440;
+const FARX=1050, FAR_JX=1058;
+const SPEED=1400;                    // viewBox units per second for pulses
+const EMIT_MS=2400, MAX_PULSES=24;
+
+const BOARD={
+  moar_can:{hub:{x:250,y:36,w:880,h:116}, name:'MOAR_CAN', ifLabel:'USB/CAN adapter',
+            startX:120, nearTermName:'the 120-ohm termination on the USB/CAN adapter'},
+  bnc:     {hub:{x:100,y:36,w:1030,h:116}, name:"Birds' Nest CAN", ifLabel:'USB↔CAN bridge',
+            startX:150, nearTermName:"the hub's near 120-ohm termination jumper"}
+};
+
+/* ---------------- state ---------------- */
+function defaultBoard(){
+  const q=new URLSearchParams(location.search).get('board');
+  const hashRaw=location.hash.replace(/^#\??/,'');
+  const h=new URLSearchParams(hashRaw.includes('=')?hashRaw:'board='+hashRaw).get('board');
+  const v=(q||h||'').toLowerCase();
+  return v==='bnc'?'bnc':'moar_can';
+}
+const PRESETS={
+  recommended:s=>{s.termNear=true;s.termFar=true;
+    s.ports.forEach(p=>{p.occupied=true;p.cable='6wire';p.nodeTerm=false;p.bypass=false;});},
+  typical:s=>{s.termNear=true;s.termFar=true;
+    s.ports.forEach(p=>{p.occupied=true;p.cable='4wire';p.nodeTerm=false;p.bypass=true;});},
+  lastterm:s=>{s.termNear=true;s.termFar=false;
+    s.ports.forEach((p,i)=>{p.occupied=true;p.nodeTerm=false;p.bypass=false;
+      p.cable=i===NPORTS-1?'4wire':'6wire';});
+    s.ports[NPORTS-1].nodeTerm=true;}
+};
+const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const st={
+  board:defaultBoard(), termNear:true, termFar:true,
+  ports:Array.from({length:NPORTS},()=>({occupied:true,cable:'6wire',nodeTerm:false,bypass:false})),
+  probe:'interface', preset:'recommended'
+};
+PRESETS.recommended(st);
+let playing=!reducedMotion;
+
+/* ---------------- path builder ---------------- */
+function newPB(){
+  return {
+    pts:[], d:'', markers:[],
+    _push(x,y){this.pts.push([x,y]);},
+    M(x,y){this.d+=`M${x} ${y}`;this._push(x,y);},
+    L(x,y){this.d+=`L${x} ${y}`;this._push(x,y);},
+    C(c1x,c1y,c2x,c2y,x,y){
+      const [x0,y0]=this.pts[this.pts.length-1];
+      this.d+=`C${c1x} ${c1y} ${c2x} ${c2y} ${x} ${y}`;
+      const N=20;
+      for(let k=1;k<=N;k++){const t=k/N,u=1-t;
+        this._push(u*u*u*x0+3*u*u*t*c1x+3*u*t*t*c2x+t*t*t*x,
+                   u*u*u*y0+3*u*u*t*c1y+3*u*t*t*c2y+t*t*t*y);}
+    },
+    mark(type,data){this.markers.push(Object.assign({i:this.pts.length-1,type},data));}
+  };
+}
+function finPB(p){ // cumulative lengths + marker s positions
+  const cum=[0];
+  for(let i=1;i<p.pts.length;i++){
+    const dx=p.pts[i][0]-p.pts[i-1][0],dy=p.pts[i][1]-p.pts[i-1][1];
+    cum.push(cum[i-1]+Math.hypot(dx,dy));
+  }
+  p.cum=cum; p.len=cum[cum.length-1]||0;
+  p.markers.forEach(m=>m.s=cum[m.i]);
+  return p;
+}
+function pointAt(p,s){
+  s=Math.max(0,Math.min(p.len,s));
+  let lo=0,hi=p.cum.length-1;
+  while(lo<hi){const mid=(lo+hi)>>1; if(p.cum[mid]<s)lo=mid+1;else hi=mid;}
+  const i=Math.max(1,lo);
+  const s0=p.cum[i-1],s1=p.cum[i],t=s1>s0?(s-s0)/(s1-s0):0;
+  const a=p.pts[i-1],b=p.pts[i];
+  return {x:a[0]+(b[0]-a[0])*t, y:a[1]+(b[1]-a[1])*t,
+          ang:Math.atan2(b[1]-a[1],b[0]-a[0])};
+}
+// shared cable geometry (hub pin x, card pin x) so visuals and anim tracks agree
+function cableDown(p,x1,x2){p.L(x1,152);p.C(x1,210,x2,270,x2,CARD_Y);}
+function cableUp(p,x2,x1){p.C(x2,270,x1,210,x1,152);p.L(x1,BUS_Y);}
+function cableDownD(x1,x2){return `M${x1} 152C${x1} 210 ${x2} 270 ${x2} ${CARD_Y}`;}
+function cableUpD(x2,x1){return `M${x2} ${CARD_Y}C${x2} 270 ${x1} 210 ${x1} 152`;}
+
+/* ---------------- bus walk (electrical + geometric model) ---------------- */
+function walkBus(s){
+  const B=BOARD[s.board];
+  const main=newPB();
+  const ghosts=[]; const stubTracks=[];
+  const m={board:s.board, inline:[], stubs:[], rings:[], offline:[],
+           breaks:[], endB:null, deadEnd:null, posOf:{}, totalMm:0, ghostFar:false};
+  let posMm=0, connected=true, cur=main;
+
+  // --- end A: interface transceiver ---
+  cur.M(B.startX,BUS_Y);
+  cur.mark('endA',{});
+  m.endA={terminated:s.termNear, name:B.ifLabel, posMm:0};
+  m.posOf['interface']=0;
+  if(s.board==='moar_can') posMm+=MM.adapter;
+
+  const newGhost=(x,y)=>{const g=newPB();g.M(x,y);ghosts.push(g);return g;};
+
+  for(let i=0;i<NPORTS;i++){
+    const p=s.ports[i], cx=PORT_CX[i], ox=cx-PIN_DY, ix=cx+PIN_DY;
+    posMm+=MM.hubTrace;
+    cur.L(ox,BUS_Y);
+    if(p.occupied&&p.cable==='6wire'&&!p.bypass){
+      // in-line node: out to the toolhead and back
+      cableDown(cur,ox,cx-12);
+      cur.L(cx-12,348);cur.L(cx,348);
+      if(connected){posMm+=MM.cable+MM.nodeStub/2;
+        cur.mark('node',{port:i});m.posOf['node:'+i]=posMm;m.inline.push(i);
+        posMm+=MM.nodeStub/2+MM.cable;}
+      else m.offline.push(i);
+      cur.L(cx+12,348);cur.L(cx+12,CARD_Y);
+      cableUp(cur,cx+12,ix);
+    } else if(p.bypass){
+      // bus continuity through the bypass jumpers
+      cur.L(ox,108);
+      if(p.occupied&&connected){
+        const sp=newPB(); sp.M(ox,108); cableDown(sp,ox,cx-12);
+        sp.L(cx-12,348); sp.L(cx,348);
+        if(p.cable==='6wire'){
+          sp.L(cx+12,348);sp.L(cx+12,CARD_Y);cableUp(sp,cx+12,ix);
+          cur.mark('junction',{stub:stubTracks.length,port:i});
+          stubTracks.push({pb:sp,kind:'ring',port:i});
+          m.rings.push(i); m.posOf['node:'+i]=posMm;
+        }else{
+          cur.mark('junction',{stub:stubTracks.length,port:i});
+          stubTracks.push({pb:sp,kind:'stub',port:i,terminated:p.nodeTerm});
+          m.stubs.push({port:i,mm:MM.cable,terminated:p.nodeTerm});
+          m.posOf['node:'+i]=posMm;
+        }
+      } else if(p.occupied){ m.offline.push(i); }
+      cur.L(ix,108);
+      if(p.occupied&&p.cable==='6wire'&&connected) cur.mark('rejoin',{port:i});
+      cur.L(ix,BUS_Y);
+      if(connected) posMm+=MM.jumper;
+    } else if(p.occupied&&p.cable==='4wire'&&!p.bypass){
+      // bus dead-ends at this toolhead
+      cableDown(cur,ox,cx-12);
+      cur.L(cx-12,348);cur.L(cx,348);
+      if(connected){
+        posMm+=MM.cable;
+        cur.mark('node',{port:i});cur.mark('endB',{});
+        m.posOf['node:'+i]=posMm;
+        m.endB={kind:'toolhead',port:i,terminated:p.nodeTerm,
+                name:'Toolhead '+(i+1),posMm};
+        m.deadEnd=i; m.totalMm=posMm;
+        connected=false; cur=newGhost(ix,BUS_Y);
+      } else { m.offline.push(i); cur=newGhost(ix,BUS_Y); }
+    } else {
+      // empty port, no jumpers: bus is open here
+      cur.L(ox,102);
+      if(connected){
+        cur.mark('endB',{});
+        m.endB={kind:'open',port:i,terminated:false,
+                name:'Port '+(i+1)+' (open, no jumpers)',posMm};
+        m.breaks.push({port:i,kind:'open'});
+        m.totalMm=posMm;
+        connected=false; cur=newGhost(ix,102); cur.L(ix,BUS_Y);
+      } else { m.breaks.push({port:i,kind:'open',ghost:true});
+               cur=newGhost(ix,102); cur.L(ix,BUS_Y); }
+    }
+  }
+  posMm+=MM.hubTrace;
+  cur.L(FARX,BUS_Y);
+  if(connected){
+    cur.mark('endB',{});
+    m.endB={kind:'far',terminated:s.termFar,name:"the hub's far 120-ohm termination jumper",posMm};
+    m.posOf['far']=posMm; m.totalMm=posMm;
+  } else m.ghostFar=true;
+
+  finPB(main); ghosts.forEach(finPB);
+  stubTracks.forEach(t=>finPB(t.pb));
+  m.main=main; m.ghosts=ghosts; m.stubTracks=stubTracks;
+
+  // ---- validation ----
+  validate(s,m);
+  return m;
+}
+
+function thList(arr){ // "Toolhead 2", "Toolheads 2 and 3", "Toolheads 2, 3 and 4"
+  const n=arr.map(i=>i+1);
+  if(n.length===1)return 'Toolhead '+n[0];
+  return 'Toolheads '+n.slice(0,-1).join(', ')+' and '+n[n.length-1];
+}
+function validate(s,m){
+  const iss=[];
+  const err=t=>iss.push({level:'err',text:t});
+  const warn=t=>iss.push({level:'warn',text:t});
+  const info=t=>iss.push({level:'info',text:t});
+
+  // stubs (4-wire toolheads hanging off the bus)
+  m.stubs.forEach(x=>{
+    err(`Stub too long — Toolhead ${x.port+1} is connected with a single CAN pair (4 wires), so its whole ~1m cable run acts as a stub. The maximum recommended stub length is 300mm. Run both CAN pairs (6 wires) so the bus goes to the toolhead and comes back.`);
+  });
+  // rings
+  m.rings.forEach(i=>{
+    warn(`Bypass jumpers are populated behind Port ${i+1} while a 6-wire toolhead is connected — the jumpers short the two CAN pairs together, so part of the signal skips the toolhead loop and echoes around it. Remove the jumpers.`);
+  });
+  // breaks / dead ends
+  const off=m.offline.length?` ${thList(m.offline)} ${m.offline.length>1?'are':'is'} offline.`:'';
+  m.breaks.filter(b=>!b.ghost).forEach(b=>{
+    err(`Bus ${m.offline.length?'broken':'ends open'} at Port ${b.port+1} — the port is unused and the pin headers behind it don't have jumpers populated. If a 6-pin connector is not going to be used, the jumpers need to be populated.`+off);
+  });
+  if(m.deadEnd!=null){
+    if(m.offline.length){
+      err(`Bus broken at Port ${m.deadEnd+1} — Toolhead ${m.deadEnd+1} only uses 4 wires, so the bus dead-ends at the toolhead. If only using 4 wires, the bypass jumpers need to be populated — unless this toolhead is the terminated far end of the bus.`+off);
+    } else if(m.endB.terminated){
+      info(`Toolhead ${m.deadEnd+1} is the end of the bus — its single CAN pair is the bus itself, not a stub, and its 120-ohm termination terminates this end.`);
+    }
+  }
+  // terminations on the walked bus
+  const endTerms=[];
+  if(m.endA.terminated)endTerms.push(m.endA.name);
+  if(m.endB&&m.endB.terminated)endTerms.push(m.endB.name);
+  const midTerms=[];
+  m.inline.forEach(i=>{if(s.ports[i].nodeTerm)midTerms.push(
+    `Termination in the middle of the bus — Toolhead ${i+1}'s 120-ohm termination is populated, but Toolhead ${i+1} is not at an end of the bus.`);});
+  m.stubs.forEach(x=>{if(x.terminated)midTerms.push(
+    `Termination on a stub — Toolhead ${x.port+1}'s 120-ohm termination is populated, but Toolhead ${x.port+1} hangs off the bus as a stub, not at an end of the bus.`);});
+  m.rings.forEach(i=>{if(s.ports[i].nodeTerm)midTerms.push(
+    `Termination on a bypassed toolhead — Toolhead ${i+1}'s 120-ohm termination is populated, but with the bypass jumpers populated Toolhead ${i+1} is not at an end of the bus.`);});
+  midTerms.forEach(err);
+  const total=endTerms.length+midTerms.length;
+  if(total>2)err(`Too many terminations — ${total}× 120-ohm resistors are on the bus. Only the two ends of the bus should be terminated.`);
+  if(endTerms.length===1)err(`Missing termination — the bus is only terminated at one end (${endTerms[0]}). The bus needs 120-ohm termination resistors on both ends.`);
+  if(endTerms.length===0)err(`No termination — the bus has no 120-ohm termination on either end. The bus needs 120-ohm termination resistors on both ends.`);
+  // disconnected far jumper
+  if(m.ghostFar&&s.termFar)info(`The far 120-ohm termination jumper is populated, but that section of the hub is disconnected from the bus — it has no effect.`);
+  // stats
+  const nodes=1+m.inline.length+m.stubs.length+m.rings.length+(m.deadEnd!=null?1:0);
+  const longestStub=m.stubs.length?MM.cable:(m.inline.length?MM.nodeStub:0);
+  m.stats={nodes,busMm:m.totalMm,longestStub};
+  m.issues=iss;
+  m.status=m.offline.length?'broken'
+    :(iss.some(x=>x.level==='err')||m.rings.length?'fail':'pass');
+  // reflection sources for scope + static markers
+  m.sources=[];
+  if(!m.endA.terminated)m.sources.push({kind:'endA',amp:.5,posMm:0,x:pointAt(m.main,0).x,y:BUS_Y});
+  if(m.endB&&!m.endB.terminated){const pt=pointAt(m.main,m.main.len);
+    m.sources.push({kind:m.endB.kind==='open'?'open':(m.endB.kind==='far'?'far':'thend'),
+      amp:.5,posMm:m.endB.posMm,x:pt.x,y:pt.y});}
+  m.stubs.forEach(x=>m.sources.push({kind:'stub',amp:x.terminated?.25:.3,
+    posMm:m.posOf['node:'+x.port],x:PORT_CX[x.port]-PIN_DY,y:108}));
+  m.rings.forEach(i=>m.sources.push({kind:'ring',amp:.15,
+    posMm:m.posOf['node:'+i],x:PORT_CX[i]-PIN_DY,y:108}));
+}
+
+/* ---------------- rendering ---------------- */
+const svg=document.getElementById('scene'), sc=document.getElementById('sc'),
+      fx=document.getElementById('fx'), plG=document.getElementById('pl');
+let model=null;
+
+function jumperGlyph(x,y,on,cls,action,label,port){
+  // 2x2 pin header w/ cap; x=center, y=center
+  const pins=`<rect class="jpin" x="${x-11}" y="${y-6}" width="5" height="5"/>
+    <rect class="jpin" x="${x-11}" y="${y+1}" width="5" height="5"/>
+    <rect class="jpin" x="${x+6}" y="${y-6}" width="5" height="5"/>
+    <rect class="jpin" x="${x+6}" y="${y+1}" width="5" height="5"/>`;
+  const cap=on?`<rect class="jcap" x="${x-13}" y="${y-9}" width="26" height="18" rx="3"/>
+    <line x1="${x-13}" y1="${y}" x2="${x+13}" y2="${y}" stroke="var(--conn-stroke)" stroke-width=".6" opacity=".5"/>`:'';
+  return `<g>${pins}${cap}</g>
+    <rect class="hit" x="${x-24}" y="${y-18}" width="48" height="36" rx="5"
+      data-action="${action}" ${port!=null?`data-port="${port}"`:''}
+      role="button" tabindex="0" aria-pressed="${on}" aria-label="${label}"><title>${label}</title></rect>`;
+}
+function termGlyph(x,on,name,action){
+  const body=on?`<rect class="jcap" x="${x-8}" y="${BUS_Y-16}" width="16" height="32" rx="3"/>
+      <text x="${x}" y="${BUS_Y+4}" text-anchor="middle" font-size="9" font-weight="600" style="fill:var(--tip-bg)">R</text>`
+    :`<rect class="termoff" x="${x-8}" y="${BUS_Y-16}" width="16" height="32" rx="3"/>`;
+  return `${body}<text class="sublbl" x="${x}" y="${BUS_Y+30}" text-anchor="middle">120&#937;</text>
+    <rect class="hit" x="${x-20}" y="${BUS_Y-24}" width="40" height="60" rx="5"
+      data-action="${action}" role="button" tabindex="0" aria-pressed="${on}"
+      aria-label="${name}"><title>${name}</title></rect>`;
+}
+function connGlyph(cx){
+  return `<rect class="connb" x="${cx-30}" y="122" width="60" height="30" rx="3"/>
+    <rect class="connc" x="${cx-24}" y="127" width="48" height="20" rx="2"/>
+    <circle cx="${cx-PIN_DY}" cy="137" r="3" fill="var(--pair-a)" stroke="var(--conn-stroke)" stroke-width=".8"/>
+    <circle cx="${cx+PIN_DY}" cy="137" r="3" fill="var(--pair-b)" stroke="var(--conn-stroke)" stroke-width=".8"/>
+    <circle cx="${cx-4}" cy="137" r="2.2" fill="var(--conn-cavity)" stroke="var(--conn-stroke)" stroke-width=".6"/>
+    <circle cx="${cx+4}" cy="137" r="2.2" fill="var(--conn-cavity)" stroke="var(--conn-stroke)" stroke-width=".6"/>`;
+}
+function probeList(m){
+  const B=BOARD[m.board];
+  const list=[{key:'interface',label:B.ifLabel,x:B.startX,y:BUS_Y}];
+  const nodePorts=[...m.inline,...m.stubs.map(x=>x.port),...(m.deadEnd!=null?[m.deadEnd]:[]),...m.rings]
+    .sort((a,b)=>a-b);
+  nodePorts.forEach(i=>list.push({key:'node:'+i,label:'Toolhead '+(i+1),x:PORT_CX[i],y:PROBE_Y}));
+  if(m.endB&&m.endB.kind==='far')list.push({key:'far',label:'far end of the bus',x:1096,y:BUS_Y});
+  return list;
+}
+
+function renderScene(m){
+  const B=BOARD[st.board], H=B.hub;
+  let out='';
+  // bus glow (walked chain only)
+  out+=`<path class="glow" d="${m.main.d}"/>`;
+  // hub + interface bodies
+  out+=`<rect class="hubbody" x="${H.x}" y="${H.y}" width="${H.w}" height="${H.h}" rx="10"/>`;
+  out+=`<text class="hublbl" x="${H.x+H.w-16}" y="146" text-anchor="end">${B.name}</text>`;
+  if(st.board==='moar_can'){
+    out+=`<rect class="boxbody" x="16" y="62" width="196" height="86" rx="8"/>
+      <line class="wire" x1="40" y1="62" x2="40" y2="34"/>
+      <text class="sublbl" x="40" y="28" text-anchor="middle">USB</text>
+      <text class="boxlbl" x="114" y="136" text-anchor="middle">USB/CAN adapter</text>
+      <circle cx="120" cy="${BUS_Y}" r="5" fill="var(--pulse)"/>
+      <rect class="connc" x="244" y="${BUS_Y-9}" width="12" height="18" rx="2"/>
+      <text class="sublbl" x="250" y="${BUS_Y+30}" text-anchor="middle">XH2.54</text>`;
+  }else{
+    out+=`<rect class="boxbody" x="112" y="62" width="132" height="86" rx="8"/>
+      <line class="wire" x1="140" y1="62" x2="140" y2="26"/>
+      <text class="sublbl" x="140" y="20" text-anchor="middle">USB</text>
+      <text class="boxlbl" x="178" y="128" text-anchor="middle">USB&#8596;CAN</text>
+      <text class="sublbl" x="178" y="141" text-anchor="middle">bridge</text>
+      <circle cx="150" cy="${BUS_Y}" r="5" fill="var(--pulse)"/>`;
+  }
+  // main + ghost wiring (neutral), then colored cable lanes on top
+  out+=`<path class="wire" d="${m.main.d}"/>`;
+  m.ghosts.forEach(g=>{if(g.pts.length>1)out+=`<path class="wire ghostw" d="${g.d}"/>`;});
+  // per-port: labels, cards, cables, jumpers
+  for(let i=0;i<NPORTS;i++){
+    const p=st.ports[i], cx=PORT_CX[i], ox=cx-PIN_DY, ix=cx+PIN_DY;
+    out+=`<text class="portlbl" x="${cx}" y="54" text-anchor="middle">Port ${i+1}</text>`;
+    const offline=m.offline.includes(i);
+    if(p.occupied){
+      const ghost=offline?' ghostw':'';
+      // cable lanes
+      out+=`<path class="wire out${ghost}" d="${cableDownD(ox,cx-12)}"/>`;
+      if(p.cable==='6wire')out+=`<path class="wire ret${ghost}" d="${cableUpD(cx+12,ix)}"/>`;
+      // toolhead card
+      const x0=cx-CARD_W/2;
+      out+=`<rect class="cardr${offline?' off':''}" x="${x0}" y="${CARD_Y}" width="${CARD_W}" height="${CARD_H}" rx="9"/>`;
+      out+=`<path class="wire" d="M${cx-12} ${CARD_Y}L${cx-12} 348L${cx+12} 348${p.cable==='6wire'?`L${cx+12} ${CARD_Y}`:''}" opacity="${offline?.45:1}"/>`;
+      out+=`<circle id="led-${i}" class="led${offline?'':''}" cx="${cx}" cy="348" r="4"/>`;
+      out+=`<text class="cardt" x="${cx}" y="366" text-anchor="middle">Toolhead ${i+1}</text>`;
+      // chips: cable type + 120R
+      const isStub=m.stubs.some(x=>x.port===i);
+      out+=`<rect class="chip${p.cable==='4wire'?(isStub?' bad':''):''}" x="${cx-52}" y="374" width="50" height="22" rx="7"/>
+        <text class="chipt" x="${cx-27}" y="389.5" text-anchor="middle">${p.cable==='6wire'?'6-wire':'4-wire'}</text>
+        <rect class="hit" x="${cx-55}" y="371" width="54" height="30" rx="7" data-action="cable" data-port="${i}"
+          role="button" tabindex="0" aria-label="Toolhead ${i+1} cable: ${p.cable==='6wire'?'6-wire (2 CAN pairs)':'4-wire (1 CAN pair)'} — tap to swap"><title>Swap 4-wire / 6-wire cable</title></rect>`;
+      out+=`<rect class="chip${p.nodeTerm?' on':''}" x="${cx+2}" y="374" width="50" height="22" rx="7"/>
+        <text class="chipt" x="${cx+27}" y="389.5" text-anchor="middle">120&#937;</text>
+        <rect class="hit" x="${cx+1}" y="371" width="54" height="30" rx="7" data-action="nodeterm" data-port="${i}"
+          role="button" tabindex="0" aria-pressed="${p.nodeTerm}" aria-label="Toolhead ${i+1} 120-ohm termination ${p.nodeTerm?'populated':'not populated'}"><title>Toggle 120&#937; termination on this toolhead</title></rect>`;
+      out+=`<text class="sublbl" x="${cx}" y="413" text-anchor="middle"${offline?' style="fill:var(--err)"':''}>${offline?'offline':(p.cable==='6wire'?'2 CAN pairs · ~1 m':'1 CAN pair · ~1 m')}</text>`;
+      // remove
+      out+=`<text x="${cx+43}" y="346" text-anchor="middle" font-size="13" style="fill:var(--type-color)">&#10005;</text>
+        <rect class="hit" x="${cx+30}" y="331" width="26" height="26" rx="6" data-action="remove" data-port="${i}"
+          role="button" tabindex="0" aria-label="Remove Toolhead ${i+1}"><title>Remove toolhead</title></rect>`;
+    }else{
+      const x0=cx-CARD_W/2;
+      out+=`<rect class="ghostcard" x="${x0}" y="${CARD_Y}" width="${CARD_W}" height="${CARD_H}" rx="9"/>
+        <text x="${cx}" y="376" text-anchor="middle" font-size="24" style="fill:var(--type-color)">+</text>
+        <text class="sublbl" x="${cx}" y="396" text-anchor="middle">Add toolhead</text>
+        <rect class="hit" x="${x0}" y="${CARD_Y}" width="${CARD_W}" height="${CARD_H}" rx="9" data-action="add" data-port="${i}"
+          role="button" tabindex="0" aria-label="Add a toolhead on Port ${i+1}"><title>Add a toolhead</title></rect>`;
+    }
+    // connector + bypass jumpers
+    out+=connGlyph(cx);
+    out+=jumperGlyph(cx,108,p.bypass,'', 'bypass',
+      `Bypass jumpers behind Port ${i+1}: ${p.bypass?'populated':'not populated'}`,i);
+    // break marker (live bus breaks only; disconnected-tail gaps stay neutral)
+    if(m.breaks.some(b=>b.port===i&&!b.ghost))
+      out+=`<text class="brk" x="${cx}" y="80" text-anchor="middle">break &#9888;</text>`;
+  }
+  // terminations
+  if(st.board==='moar_can'){
+    out+=termGlyph(176,st.termNear,'120-ohm termination on the USB/CAN adapter: '+(st.termNear?'populated':'not populated'),'termnear');
+  }else{
+    out+=termGlyph(264,st.termNear,'Near 120-ohm termination jumper: '+(st.termNear?'populated':'not populated'),'termnear');
+  }
+  out+=termGlyph(FAR_JX,st.termFar,'Far 120-ohm termination jumper: '+(st.termFar?'populated':'not populated'),'termfar');
+  // probes
+  probeList(m).forEach(pr=>{
+    const sel=st.probe===pr.key;
+    out+=`<circle class="probe${sel?' sel':''}" cx="${pr.x}" cy="${pr.y}" r="5.5"/>`;
+    if(sel)out+=`<circle class="probering" cx="${pr.x}" cy="${pr.y}" r="10"/>`;
+    out+=`<rect class="hit" x="${pr.x-15}" y="${pr.y-15}" width="30" height="30" rx="15"
+      data-action="probe" data-key="${pr.key}" role="button" tabindex="0"
+      aria-pressed="${sel}" aria-label="Probe the signal at ${pr.label}"><title>Probe: ${pr.label}</title></rect>`;
+  });
+  sc.innerHTML=out;
+  renderFx(m);
+}
+
+/* static markers when animation is off */
+function renderFx(m){
+  let out='';
+  if(!playing){
+    for(let s=75;s<m.main.len;s+=150){
+      const pt=pointAt(m.main,s);
+      out+=`<polygon class="chev" points="-5,-4 5,0 -5,4"
+        transform="translate(${pt.x.toFixed(1)} ${pt.y.toFixed(1)}) rotate(${(pt.ang*180/Math.PI).toFixed(1)})"/>`;
+    }
+    m.sources.forEach(sr=>{
+      const bx=sr.kind==='open'?sr.x-30:sr.x, by=sr.y-24;
+      out+=`<g class="bang"><circle cx="${bx}" cy="${by}" r="10"/>
+        <text x="${bx}" y="${by+4}">!</text></g>`;
+    });
+  }
+  fx.innerHTML=out;
+}
+
+/* ---------------- status panel ---------------- */
+function renderStatus(m,recross){
+  const head=document.getElementById('stHead');
+  const list=document.getElementById('stList');
+  const stats=document.getElementById('stStats');
+  if(m.status==='pass'){
+    head.className='st-h pass';
+    head.innerHTML='&#10003; Follows the 1Mbit CAN bus standard (ISO 11898): one linear bus, stubs under 300mm, and 120-ohm termination on both ends.';
+  }else if(m.status==='broken'){
+    head.className='st-h broken';
+    head.innerHTML='&#10007; The CAN bus is broken — some devices are offline.';
+  }else{
+    head.className='st-h fail';
+    head.innerHTML='&#10007; Does not follow the recommended CAN bus topology.';
+  }
+  const items=[...m.issues];
+  if(recross&&m.status!=='pass')items.push({level:'warn',
+    text:'Signal ringing re-crosses the receiver thresholds at the probe point — communication errors are more likely.'});
+  const LV={err:'Error:',warn:'Warning:',info:'Note:'};
+  list.innerHTML=items.map(x=>`<li class="${x.level}"><span class="lv">${LV[x.level]}</span><span>${x.text}</span></li>`).join('');
+  const s=m.stats;
+  stats.innerHTML=
+    `<span class="stat${s.nodes>LIM.nodes?' bad':''}">Nodes: ${s.nodes} / ${LIM.nodes}</span>`+
+    `<span class="stat${s.busMm>LIM.busMm?' bad':''}">Bus length: &#8776; ${(s.busMm/1000).toFixed(1)} m / 40 m</span>`+
+    `<span class="stat${s.longestStub>LIM.stubMm?' bad':''}">Longest stub: ${s.longestStub>=1000?'~1000':s.longestStub} mm / 300 mm</span>`;
+}
+
+/* ---------------- oscilloscope ---------------- */
+const scope=document.getElementById('scope');
+const BITS=[0,1,1,0,1,0,0,1];
+const WIN_NS=8000, EDGE_NS=90;
+let waveEdges=[],waveSrcs=[],waveRecross=false;
+
+function computeWave(m){
+  waveEdges=[];
+  for(let k=1;k<BITS.length;k++)if(BITS[k]!==BITS[k-1])
+    waveEdges.push({t:k*1000,d:(BITS[k]-BITS[k-1])*2});
+  const probeMm=m.posOf[st.probe]!=null?m.posOf[st.probe]:0;
+  waveSrcs=m.sources.map(sr=>{
+    const dM=Math.abs(probeMm-sr.posMm)/1000;
+    const att=1/(1+.25*dM);
+    return {amp:sr.amp*att, delay:60+dM*120,
+            T:sr.kind==='stub'?460:(sr.kind==='ring'?380:560), tau:sr.kind==='ring'?450:720};
+  });
+  // tiny residual overshoot even in a clean config
+  waveSrcs.push({amp:.04,delay:20,T:240,tau:150});
+  const ringSum=waveSrcs.reduce((a,s)=>a+s.amp,0)-.04;
+  waveRecross=ringSum>=.45;
+  return waveRecross;
+}
+function waveV(tNs){
+  const bit=Math.min(BITS.length-1,Math.floor(tNs/1000));
+  let v=BITS[bit]*2;
+  const edgeT=bit*1000;
+  if(bit>0&&BITS[bit]!==BITS[bit-1]&&tNs-edgeT<EDGE_NS){
+    const k=(tNs-edgeT)/EDGE_NS, sm=k*k*(3-2*k);
+    v=BITS[bit-1]*2+(BITS[bit]-BITS[bit-1])*2*sm;
+  }
+  for(const e of waveEdges){
+    for(const s of waveSrcs){
+      const dt=tNs-e.t-s.delay;
+      if(dt>0)v+=e.d*.5*s.amp*Math.exp(-dt/s.tau)*Math.sin(2*Math.PI*dt/s.T);
+    }
+  }
+  return v;
+}
+function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function drawScope(reveal){
+  const r=scope.getBoundingClientRect();
+  if(r.width<10||r.height<10)return;
+  const dpr=window.devicePixelRatio||1;
+  if(scope.width!==Math.round(r.width*dpr)||scope.height!==Math.round(r.height*dpr)){
+    scope.width=Math.round(r.width*dpr);scope.height=Math.round(r.height*dpr);
+  }
+  const ctx=scope.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const W=r.width,Hh=r.height,padL=6,padR=34,padT=8,padB=8;
+  const pw=W-padL-padR,ph=Hh-padT-padB;
+  const X=t=>padL+pw*t/WIN_NS;
+  const Y=v=>padT+ph*(1-(v+1)/4);   // V range -1..3
+  ctx.clearRect(0,0,W,Hh);
+  // grid
+  ctx.strokeStyle=cssVar('--scope-grid');ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let v=-1;v<=3;v++){ctx.moveTo(padL,Y(v));ctx.lineTo(W-padR,Y(v));}
+  for(let t=0;t<=WIN_NS;t+=1000){ctx.moveTo(X(t),padT);ctx.lineTo(X(t),Hh-padB);}
+  ctx.stroke();
+  // threshold band + lines
+  ctx.fillStyle=waveRecross?'rgba(220,38,38,.10)':'rgba(120,120,120,.07)';
+  ctx.fillRect(padL,Y(.9),pw,Y(.5)-Y(.9));
+  ctx.strokeStyle=cssVar('--type-color');ctx.setLineDash([4,4]);ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(padL,Y(.9));ctx.lineTo(W-padR,Y(.9));
+  ctx.moveTo(padL,Y(.5));ctx.lineTo(W-padR,Y(.5));ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=cssVar('--type-color');ctx.font='9px Roboto,sans-serif';
+  ctx.fillText('0.9 V',W-padR+4,Y(.9)+3);
+  ctx.fillText('0.5 V',W-padR+4,Y(.5)+3);
+  ctx.fillText('1 µs/div',W-padR-44,Hh-padB-4);
+  // trace
+  const frac=reveal==null?1:reveal;
+  ctx.strokeStyle=cssVar('--scope-trace');ctx.lineWidth=1.8;
+  ctx.lineJoin='round';ctx.beginPath();
+  const N=640,lim=Math.floor(N*frac);
+  for(let i=0;i<=lim;i++){
+    const t=WIN_NS*i/N,x=X(t),y=Y(Math.max(-1,Math.min(3,waveV(t))));
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+}
+
+/* ---------------- pulse animation ---------------- */
+let pulses=[],flashes=[],lastEmit=0,lastT=0,scopePhase=0;
+const puEls=[],flEls=[];
+for(let i=0;i<MAX_PULSES;i++){
+  const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('class','pu sig');c.setAttribute('r','5');c.style.display='none';
+  plG.appendChild(c);puEls.push(c);
+}
+for(let i=0;i<8;i++){
+  const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('class','fl');c.style.display='none';
+  plG.appendChild(c);flEls.push(c);
+}
+const spawnQ=[];
+function addPulse(p){
+  if(pulses.length+spawnQ.length>=MAX_PULSES){
+    let mi=-1,min=p.amp;
+    for(let i=0;i<spawnQ.length;i++)if(spawnQ[i].amp<min){min=spawnQ[i].amp;mi=i;}
+    if(mi<0)return;
+    spawnQ.splice(mi,1);
+  }
+  spawnQ.push(p);
+}
+function stepAll(dt,m){ // step every pulse, then merge pulses spawned during the step
+  const keep=[];
+  for(const p of pulses)if(stepPulse(p,dt,m))keep.push(p);
+  pulses=keep.concat(spawnQ);
+  spawnQ.length=0;
+}
+function flash(x,y){flashes.push({x,y,t:performance.now()});}
+function blip(port){
+  const el=document.getElementById('led-'+port);
+  if(el){el.classList.add('on');setTimeout(()=>el.classList.remove('on'),260);}
+}
+function stepPulse(p,dt,m){
+  const tr=p.track==='main'?m.main:m.stubTracks[p.track].pb;
+  const s0=p.s, s1=s0+p.dir*SPEED*dt;
+  p.s=s1;
+  if(p.track==='main'){
+    for(const mk of m.main.markers){
+      const crossed=p.dir>0?(mk.s>s0&&mk.s<=s1):(mk.s<s0&&mk.s>=s1);
+      if(!crossed)continue;
+      if(mk.type==='node')blip(mk.port);
+      else if(mk.type==='junction'){
+        addPulse({track:mk.stub,s:0,dir:1,amp:p.amp*.6,kind:p.kind});
+        addPulse({track:'main',s:mk.s,dir:-p.dir,amp:p.amp*.35,kind:'refl'});
+      }
+    }
+    if(s1<=0){
+      if(m.endA.terminated){const pt=pointAt(m.main,0);flash(pt.x,pt.y);return false;}
+      p.s=.5;p.dir=1;p.amp*=.65;p.kind='refl';
+    }else if(s1>=m.main.len){
+      if(m.endB&&m.endB.terminated){const pt=pointAt(m.main,m.main.len);flash(pt.x,pt.y);return false;}
+      p.s=m.main.len-.5;p.dir=-1;p.amp*=.65;p.kind='refl';
+    }
+  }else{
+    const stTr=m.stubTracks[p.track];
+    const jm=m.main.markers.find(mk=>mk.type==='junction'&&mk.stub===p.track);
+    if(s1>=tr.len){
+      if(stTr.kind==='ring'){
+        const rj=m.main.markers.find(mk=>mk.type==='rejoin'&&mk.port===stTr.port);
+        blip(stTr.port);
+        if(rj){addPulse({track:'main',s:rj.s,dir:1,amp:p.amp*.5,kind:p.kind});
+               addPulse({track:'main',s:rj.s,dir:-1,amp:p.amp*.35,kind:'refl'});}
+        return false;
+      }
+      blip(stTr.port);
+      if(stTr.terminated){const pt=pointAt(tr,tr.len);flash(pt.x,pt.y);return false;}
+      p.s=tr.len-.5;p.dir=-1;p.amp*=.7;p.kind='refl';
+    }else if(s1<=0){
+      if(jm){addPulse({track:'main',s:jm.s,dir:1,amp:p.amp*.5,kind:p.kind});
+             addPulse({track:'main',s:jm.s,dir:-1,amp:p.amp*.5,kind:p.kind});}
+      return false;
+    }
+  }
+  return p.amp>=.15;
+}
+function frame(t){
+  requestAnimationFrame(frame);
+  if(document.hidden||!model)return;
+  const dt=Math.min(.05,(t-lastT)/1000)||0;lastT=t;
+  if(playing){
+    if(t-lastEmit>EMIT_MS&&pulses.length<MAX_PULSES-4){
+      lastEmit=t;addPulse({track:'main',s:0,dir:1,amp:1,kind:'sig'});
+    }
+    stepAll(dt,model);
+    scopePhase=(scopePhase+dt/2.2)%1.25;
+    drawScope(Math.min(1,scopePhase));
+  }
+  // draw pulses
+  for(let i=0;i<MAX_PULSES;i++){
+    const el=puEls[i],p=pulses[i];
+    if(!p){el.style.display='none';continue;}
+    const tr=p.track==='main'?model.main:model.stubTracks[p.track].pb;
+    const pt=pointAt(tr,p.s);
+    el.style.display='';
+    el.setAttribute('cx',pt.x);el.setAttribute('cy',pt.y);
+    el.setAttribute('r',(3.2+3*p.amp).toFixed(1));
+    el.setAttribute('opacity',Math.min(1,p.amp+.15).toFixed(2));
+    el.setAttribute('class','pu '+(p.kind==='refl'?'refl':'sig'));
+  }
+  // flashes
+  const now=performance.now();
+  flashes=flashes.filter(f=>now-f.t<320);
+  for(let i=0;i<flEls.length;i++){
+    const el=flEls[i],f=flashes[i];
+    if(!f){el.style.display='none';continue;}
+    const k=(now-f.t)/320;
+    el.style.display='';
+    el.setAttribute('cx',f.x);el.setAttribute('cy',f.y);
+    el.setAttribute('r',(4+22*k).toFixed(1));
+    el.setAttribute('opacity',(0.85*(1-k)).toFixed(2));
+  }
+}
+
+/* ---------------- update cycle ---------------- */
+function update(){
+  model=walkBus(st);
+  // drop pulses from the old geometry
+  pulses.length=0;spawnQ.length=0;flashes.length=0;
+  // keep probe valid
+  if(model.posOf[st.probe]==null&&st.probe!=='interface')st.probe='interface';
+  renderScene(model);
+  const recross=computeWave(model);
+  drawScope(playing?0:null);
+  renderStatus(model,recross);
+  const pn=probeList(model).find(p=>p.key===st.probe);
+  document.getElementById('probeName').textContent='Signal at: '+(pn?pn.label:BOARD[st.board].ifLabel);
+  document.getElementById('b-moar').setAttribute('aria-pressed',st.board==='moar_can');
+  document.getElementById('b-bnc').setAttribute('aria-pressed',st.board==='bnc');
+  document.getElementById('preset').value=st.preset;
+}
+function custom(){st.preset='custom';}
+
+/* ---------------- events ---------------- */
+function onAct(e){
+  const t=e.target.closest('[data-action]');
+  if(!t)return;
+  const a=t.dataset.action,i=t.dataset.port!=null?+t.dataset.port:null;
+  switch(a){
+    case 'bypass':st.ports[i].bypass=!st.ports[i].bypass;custom();break;
+    case 'cable':st.ports[i].cable=st.ports[i].cable==='6wire'?'4wire':'6wire';custom();break;
+    case 'nodeterm':st.ports[i].nodeTerm=!st.ports[i].nodeTerm;custom();break;
+    case 'remove':st.ports[i].occupied=false;st.ports[i].nodeTerm=false;custom();break;
+    case 'add':st.ports[i].occupied=true;st.ports[i].cable='6wire';st.ports[i].nodeTerm=false;custom();break;
+    case 'termnear':st.termNear=!st.termNear;custom();break;
+    case 'termfar':st.termFar=!st.termFar;custom();break;
+    case 'probe':st.probe=t.dataset.key;break;
+    default:return;
+  }
+  update();
+}
+svg.addEventListener('click',onAct);
+svg.addEventListener('keydown',e=>{
+  if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-action]')){onAct(e);e.preventDefault();}
+});
+document.getElementById('b-moar').addEventListener('click',()=>{st.board='moar_can';update();});
+document.getElementById('b-bnc').addEventListener('click',()=>{st.board='bnc';update();});
+document.getElementById('preset').addEventListener('change',e=>{
+  const v=e.target.value;
+  if(PRESETS[v]){st.preset=v;PRESETS[v](st);st.probe='interface';update();}
+});
+const playBtn=document.getElementById('play');
+function setPlayBtn(){
+  playBtn.innerHTML=playing?'&#10074;&#10074; Pause':'&#9654; Play';
+  playBtn.setAttribute('aria-label',playing?'Pause signal animation':'Play signal animation');
+}
+playBtn.addEventListener('click',()=>{
+  playing=!playing;setPlayBtn();
+  if(!playing)drawScope(null); else {lastEmit=0;scopePhase=0;}
+  renderFx(model);
+});
+document.getElementById('probeCycle').addEventListener('click',()=>{
+  const list=probeList(model);
+  const idx=list.findIndex(p=>p.key===st.probe);
+  st.probe=list[(idx+1)%list.length].key;
+  update();
+});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>drawScope(playing?Math.min(1,scopePhase):null));
+new ResizeObserver(()=>drawScope(playing?Math.min(1,scopePhase):null)).observe(scope.parentElement);
+
+/* ---------------- init ---------------- */
+setPlayBtn();
+update();
+requestAnimationFrame(frame);
+setTimeout(()=>{
+  document.querySelectorAll('.hit').forEach(el=>{el.classList.add('pulse');
+    setTimeout(()=>el.classList.remove('pulse'),2000);});
+},300);
+</script>
+</body>
+</html>

@@ -7,7 +7,7 @@ hide:
 # TMC4671 Plugin Reference
 
 !!! info "Plugin getting frequent updates"
-    The TMC4671 Klipper plugin is updated frequently. This page may lag behind the plugin's code. If something here doesn't work, the [plugin README](https://github.com/andrewmcgr/tmc-4671) may help. Updated 27 JUN 2026
+    The TMC4671 Klipper plugin is updated frequently. This page may lag behind the plugin's code. If something here doesn't work, the [plugin README](https://github.com/andrewmcgr/tmc-4671) may help. Updated 11 JUL 2026
 
 ## G-Code Commands
 
@@ -249,7 +249,7 @@ When either is enabled and the corresponding biquad cutoff is not explicitly set
 | spi_bus                                                      | The name of the SPI bus TMC4671 is connected to on the MCU.  | The correct value is spi2 for Ouroboros.                     |
 | spi_speed                                                    | The speed of the SPI bus.                                    | Should not be edited.                                        |
 | current_scale_ma_lsb                                         | TMC4671 relies on external (not built-into the TMC4671 chip) current sense sensors. This setting is for setting how much sense voltage varies, based on the current sense setup used on the PCB. | Set automatically by `board_profile: Ouroboros`. Otherwise the correct value is 1.272 for Ouroboros. |
-| voltage_scale_ratio                                          | The VM supply voltage divider ratio used to convert the raw ADC reading to volts. | Ouroboros uses the same VM voltage divider as the OpenFFBoard, so the plugin's default (40.875) is correct and you don't need to set this. To verify: run `TMC_DEBUG_VOLTAGE` and check the reported VM matches your actual supply voltage. If for any reason it doesn't, recalibrate by reading raw `ADC_VM_RAW` via `DUMP_TMC` and calculating `voltage_scale_ratio = VM_actual * 13107 / (ADC_VM_RAW - 32768)`. |
+| voltage_scale_ratio                                          | The VM supply voltage divider ratio used to convert the raw ADC reading to volts. | Set automatically by `board_profile: Ouroboros` to 48.667 (matching the on-board 71.5 kΩ / 1.5 kΩ divider). The plugin's fallback default (40.875) is out of date — set the profile or set this explicitly. To verify: run `TMC_DEBUG_VOLTAGE` and check the reported VM matches your actual supply voltage. If for any reason it doesn't, recalibrate by reading raw `ADC_VM_RAW` via `DUMP_TMC` and calculating `voltage_scale_ratio = VM_actual * 13107 / (ADC_VM_RAW - 32768)`. |
 | run_current                                                  | This is the peak current used by the TMC4671 driver to make the motor move. <br/> Unlike common Klipper stepper drivers, this isn't RMS current, it's peak current, so higher values are needed here. | When a motor profile sets `rated_current`, `run_current` defaults to `rated_current × √2` automatically. For example, the `Ouroboros_Stepper` profile (`rated_current: 2.5`) produces a default `run_current` of 3.54 A. For BLDC, calculate this from the peak power dissipation, if no rated current is given, then multiply by 2.8. |
 | flux_current                                                 |                                                              |                                                              |
 | foc_motor_type                                               | This is used to let TMC4671 know what type of motor is connected to it. | 1: Single-Phase DC<br />2: Two-Phase Stepper<br />3: Three-Phase BLDC |
@@ -272,6 +272,29 @@ When either is enabled and the corresponding biquad cutoff is not explicitly set
 | diag_pin                                                     | MCU GPIO connected to the TMC4671 STATUS output for stall detection. | For Ouroboros: `^ouroboros:PE2` (X motor), `^ouroboros:PA2` (Y motor). The `^` enables the input pull-up. |
 | homing_current                                               | Current limit in A during homing moves. Stall is detected when the velocity PID demands more than this. | Typical NEMA-17 range: 0.5–1.5 A. Start at 0.5 A and tune up. |
 | homing_mask                                                  | Comma-separated list of `STATUS_FLAGS` bits that activate the STATUS pin. | Default is suitable for most installations.                  |
+
+### Bandwidth Parameters
+
+These set the target closed-loop bandwidth for each control loop, in Hz. Used by both the `TMC_TUNE_PID` / `TMC_TUNE_MOTION_PID` commands (when not overridden by command parameters) and the startup autotune (`tune_current_pid` / `tune_motion_pid`). Higher values give faster response but more noise; the defaults are safe starting points.
+
+| Parameter          | Description                                              | Default             |
+| ------------------ | -------------------------------------------------------- | ------------------- |
+| current_bandwidth  | Fallback bandwidth for the flux and torque current loops. | 1200.0              |
+| flux_bandwidth     | Bandwidth for the flux (d-axis) current loop.            | `current_bandwidth` |
+| torque_bandwidth   | Bandwidth for the torque (q-axis) current loop.          | `current_bandwidth` |
+| velocity_bandwidth | Bandwidth for the velocity loop.                         | 450.0               |
+| position_bandwidth | Bandwidth for the position loop.                         | 100.0               |
+
+### Advanced Parameters
+
+Most users should leave these alone.
+
+| Parameter                  | Description                                                  | Default |
+| -------------------------- | ------------------------------------------------------------ | ------- |
+| impedance_current_fraction | Fraction of `run_current` used as the target current during the impedance (Ld/Lq) measurement at startup. Range: 0–1. | 0.2     |
+| bandwidth_filter_ratio     | Ratio between velocity bandwidth and the auto-configured velocity biquad LPF cutoff. Must be > 2.0. | 3.0     |
+| current_filter_ratio       | Ratio between the PWM frequency and the auto-configured flux/torque biquad LPF cutoff. Must be > 0 and ≤ 0.5. | 0.4     |
+| brake_enable               | Enable the TMC4671's brake chopper output.                   | False   |
 
 ~~[More info](https://www.youtube.com/watch?v=RXJKdh1KZ0w)~~
 
