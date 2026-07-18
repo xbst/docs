@@ -51,8 +51,8 @@ theme:
       toggle:
         icon: material/weather-night
         name: Light mode
-      primary: deep purple
-      accent: deep purple
+      primary: amber
+      accent: amber
       
 extra_css:
   - assets/stylesheets/extra.css

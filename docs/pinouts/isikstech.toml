@@ -25,6 +25,7 @@ symbol_size              = 24
 hs-hover    = "rgba(255,191,0,.13)"
 hs-stroke   = "rgba(255,191,0,.5)"
 hs-active   = "rgba(255,191,0,.22)"
+bg = "f8f8f8"
 
 [colors.dark]
 hs-hover    = "rgba(255,191,0,.13)"

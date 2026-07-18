@@ -9,10 +9,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#ffffff; --text:#1a1a1a;
-  --tip-bg:#ffffff; --tip-border:#d0d0d0; --tip-shadow:rgba(0,0,0,.12);
-  --hs-hover:rgba(59,130,246,.13); --hs-stroke:rgba(59,130,246,.5);
-  --hs-active:rgba(59,130,246,.22);
+  --bg:#f8f8f8; --text:#1a1a1a;
+  --tip-bg:#f8f8f8; --tip-border:#d0d0d0; --tip-shadow:rgba(0,0,0,.12);
+  --hs-hover:rgba(255,191,0,.13); --hs-stroke:rgba(255,191,0,.5);
+  --hs-active:rgba(255,191,0,.22);
   --hint-bg:rgba(30,30,30,.75); --hint-text:#fff;
   --divider:#e5e5e5;
   --conn-body:#e8e8e0; --conn-cavity:#d0d0c8; --conn-stroke:#555;
@@ -20,16 +20,16 @@
   --desc-color:#555; --type-color:#888;
   --pair-a:#E67E22; --pair-b:#27AE60;
   --ok:#15803d; --err:#dc2626; --warn:#d97706;
-  --pulse:#3b82f6; --reflect:#dc2626;
-  --bus-glow:rgba(59,130,246,.14);
-  --scope-bg:#fafafa; --scope-grid:#e5e5e5; --scope-trace:#0284c7;
+  --pulse:#E39A00; --reflect:#dc2626;
+  --bus-glow:rgba(255,191,0,.20);
+  --scope-bg:#fafafa; --scope-grid:#e5e5e5; --scope-trace:#E39A00;
   --jumper-cap:#2C3E50;
 }
 @media(prefers-color-scheme:dark){:root{
   --bg:#131313; --text:#e0e0e0;
   --tip-bg:#1e1e1e; --tip-border:#3a3a3a; --tip-shadow:rgba(0,0,0,.4);
-  --hs-hover:rgba(96,165,250,.15); --hs-stroke:rgba(96,165,250,.5);
-  --hs-active:rgba(96,165,250,.25);
+  --hs-hover:rgba(255,191,0,.15); --hs-stroke:rgba(255,191,0,.55);
+  --hs-active:rgba(255,191,0,.26);
   --hint-bg:rgba(240,240,240,.85); --hint-text:#131313;
   --divider:#333;
   --conn-body:#3a3a35; --conn-cavity:#2e2e28; --conn-stroke:#aaa;
@@ -37,16 +37,16 @@
   --desc-color:#aaa; --type-color:#888;
   --pair-a:#F39C12; --pair-b:#2ECC71;
   --ok:#4ade80; --err:#f87171; --warn:#fbbf24;
-  --pulse:#60a5fa; --reflect:#f87171;
-  --bus-glow:rgba(96,165,250,.16);
-  --scope-bg:#0d0d0d; --scope-grid:#2a2a2a; --scope-trace:#38bdf8;
+  --pulse:#FFC21A; --reflect:#f87171;
+  --bus-glow:rgba(255,191,0,.20);
+  --scope-bg:#0d0d0d; --scope-grid:#2a2a2a; --scope-trace:#FFC21A;
   --jumper-cap:#94a3b8;
 }}
 :root[data-theme="dark"]{
   --bg:#131313; --text:#e0e0e0;
   --tip-bg:#1e1e1e; --tip-border:#3a3a3a; --tip-shadow:rgba(0,0,0,.4);
-  --hs-hover:rgba(96,165,250,.15); --hs-stroke:rgba(96,165,250,.5);
-  --hs-active:rgba(96,165,250,.25);
+  --hs-hover:rgba(255,191,0,.15); --hs-stroke:rgba(255,191,0,.55);
+  --hs-active:rgba(255,191,0,.26);
   --hint-bg:rgba(240,240,240,.85); --hint-text:#131313;
   --divider:#333;
   --conn-body:#3a3a35; --conn-cavity:#2e2e28; --conn-stroke:#aaa;
@@ -54,16 +54,16 @@
   --desc-color:#aaa; --type-color:#888;
   --pair-a:#F39C12; --pair-b:#2ECC71;
   --ok:#4ade80; --err:#f87171; --warn:#fbbf24;
-  --pulse:#60a5fa; --reflect:#f87171;
-  --bus-glow:rgba(96,165,250,.16);
-  --scope-bg:#0d0d0d; --scope-grid:#2a2a2a; --scope-trace:#38bdf8;
+  --pulse:#FFC21A; --reflect:#f87171;
+  --bus-glow:rgba(255,191,0,.20);
+  --scope-bg:#0d0d0d; --scope-grid:#2a2a2a; --scope-trace:#FFC21A;
   --jumper-cap:#94a3b8;
 }
 :root[data-theme="light"]{
-  --bg:#ffffff; --text:#1a1a1a;
-  --tip-bg:#ffffff; --tip-border:#d0d0d0; --tip-shadow:rgba(0,0,0,.12);
-  --hs-hover:rgba(59,130,246,.13); --hs-stroke:rgba(59,130,246,.5);
-  --hs-active:rgba(59,130,246,.22);
+  --bg:#f8f8f8; --text:#1a1a1a;
+  --tip-bg:#f8f8f8; --tip-border:#d0d0d0; --tip-shadow:rgba(0,0,0,.12);
+  --hs-hover:rgba(255,191,0,.13); --hs-stroke:rgba(255,191,0,.5);
+  --hs-active:rgba(255,191,0,.22);
   --hint-bg:rgba(30,30,30,.75); --hint-text:#fff;
   --divider:#e5e5e5;
   --conn-body:#e8e8e0; --conn-cavity:#d0d0c8; --conn-stroke:#555;
@@ -71,9 +71,9 @@
   --desc-color:#555; --type-color:#888;
   --pair-a:#E67E22; --pair-b:#27AE60;
   --ok:#15803d; --err:#dc2626; --warn:#d97706;
-  --pulse:#3b82f6; --reflect:#dc2626;
-  --bus-glow:rgba(59,130,246,.14);
-  --scope-bg:#fafafa; --scope-grid:#e5e5e5; --scope-trace:#0284c7;
+  --pulse:#E39A00; --reflect:#dc2626;
+  --bus-glow:rgba(255,191,0,.20);
+  --scope-bg:#fafafa; --scope-grid:#e5e5e5; --scope-trace:#E39A00;
   --jumper-cap:#2C3E50;
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -981,6 +981,40 @@ setTimeout(()=>{
   document.querySelectorAll('.hit').forEach(el=>{el.classList.add('pulse');
     setTimeout(()=>el.classList.remove('pulse'),2000);});
 },300);
+</script>
+<script>
+/* Auto-height: post the widget's ideal content height to the embedding page so
+   the pinout_embed listener sizes the iframe to fit (no empty space above/below
+   the diagram). Desktop fills width and letterboxes the fixed-aspect SVG, so we
+   compute chrome + width/aspect; the <=720px layout is already natural height,
+   so we measure scrollHeight. Only runs when embedded. */
+(function(){
+  if(window.parent===window)return;
+  var last=0;
+  function ideal(){
+    var stage=document.querySelector('.stage');
+    if(!stage)return 0;
+    if(window.matchMedia('(max-width:720px)').matches)
+      return Math.ceil(document.documentElement.scrollHeight);
+    var svg=document.getElementById('scene'),
+        vb=svg&&svg.viewBox&&svg.viewBox.baseVal,
+        r=stage.getBoundingClientRect(),
+        stageH=(vb&&vb.width)?r.width*vb.height/vb.width:r.height;
+    if(stageH<200)stageH=200;
+    return Math.ceil((window.innerHeight-r.height)+stageH);
+  }
+  function post(){
+    var h=ideal();
+    if(h>0&&Math.abs(h-last)>1){last=h;try{window.parent.postMessage({pinconnectHeight:h},'*');}catch(e){}}
+  }
+  var raf=0;
+  function schedule(){if(raf)cancelAnimationFrame(raf);raf=requestAnimationFrame(function(){raf=0;post();});}
+  window.addEventListener('resize',schedule);
+  window.addEventListener('load',schedule);
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(schedule);
+  schedule();
+  setTimeout(schedule,300);
+})();
 </script>
 </body>
 </html>
