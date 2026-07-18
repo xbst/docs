@@ -1,0 +1,15 @@
+# Generated interactive pinouts — built by CI and by regen-pinouts.ps1
+# from the board TOMLs. The TOML + isikstech theme are the source of truth.
+docs/pinouts/**/*.pinout.html
+
+# Local (Windows) pinout regeneration helper — not committed
+regen-pinouts.ps1
+
+# Zensical / MkDocs build output
+site/
+
+# Python build & cache artifacts
+__pycache__/
+*.egg-info/
+build/
+venv/

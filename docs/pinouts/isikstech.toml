@@ -1,0 +1,32 @@
+# Isik's Tech docs site PinConnect theme
+
+[theme]
+name = "isikstech"
+
+[font]
+family = "Roboto"
+source = "google"
+weights = "400;500;600"
+
+[font.label]
+family = "Roboto Mono"
+source = "google"
+weights = "400;500"
+
+[behavior]
+sidebar_default_open = true
+sidebar_max_width = 360
+sidebar_responsive_stack = true
+sidebar_stack_breakpoint = 1080
+font_scale               = 1.2
+symbol_size              = 24
+
+[colors.light]
+hs-hover    = "rgba(255,191,0,.13)"
+hs-stroke   = "rgba(255,191,0,.5)"
+hs-active   = "rgba(255,191,0,.22)"
+
+[colors.dark]
+hs-hover    = "rgba(255,191,0,.13)"
+hs-stroke   = "rgba(255,191,0,.5)"
+hs-active   = "rgba(255,191,0,.22)"
