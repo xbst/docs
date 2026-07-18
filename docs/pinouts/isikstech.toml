@@ -18,8 +18,8 @@ sidebar_default_open = true
 sidebar_max_width = 360
 sidebar_responsive_stack = true
 sidebar_stack_breakpoint = 1080
-font_scale               = 1.2
-symbol_size              = 24
+font_scale               = 1.1
+symbol_size              = 22
 
 [colors.light]
 hs-hover    = "rgba(255,191,0,.13)"
