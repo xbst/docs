@@ -1,0 +1,60 @@
+[board]
+title = "Stealthmax Microfit Port Cover"
+image = "sm3-pc-mx.png"
+width = 1920
+height = 1080
+theme = "isikstech"
+theme_dir = ".."
+
+[[connector]]
+id = "CAN1"
+name = "CAN 1"
+type = "MX-F-2R"
+x1 = 698
+y1 = 472
+x2 = 901
+y2 = 675
+
+  [[connector.pin]]
+  name = "VIN"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "CAN_H"
+  color = "#FFBF00"
+  row = 2
+
+  [[connector.pin]]
+  name = "CAN_L"
+  color = "#2ECC71"
+  row = 2
+[[connector]]
+id = "CAN2"
+name = "CAN 2"
+type = "MX-F-2R"
+x1 = 1050
+y1 = 472
+x2 = 1252
+y2 = 675
+
+  [[connector.pin]]
+  name = "VIN"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "CAN_H"
+  color = "#FFBF00"
+  row = 2
+
+  [[connector.pin]]
+  name = "CAN_L"
+  color = "#2ECC71"
+  row = 2

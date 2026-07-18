@@ -1,0 +1,258 @@
+[board]
+title = "Stealthmax PCB 3 Pinout"
+image = "sm3.png"
+width = 1200
+height = 900
+theme = "isikstech"
+theme_dir = ".."
+
+[[connector]]
+id = "SENSORS2"
+name = "Sensors 2"
+type = "PH-F"
+x1 = 107
+y1 = 214
+x2 = 302
+y2 = 312
+orientation = 180
+description = "Intake sensor connector"
+
+  [[connector.pin]]
+  name = "SDA"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "SCL"
+  color = "#1ABC9C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "RGB"
+name = "RGB LEDs"
+type = "PH-F"
+x1 = 348
+y1 = 215
+x2 = 494
+y2 = 314
+orientation = 180
+description = "ARGB (Neopixel) LED connector"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "PA0"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "UV"
+name = "UV LEDs"
+type = "PH-F"
+x1 = 545
+y1 = 215
+x2 = 655
+y2 = 314
+orientation = 180
+description = "Constant-current UV LED connector, tuned for Nevermore UV LEDs"
+
+  [[connector.pin]]
+  name = "+"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "-"
+  color = "#2C3E50"
+
+[[connector]]
+id = "SERVO"
+name = "Servo"
+type = "PH-F"
+x1 = 707
+y1 = 216
+x2 = 854
+y2 = 314
+orientation = 180
+description = "Servo connector for Stealthmax vent"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "PD0"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "SENSORS1"
+name = "Sensors 1"
+type = "PH-F"
+x1 = 900
+y1 = 216
+x2 = 1094
+y2 = 314
+orientation = 180
+description = "Exhaust sensor connector"
+
+  [[connector.pin]]
+  name = "SDA"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "SCL"
+  color = "#1ABC9C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "TH1"
+name = "Thermistor 1"
+type = "PH-F"
+x1 = 266
+y1 = 345
+x2 = 376
+y2 = 443
+description = "Thermistor Connector, 4.7k pullup"
+
+  [[connector.pin]]
+  name = "PA3"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "TH2"
+name = "Thermistor 2"
+type = "PH-F"
+x1 = 428
+y1 = 346
+x2 = 538
+y2 = 444
+description = "Thermistor Connector, 4.7k pullup"
+
+  [[connector.pin]]
+  name = "PA4"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "TH3"
+name = "Thermistor 3"
+type = "PH-F"
+x1 = 590
+y1 = 345
+x2 = 700
+y2 = 443
+description = "Thermistor Connector, 4.7k pullup"
+
+  [[connector.pin]]
+  name = "PA5"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "FAN"
+name = "Fan"
+type = "PH-F"
+x1 = 747
+y1 = 346
+x2 = 939
+y2 = 442
+description = "4-pin 24VIN fan connector"
+
+  [[connector.pin]]
+  name = "PB14"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "PB15"
+  color = "#1ABC9C"
+
+  [[connector.pin]]
+  name = "VIN"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "PLT"
+name = "Peltier"
+type = "MX-F-1R"
+x1 = 93
+y1 = 525
+x2 = 213
+y2 = 593
+description = "Peltier connector, VIN 4A"
+
+  [[connector.pin]]
+  name = "PD3"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "VIN"
+  color = "#E74C3C"
+[[connector]]
+id = "CAN+VIN"
+name = "Power & CAN"
+type = "MX-F-1R"
+x1 = 485
+y1 = 524
+x2 = 714
+y2 = 592
+description = "24V power input and CAN bus"
+
+  [[connector.pin]]
+  name = "VIN"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "CAN_H"
+  color = "#FFBF00"
+
+  [[connector.pin]]
+  name = "CAN_L"
+  color = "#2ECC71"
+[[connector]]
+id = "USB"
+name = "USB C"
+type = "USB-C"
+x1 = 948
+y1 = 544
+x2 = 1109
+y2 = 600
+description = "USB C for firmware flashing"

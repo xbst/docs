@@ -1,0 +1,36 @@
+[board]
+title = "Stealthmax XT30(2+2) Port Cover"
+image = "sm3-pc-xt30.png"
+width = 1920
+height = 1080
+theme = "isikstech"
+theme_dir = ".."
+
+[[connector]]
+id = "CAN1"
+name = "Power & CAN"
+type = "XT30-2+2"
+label_style = "flat"
+x1 = 764
+y1 = 478
+x2 = 1184
+y2 = 635
+orientation = 180
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "VIN"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "CAN_H"
+  color = "#FFBF00"
+  row = 2
+
+  [[connector.pin]]
+  name = "CAN_L"
+  color = "#2ECC71"
+  row = 2
