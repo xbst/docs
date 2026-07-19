@@ -1,0 +1,699 @@
+[board]
+title = "AFC-Lite Pinout"
+image = "afc-lite.png"
+width = 1500
+height = 1200
+theme = "isikstech"
+theme_dir = ".."
+
+[[connector]]
+id = "STP1"
+name = "Stepper 1"
+type = "XH-F"
+x1 = 227
+y1 = 183
+x2 = 403
+y2 = 266
+orientation = 180
+description = "Lane 1 stepper motor connector - Note: exact motor pinout depends on your stepstick"
+label_style = "flat"
+symbol = "motor"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#FFBF00"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#3498DB"
+
+[[connector]]
+id = "DC1"
+name = "N20 Motor 1"
+type = "XH-F"
+x1 = 1332
+y1 = 758
+x2 = 1438
+y2 = 839
+orientation = 180
+description = "Lane 1 N20 motor connector"
+label_style = "flat"
+symbol = "motor"
+
+  [[connector.pin]]
+  name = "+"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "-"
+  color = "#2C3E50"
+
+[[connector]]
+id = "SW7"
+name = "Lane 1 Load Sensor"
+type = "XH-F"
+x1 = 1121
+y1 = 926
+x2 = 1262
+y2 = 1007
+orientation = 180
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PE8"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW2"
+name = "Lane 1 Prep Sensor"
+type = "XH-F"
+x1 = 956
+y1 = 842
+x2 = 1097
+y2 = 923
+orientation = 180
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PC5"
+  color = "#9B59B6"
+
+[[connector]]
+id = "STP2"
+name = "Stepper 2"
+type = "XH-F"
+x1 = 522
+y1 = 183
+x2 = 698
+y2 = 266
+orientation = 180
+description = "Lane 2 stepper motor connector - Note: exact motor pinout depends on your stepstick"
+label_style = "flat"
+symbol = "motor"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#FFBF00"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#3498DB"
+
+[[connector]]
+id = "DC2"
+name = "N20 Motor 2"
+type = "XH-F"
+x1 = 1332
+y1 = 673
+x2 = 1438
+y2 = 754
+orientation = 180
+description = "Lane 2 N20 motor connector"
+label_style = "flat"
+symbol = "motor"
+
+  [[connector.pin]]
+  name = "+"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "-"
+  color = "#2C3E50"
+
+[[connector]]
+id = "SW8"
+name = "Lane 2 Load Sensor"
+type = "XH-F"
+x1 = 1121
+y1 = 841
+x2 = 1262
+y2 = 922
+orientation = 180
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PE9"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW3"
+name = "Lane 2 Prep Sensor"
+type = "XH-F"
+x1 = 956
+y1 = 757
+x2 = 1097
+y2 = 838
+orientation = 180
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PB0"
+  color = "#9B59B6"
+
+[[connector]]
+id = "STP3"
+name = "Stepper 3"
+type = "XH-F"
+x1 = 816
+y1 = 184
+x2 = 992
+y2 = 267
+orientation = 180
+description = "Lane 3 stepper motor connector - Note: exact motor pinout depends on your stepstick"
+label_style = "flat"
+symbol = "motor"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#FFBF00"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#3498DB"
+
+[[connector]]
+id = "DC3"
+name = "N20 Motor 3"
+type = "XH-F"
+x1 = 1332
+y1 = 589
+x2 = 1438
+y2 = 670
+orientation = 180
+description = "Lane 3 N20 motor connector"
+label_style = "flat"
+symbol = "motor"
+
+  [[connector.pin]]
+  name = "+"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "-"
+  color = "#2C3E50"
+
+[[connector]]
+id = "SW9"
+name = "Lane 3 Load Sensor"
+type = "XH-F"
+x1 = 1121
+y1 = 757
+x2 = 1262
+y2 = 838
+orientation = 180
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PE10"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW4"
+name = "Lane 3 Prep Sensor"
+type = "XH-F"
+x1 = 956
+y1 = 673
+x2 = 1097
+y2 = 754
+orientation = 180
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PB1"
+  color = "#9B59B6"
+
+[[connector]]
+id = "STP4"
+name = "Stepper 4"
+type = "XH-F"
+x1 = 1110
+y1 = 183
+x2 = 1286
+y2 = 266
+orientation = 180
+description = "Lane 4 stepper motor connector - Note: exact motor pinout depends on your stepstick"
+label_style = "flat"
+symbol = "motor"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#FFBF00"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#3498DB"
+
+[[connector]]
+id = "DC4"
+name = "N20 Motor 4"
+type = "XH-F"
+x1 = 1332
+y1 = 504
+x2 = 1438
+y2 = 585
+orientation = 180
+description = "Lane 4 N20 motor connector"
+label_style = "flat"
+symbol = "motor"
+
+  [[connector.pin]]
+  name = "+"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "-"
+  color = "#2C3E50"
+
+[[connector]]
+id = "SW10"
+name = "Lane 4 Load Sensor"
+type = "XH-F"
+x1 = 1121
+y1 = 672
+x2 = 1262
+y2 = 753
+orientation = 180
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PE11"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW5"
+name = "Lane 4 Prep Sensor"
+type = "XH-F"
+x1 = 956
+y1 = 588
+x2 = 1097
+y2 = 669
+orientation = 180
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PB2"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW1"
+name = "Hub Sensor"
+type = "XH-F"
+x1 = 956
+y1 = 925
+x2 = 1097
+y2 = 1006
+orientation = 180
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PC4"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW11"
+name = "Turtleneck Advance Sensor"
+type = "XH-F"
+x1 = 1121
+y1 = 588
+x2 = 1262
+y2 = 669
+orientation = 180
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PE12"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW12"
+name = "Turtleneck Trailing Sensor"
+type = "XH-F"
+x1 = 1121
+y1 = 504
+x2 = 1262
+y2 = 585
+orientation = 180
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PE13"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW6"
+name = "Aux Sensor"
+type = "XH-F"
+x1 = 956
+y1 = 504
+x2 = 1097
+y2 = 585
+orientation = 180
+description = "Spare"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PE7"
+  color = "#9B59B6"
+
+[[connector]]
+id = "RGB1"
+name = "Light Box ARGB LEDs"
+type = "XH-F"
+x1 = 792
+y1 = 758
+x2 = 932
+y2 = 839
+orientation = 180
+symbol = "led"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "PE14"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "RGB2"
+name = "Corner ARGB LEDs"
+type = "XH-F"
+x1 = 792
+y1 = 673
+x2 = 932
+y2 = 754
+orientation = 180
+description = "Optional"
+symbol = "led"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "PE12"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "RGB3"
+name = "Aux ARGB LEDs 1"
+type = "XH-F"
+x1 = 792
+y1 = 588
+x2 = 932
+y2 = 669
+orientation = 180
+description = "Spare"
+symbol = "led"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "PB10"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "RGB4"
+name = "Aux ARGB LEDs 2"
+type = "XH-F"
+x1 = 792
+y1 = 504
+x2 = 932
+y2 = 585
+orientation = 180
+description = "Spare"
+symbol = "led"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "PB11"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "FAN"
+name = "Fan Connector"
+type = "XH-F"
+x1 = 826
+y1 = 924
+x2 = 933
+y2 = 1008
+orientation = 180
+description = "Always-on fan connector, 5V"
+symbol = "fan"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "USB"
+name = "USB C In"
+type = "USB-C"
+x1 = 678
+y1 = 935
+x2 = 809
+y2 = 986
+description = "USB C connector for USB data"
+symbol = "usb"
+
+[[connector]]
+id = "VIN"
+name = "VIN & CAN"
+type = "MX-F-2R"
+x1 = 186
+y1 = 900
+x2 = 281
+y2 = 993
+orientation = 180
+description = "12-24VIN & CAN in - VIN needs to be connected even if you use USB for data"
+symbol = "lightning"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "VIN"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "CAN_L"
+  color = "#2ECC71"
+  row = 2
+
+  [[connector.pin]]
+  name = "CAN_H"
+  color = "#FFBF00"
+  row = 2
+
+[[connector]]
+id = "CT"
+name = "CAN Termination"
+type = "HDR-254"
+x1 = 320
+y1 = 900
+x2 = 354
+y2 = 969
+orientation = 270
+description = "CAN termination jumper - Populate if at the end of the CAN bus"
+symbol = "gear"
+
+  [[connector.pin]]
+  name = "120R > L"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "CAN_H"
+  color = "#FFBF00"
+
+[[connector]]
+id = "SW"
+name = "5V_SOURCE Switch"
+type = "slide-switch"
+x1 = 480
+y1 = 910
+x2 = 656
+y2 = 1005
+description = "Always set to \"BUCK\" including when using USB data"
+symbol = "gear"
+
+  [[connector.pin]]
+  name = "BUCK"
+
+  [[connector.pin]]
+  name = "USB"
+
+[[connector]]
+id = "B"
+name = "BOOT Button"
+type = "button"
+x1 = 507
+y1 = 808
+x2 = 557
+y2 = 848
+description = "If held during reset or power-on, makes the STM32 MCU enter DFU mode (firmware flashing)"
+symbol = "gear"
+
+[[connector]]
+id = "R"
+name = "RESET Button"
+type = "button"
+x1 = 579
+y1 = 808
+x2 = 629
+y2 = 847
+description = "Resets the STM32 MCU"
+symbol = "gear"
