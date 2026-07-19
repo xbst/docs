@@ -1,0 +1,370 @@
+[board]
+title = "Birds' Nest (USB) Pinout"
+image = "bnu.png"
+width = 1738
+height = 1242
+theme = "isikstech"
+theme_dir = ".."
+
+[[connector]]
+id = "VIN"
+name = "VIN Connector"
+type = "ST-508"
+x1 = 263
+y1 = 774
+x2 = 467
+y2 = 939
+description = "VIN screw terminal powering all your CAN devices - 20A max"
+label_style = "flat"
+symbol = "lightning"
+
+  [[connector.pin]]
+  name = "VIN"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "OUT"
+name = "Toolhead Pinouts"
+type = "MX-F-2R"
+x1 = 288
+y1 = 282
+x2 = 1488
+y2 = 448
+description = "Pinout of all toolhead connectors"
+symbol = "data"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "VIN"
+  color = "#E74C3C"
+  row = 2
+
+  [[connector.pin]]
+  name = "D-"
+  color = "#2ECC71"
+  row = 2
+
+  [[connector.pin]]
+  name = "D+"
+  color = "#FFBF00"
+  row = 2
+
+[[connector]]
+id = "FS1"
+name = "Filament Sensor 1"
+type = "XH-F"
+x1 = 716
+y1 = 786
+x2 = 806
+y2 = 944
+orientation = 90
+description = "Filament sensor for lane 1"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "PB4"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "FS2"
+name = "Filament Sensor 2"
+type = "XH-F"
+x1 = 809
+y1 = 786
+x2 = 899
+y2 = 944
+orientation = 90
+description = "Filament sensor for lane 2"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "PB5"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "FS3"
+name = "Filament Sensor 3"
+type = "XH-F"
+x1 = 903
+y1 = 786
+x2 = 993
+y2 = 944
+orientation = 90
+description = "Filament sensor for lane 3"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "PB6"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "FS4"
+name = "Filament Sensor 4"
+type = "XH-F"
+x1 = 997
+y1 = 786
+x2 = 1087
+y2 = 944
+orientation = 90
+description = "Filament sensor for lane 4"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "PB7"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "FS5"
+name = "Filament Sensor 5"
+type = "XH-F"
+x1 = 1091
+y1 = 787
+x2 = 1181
+y2 = 945
+orientation = 90
+description = "Filament sensor for lane 5"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "PB8"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "FS6"
+name = "Filament Sensor 6"
+type = "XH-F"
+x1 = 1185
+y1 = 787
+x2 = 1275
+y2 = 945
+orientation = 90
+description = "Filament sensor for lane 6"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "PB9"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "RGB1"
+name = "ARGB LEDs 1"
+type = "XH-F"
+x1 = 347
+y1 = 564
+x2 = 500
+y2 = 652
+description = "You can connect ARGB LEDs (Neopixels) here - Power is drawn from Pi/SBC, don't use for long LED strips"
+symbol = "led"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "PD3"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "RGB2"
+name = "ARGB LEDs 2"
+type = "XH-F"
+x1 = 347
+y1 = 660
+x2 = 500
+y2 = 748
+description = "You can connect ARGB LEDs (Neopixels) here - Power is drawn from Pi/SBC, don't use for long LED strips"
+symbol = "led"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "PB3"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "TH1"
+name = "Thermistor 1"
+type = "XH-F"
+x1 = 470
+y1 = 758
+x2 = 586
+y2 = 848
+orientation = 180
+description = "Optional thermistor connector"
+symbol = "temperature"
+
+  [[connector.pin]]
+  name = "PA6"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "TH2"
+name = "Thermistor 2"
+type = "XH-F"
+x1 = 470
+y1 = 853
+x2 = 586
+y2 = 943
+orientation = 180
+description = "Optional thermistor connector"
+symbol = "temperature"
+
+  [[connector.pin]]
+  name = "PA7"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "TH3"
+name = "Thermistor 3"
+type = "XH-F"
+x1 = 590
+y1 = 758
+x2 = 706
+y2 = 848
+orientation = 180
+description = "Optional thermistor connector"
+symbol = "temperature"
+
+  [[connector.pin]]
+  name = "PA2"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "TH4"
+name = "Thermistor 4"
+type = "XH-F"
+x1 = 590
+y1 = 853
+x2 = 706
+y2 = 943
+orientation = 180
+description = "Optional thermistor connector"
+symbol = "temperature"
+
+  [[connector.pin]]
+  name = "PA3"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "R"
+name = "RESET"
+type = "button"
+x1 = 879
+y1 = 582
+x2 = 922
+y2 = 632
+orientation = 90
+description = "Resets the STM32 MCU"
+symbol = "gear"
+
+[[connector]]
+id = "B"
+name = "BOOT"
+type = "button"
+x1 = 878
+y1 = 693
+x2 = 921
+y2 = 743
+orientation = 90
+description = "If held during reset or power-on, makes the STM32 MCU enter DFU mode (firmware flashing)"
+symbol = "gear"
+
+[[connector]]
+id = "USB"
+name = "USB C In"
+type = "USB-C"
+x1 = 1297
+y1 = 840
+x2 = 1436
+y2 = 954
+description = "USB C connector connected to your Klipper host"
+symbol = "usb"
