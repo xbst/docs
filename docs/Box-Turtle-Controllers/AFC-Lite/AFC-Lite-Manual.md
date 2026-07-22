@@ -122,6 +122,6 @@ Klipper config and other software needed can be found on Armored Turtle's AFC Kl
 
     No. However it makes firmware flashing much easier. To avoid confusion, this manual only covers CAN with Katapult.
 
-6. <u>What are common stepper motor pinouts? </u>
+6. <u>What are common stepper motor pinouts?</u>
 
     This depends on your specific stepstick, common pinouts are AABB and BAAB.
