@@ -19,19 +19,19 @@ label_style = "flat"
 symbol = "lightning"
 
   [[connector.pin]]
-  name = "M1_A"
+  name = "A"
   color = "#2C3E50"
 
   [[connector.pin]]
-  name = "M1_B"
+  name = "B"
   color = "#2ECC71"
 
   [[connector.pin]]
-  name = "M1_C"
+  name = "C"
   color = "#E74C3C"
 
   [[connector.pin]]
-  name = "M1_D"
+  name = "D"
   color = "#3498DB"
 
   [[connector.pin]]
@@ -43,19 +43,19 @@ symbol = "lightning"
   color = "#2C3E50"
 
   [[connector.pin]]
-  name = "M2_A"
+  name = "A"
   color = "#2C3E50"
 
   [[connector.pin]]
-  name = "M2_B"
+  name = "B"
   color = "#2ECC71"
 
   [[connector.pin]]
-  name = "M2_C"
+  name = "C"
   color = "#E74C3C"
 
   [[connector.pin]]
-  name = "M2_D"
+  name = "D"
   color = "#3498DB"
 
 [[connector]]

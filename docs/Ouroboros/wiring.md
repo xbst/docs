@@ -22,11 +22,11 @@ Make sure the `MCU_PWR` switch is set to `BUCK`. This switch is meant to be set 
 <img align="right" width="300" height="300" src="/../assets/ouroboros/stepper-coils.PNG">
 Refer to your motor's datasheet to find its wire colors for each coil. It will look similar to the image on the right. 
 
-|         | Black | Green | Red  | Blue |
-| ------- | ----- | ----- | ---- | ---- |
-| Pinout  | A     | C     | B    | D    |
-| Stepper | A1    | A2    | B1   | B2   |
-| BLDC    | U     | V     | W    | -    |
+|         | Black  | Green  | Red    | Blue   |
+| ------- | ------ | ------ | ------ | ------ |
+| Pinout  | A      | B      | C      | D      |
+| Stepper | A1 / A | A2 / C | B1 / B | B2 / D |
+| BLDC    | U      | V      | W      | -      |
 
 !!! warning "Wire Colors"
     There's no standard for motor wire colors, so your motor wire colors may differ. Make sure to refer to the pinout below to make sure your motors are wired correctly.
