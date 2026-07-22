@@ -1,0 +1,390 @@
+[board]
+title = "Ouroboros Pinout"
+image = "ouroboros.png"
+width = 1600
+height = 1600
+theme = "isikstech"
+theme_dir = ".."
+
+[[connector]]
+id = "ST"
+name = "Screw Terminal"
+type = "ST-BR-950"
+x1 = 310
+y1 = 1203
+x2 = 1300
+y2 = 1380
+description = "24-48VIN & motor power connections"
+label_style = "flat"
+symbol = "lightning"
+
+  [[connector.pin]]
+  name = "M1_A"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "M1_B"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "M1_C"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "M1_D"
+  color = "#3498DB"
+
+  [[connector.pin]]
+  name = "VIN"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "M2_A"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "M2_B"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "M2_C"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "M2_D"
+  color = "#3498DB"
+
+[[connector]]
+id = "HALL1"
+name = "Hall Effect Encoder 1"
+type = "XH-F"
+x1 = 306
+y1 = 238
+x2 = 458
+y2 = 297
+orientation = 180
+symbol = "button"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "YW"
+  color = "#FFBF00"
+
+  [[connector.pin]]
+  name = "V"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "UX"
+  color = "#3498DB"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "ENC1"
+name = "Optical Encoder 1"
+type = "XH-F"
+x1 = 231
+y1 = 322
+x2 = 458
+y2 = 381
+orientation = 180
+description = "If your encoder is differential, wire + wires to the data pin and - wires to GND"
+symbol = "button"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#3498DB"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "Z"
+  color = "#FFBF00"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "AENC1"
+name = "Analog Encoder 1"
+type = "XH-F"
+x1 = 231
+y1 = 404
+x2 = 458
+y2 = 463
+orientation = 180
+symbol = "button"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "UX-"
+  color = "#FFFFFF"
+
+  [[connector.pin]]
+  name = "UX+"
+  color = "#3498DB"
+
+  [[connector.pin]]
+  name = "VN-"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "VN+"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "YW-"
+
+  [[connector.pin]]
+  name = "YW+"
+  color = "#FFBF00"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "HALL2"
+name = "Hall Effect Encoder 2"
+type = "XH-F"
+x1 = 1153
+y1 = 238
+x2 = 1305
+y2 = 297
+orientation = 180
+symbol = "button"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "YW"
+  color = "#FFBF00"
+
+  [[connector.pin]]
+  name = "V"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "UX"
+  color = "#3498DB"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "ENC2"
+name = "Optical Encoder 2"
+type = "XH-F"
+x1 = 1153
+y1 = 322
+x2 = 1380
+y2 = 381
+orientation = 180
+description = "If your encoder is differential, wire + wires to the data pin and - wires to GND"
+symbol = "button"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#3498DB"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "Z"
+  color = "#FFBF00"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "AENC2"
+name = "Analog Encoder 2"
+type = "XH-F"
+x1 = 1153
+y1 = 404
+x2 = 1380
+y2 = 463
+orientation = 180
+symbol = "button"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "UX-"
+  color = "#FFFFFF"
+
+  [[connector.pin]]
+  name = "UX+"
+  color = "#3498DB"
+
+  [[connector.pin]]
+  name = "VN-"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "VN+"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "YW-"
+
+  [[connector.pin]]
+  name = "YW+"
+  color = "#FFBF00"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "SW1"
+name = "Endstop 1"
+type = "XH-F"
+x1 = 462
+y1 = 239
+x2 = 563
+y2 = 296
+orientation = 180
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PD7"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW2"
+name = "Endstop 2"
+type = "XH-F"
+x1 = 463
+y1 = 322
+x2 = 564
+y2 = 379
+orientation = 180
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PB3"
+  color = "#9B59B6"
+
+[[connector]]
+id = "USB"
+name = "USB C In"
+type = "USB-C"
+x1 = 762
+y1 = 213
+x2 = 850
+y2 = 285
+description = "USB C connector for USB data"
+symbol = "usb"
+
+[[connector]]
+id = "SW"
+name = "MCU_PWR Switch"
+type = "slide-switch"
+x1 = 919
+y1 = 224
+x2 = 1053
+y2 = 284
+description = "Always set to \"BUCK\""
+label_style = "flat"
+symbol = "gear"
+
+  [[connector.pin]]
+  name = "BUCK"
+
+  [[connector.pin]]
+  name = "USB"
+
+[[connector]]
+id = "B"
+name = "BOOT Button"
+type = "button"
+x1 = 526
+y1 = 529
+x2 = 561
+y2 = 558
+description = "If held during reset or power-on, makes the STM32 MCU enter DFU mode (firmware flashing)"
+symbol = "gear"
+
+[[connector]]
+id = "R"
+name = "RESET Button"
+type = "button"
+x1 = 577
+y1 = 530
+x2 = 612
+y2 = 558
+description = "Resets the STM32 MCU"
+symbol = "gear"
