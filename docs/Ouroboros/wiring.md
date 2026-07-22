@@ -17,10 +17,10 @@ hide:
 
 Make sure the `MCU_PWR` switch is set to `BUCK`. This switch is meant to be set to `BUCK` during normal operation. The `USB` setting is for firmware flashing without power connected to VIN. You won't need this setting when following this documentation.
 
-### Motor Power Wires
+### Motor Power & Encoder Wires
 
 <img align="right" width="300" height="300" src="/../assets/ouroboros/stepper-coils.PNG">
-Refer to your stepper motor's datasheet to find its wire colors for each coil. It will look similar to the image on the right. 
+Refer to your motor's datasheet to find its wire colors for each coil. It will look similar to the image on the right. 
 
 |         | Black | Green | Red  | Blue |
 | ------- | ----- | ----- | ---- | ---- |
