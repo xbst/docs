@@ -25,8 +25,8 @@ If you have BLDC motors, follow the BLDC document instead. (coming soon)
 
 You need:
 
-- Ouroboros installed in your printer and wired up. See the [Mount & Wiring](../wiring/) page.
-- The TMC4671 plugin installed. See the [Firmware Setup](../Firmware-Setup/) page.
+- Ouroboros installed in your printer and wired up. See the [Mount & Wiring](./wiring/) page.
+- The TMC4671 plugin installed. See the [Firmware Setup](./Firmware-Setup/) page.
 - Encoder steppers physically connected to Ouroboros (phase wires + encoder cable), but **not mounted on your gantry yet**. We'll mount them after the first round of tuning.
 
 This guide defaults to **Ouroboros Steppers**. If you have a different motor, you can find more info about using other steppers in the [Other Motors](#other-motors) section at the bottom of this page. Just replace `Ouroboros_Stepper` with your motor in the config.
@@ -134,7 +134,7 @@ Check:
     foc_abn_direction: 0
     ```
     
-    `FIRMWARE_RESTART` and test again. If that also doesn't work, double-check your encoder cable wiring against the [Mount & Wiring](../wiring/) page — an A↔B swap or polarity inversion will produce these symptoms.
+    `FIRMWARE_RESTART` and test again. If that also doesn't work, double-check your encoder cable wiring against the [Mount & Wiring](./wiring/) page — an A↔B swap or polarity inversion will produce these symptoms.
 
 ## Step 4: Save & Mount
 
@@ -238,11 +238,11 @@ Final position accuracy.
 4. Test moves and listen / watch for the symptoms in the tables.
 5. Adjust again.
 
-You can also use the plugin's tuning commands by hand — see the [Plugin Reference](../Plugin-Reference/) page for `TMC_TUNE_PID`, `TMC_TUNE_MOTION_PID`, and the per-loop `BANDWIDTH` parameters.
+You can also use the plugin's tuning commands by hand — see the [Plugin Reference](./Plugin-Reference/) page for `TMC_TUNE_PID`, `TMC_TUNE_MOTION_PID`, and the per-loop `BANDWIDTH` parameters.
 
 ### Live biquad tuning
 
-Biquad filter frequencies smooth out the measured currents and velocity. The autotune sets them to reasonable values, but you can experiment live (no restart required) with `SET_TMC_BIQUAD_FILTER`. See the [Plugin Reference](../Plugin-Reference/) for details. Rough guidance:
+Biquad filter frequencies smooth out the measured currents and velocity. The autotune sets them to reasonable values, but you can experiment live (no restart required) with `SET_TMC_BIQUAD_FILTER`. See the [Plugin Reference](./Plugin-Reference/) for details. Rough guidance:
 
 - `biquad_flux_frequency`: around 800 Hz for typical NEMA-17.
 - `biquad_torque_frequency`: around 1600 Hz.

@@ -339,7 +339,7 @@ Biquad filters were already calculated in the previous steps:
 
 You can now enter these in the config, or uncomment the lines, and `FIRMWARE_RESTART`.
 
-You can also experiment with biquad values live (no restart required) using `SET_TMC_BIQUAD_FILTER` — see the [Plugin Reference](../gibberish/) page. Change your biquad filter values in the config, save then `FIRMWARE_RESTART` once you've found values you like.
+You can also experiment with biquad values live (no restart required) using `SET_TMC_BIQUAD_FILTER` — see the [Plugin Reference](./gibberish/) page. Change your biquad filter values in the config, save then `FIRMWARE_RESTART` once you've found values you like.
 
 ## Fine Tuning
 

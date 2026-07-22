@@ -5,7 +5,7 @@ hide:
 
 # Nevermore Stealthmax PCB 3
 
-<img src="https://raw.githubusercontent.com/xbst/Stealthmax-PCB-3/refs/heads/master/Images/PCB.jpg" width="600"/>
+<img src="../assets/nevermore/SM3.jpg" width="600"/>
 
 Controller PCB for the [Nevermore Stealthmax v2](https://github.com/nevermore3d/Stealthmax_V2) air filter.
 
@@ -38,17 +38,17 @@ Below are all the printed parts you can print for your Nevermore Stealthmax PCB 
 
 All internal connectors except peltier are JST-PH, peltier is MX3.0. The CAN/VIN connector is also MX3.0.
 
-![Pinout](../../pinouts/sm3/sm3.pinout.html){ type=application/pinout style="min-height:60vh;width:100%" }
+![Pinout](../pinouts/sm3/sm3.pinout.html){ type=application/pinout style="min-height:60vh;width:100%" }
 
 There's a slide switch on the bottom side. Slide it left (toward the "Power & CAN" connector) to terminate the CAN bus (120 Ohm resistor).
 
 ### Port Cover Pinouts
 
 #### Micro-Fit CAN Daisy-Chain Port Cover
-![Pinout](../../pinouts/sm3-pc-mx/sm3-pc-mx.pinout.html){ type=application/pinout style="min-height:50vh;width:100%" }
+![Pinout](../pinouts/sm3-pc-mx/sm3-pc-mx.pinout.html){ type=application/pinout style="min-height:50vh;width:100%" }
 
 #### XT30(2+2) CAN Port Cover
-![Pinout](../../pinouts/sm3-pc-xt30/sm3-pc-xt30.pinout.html){ type=application/pinout style="min-height:50vh;width:100%" }
+![Pinout](../pinouts/sm3-pc-xt30/sm3-pc-xt30.pinout.html){ type=application/pinout style="min-height:50vh;width:100%" }
 
 ## Next Steps
 
