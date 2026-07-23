@@ -123,14 +123,14 @@ nav:
     - "Store Page": "https://store.isiks.tech/products/hedgehog"
   - "KUSBA":
     - KUSBA:
-      - "Instructions": "https://github.com/xbst/KUSBA/blob/main/Docs/v2-Rampon-Firmware.md"
+      - "Instructions": "KUSBA/KUSBA-manual.md"
       - "GitHub Repository": "https://github.com/xbst/KUSBA/"
       - "Store Page": "https://store.isiks.tech/products/kusba-klipper-usb-accelerometer"
     - KUSBA Pro:
       - "Instructions":
-        - "LIS2DW Instructions": "KUSBA-USB-Accelerometers/KUSBA-Pro/Instructions/LIS2DW.md"
-        - "ADXL345 Instructions": "KUSBA-USB-Accelerometers/KUSBA-Pro/Instructions/ADXL345.md"
-        - "Mount Assembly": "KUSBA-USB-Accelerometers/KUSBA-Pro/Instructions/Mount.md"
+        - "LIS2DW Instructions": "KUSBA/KUSBA-Pro/LIS2DW.md"
+        - "ADXL345 Instructions": "KUSBA/KUSBA-Pro/ADXL345.md"
+        - "Mount Assembly": "KUSBA/KUSBA-Pro/Mount.md"
       - "GitHub Repository": "https://github.com/xbst/KUSBA-PRO/"
       - "Store Page": "https://store.isiks.tech/products/KUSBA-PRO"
   - "Nevermore Electronics":

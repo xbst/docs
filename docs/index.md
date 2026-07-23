@@ -59,7 +59,7 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
       <td colspan="2">A nozzle USB accelerometer designed for Klipper's input shaping. Unique nozzle clamp mechanism makes measuring resonances at the nozzle much easier.</td>
       </tr>
     <tr>
-      <th width="12.5%"><a href="https://github.com/xbst/KUSBA">Docs</a></th>
+      <th width="12.5%"><a href="./KUSBA/KUSBA-manual.md">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/kusba-klipper-usb-accelerometer">Store</a></th>
       <th width="12.5%"><a href="https://github.com/xbst/KUSBA-PRO">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/kusba-pro">Store</a></th>
@@ -133,7 +133,7 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
     </tr>
     <tr><th colspan="6" style="font-size: 32px">Other</th></tr>
     <tr>
-      <td width="25%" rowspan="3"><img src="../assets/hedgehog/square.jpg"></td>
+      <td width="25%" rowspan="3"><img src="./assets/hedgehog/square.jpg"></td>
       <th colspan="2" style="font-size: 24px">Hedgehog</th>
       <td width="25%" rowspan="3"></td>
       <th colspan="2" style="font-size: 24px"></th>
