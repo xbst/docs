@@ -29,4 +29,10 @@ Choose your PCB below for mount and wiring instructions, or continue to [Firmwar
 
 ## Resellers
 
-To be updated after Stealthmax PCB 3 release.
+| Reseller                   | Region         | Stealthmax Bundle                                            | Stealthmax PCB 3                                             | Stealthmax Port Cover                                        | Nevermore Sensors                                            |
+| -------------------------- | -------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Isik's Tech Official Store | United States  | [Stealthmax Bundle](https://store.isiks.tech/products/nevermore-stealthmax-v2-bundle) | [Stealthmax PCB 3](https://store.isiks.tech/products/nevermore-stealthmax-pcb-3) | [Stealthmax Port Cover](https://store.isiks.tech/products/bme280-sgp40-air-quality-sensors-for-nevermore-air-filters) | [Nevermore Sensors](https://store.isiks.tech/products/nevermore-stealthmax-pcb-3-can-port-covers) |
+| West 3D                    | United States  |                                                              | [Stealthmax PCB 3](https://west3d.com/products/isiks-tech-nevermore-stealthmax-3-pcb) | [Stealthmax Port Cover](https://west3d.com/products/nevermore-sensor-bme280-sgp40-air-quality-sensors-for-nevermore-air-filters-pcb-by-isiks-tech) | [Nevermore Sensors](https://west3d.com/products/nevermore-stealthmax-pcb-3-can-port-covers-isiks-tech?_pos=1&_psq=port+cover&_psid=cfd6d573e&_ss=e) |
+| OneTwo3D                   | United Kingdom |                                                              | [Stealthmax PCB 3](https://www.onetwo3d.co.uk/product/nevermore-stealthmax-pcb-3/) | [Stealthmax Port Cover](https://www.onetwo3d.co.uk/product/nevermore-stealthmax-port-cover/) |                                                              |
+| DREMC (Coming Soon)        | Australia      |                                                              | ~~[Stealthmax PCB 3](.)~~                                    | ~~[Stealthmax Port Cover](.)~~                               |                                                              |
+
