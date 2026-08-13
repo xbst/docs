@@ -146,7 +146,7 @@ nav:
     - "Store Pages":
       - "Nevermore Max PCB": "https://store.isiks.tech/products/nevermore-max-controller-pcb"
       - "Nevermore Mini & Stealthmax PCB": "https://store.isiks.tech/products/nevermore-stealthmax-pcb"
-      - "Nevermore Stealthmax PCB 2": "https://store.isiks.tech/products/nevermore-stealthmax-2-pcb"
+      - "Nevermore Stealthmax PCB 3": "https://store.isiks.tech/products/nevermore-stealthmax-pcb-3"
       - "Nevermore Sensors": "https://store.isiks.tech/products/bme280-sgp40-air-quality-sensors-for-nevermore-air-filters"
   - "PiCAN":
     - "GitHub Repository (Instructions)": "https://github.com/xbst/PiCAN"
