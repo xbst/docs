@@ -35,4 +35,4 @@ All internal connectors except peltier are JST-PH, peltier is MX3.0. The CAN/VIN
 
 ## Next Steps
 
-Proceed to [Firmware & Software Setup](Firmware-Setup.md) for flashing instructions, SGP40 plugin installation, and Klipper config.
+Proceed to [Firmware & Software Setup](firmware-setup.md) for flashing instructions, SGP40 plugin installation, and Klipper config.

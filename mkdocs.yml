@@ -79,7 +79,32 @@ markdown_extensions:
 plugins:
   - redirects:
       redirect_maps:
-        Ouroboros/gibberish.md: Ouroboros/Plugin-Reference.md
+        Ouroboros/gibberish.md: ouroboros/plugin-reference.md
+        Birds-Nests/Birds-Nest/Birds-Nest-Manual.md: birds-nest/usb/manual.md
+        Birds-Nests/Birds-Nest-CAN/Birds-Nest-CAN-Manual.md: birds-nest/can/manual.md
+        Box-Turtle-Controllers/AFC-Lite/AFC-Lite-Manual.md: box-turtle/afc-lite/manual.md
+        Box-Turtle-Controllers/AFC-Pro/AFC-Pro-Manual.md: box-turtle/afc-pro/manual.md
+        Hedgehog/Hedgehog.md: hedgehog/manual.md
+        KUSBA/KUSBA-manual.md: kusba/manual.md
+        KUSBA/KUSBA-Pro/ADXL345.md: kusba/pro/adxl345.md
+        KUSBA/KUSBA-Pro/LIS2DW.md: kusba/pro/lis2dw.md
+        KUSBA/KUSBA-Pro/Mount.md: kusba/pro/mount.md
+        MOAR_CAN/MOAR_CAN-Manual.md: moar-can/manual.md
+        Nevermore/Controller.md: nevermore/controller.md
+        Nevermore/Firmware-Setup.md: nevermore/firmware-setup.md
+        Nevermore/Max-2-PCB.md: nevermore/max-2-pcb.md
+        Nevermore/SM-PCB.md: nevermore/sm-pcb.md
+        Nevermore/SM2-PCB.md: nevermore/sm2-pcb.md
+        Nevermore/SM3-PCB.md: nevermore/sm3-pcb.md
+        Ouroboros/Beta1-Stepper-Calibration.md: ouroboros/beta1-stepper-calibration.md
+        Ouroboros/Firmware-Setup.md: ouroboros/firmware-setup.md
+        Ouroboros/IT.md: ouroboros/it.md
+        Ouroboros/Plugin-Reference.md: ouroboros/plugin-reference.md
+        Ouroboros/Sensorless-Homing.md: ouroboros/sensorless-homing.md
+        Ouroboros/Stepper-Calibration.md: ouroboros/stepper-calibration.md
+        Ouroboros/wiring.md: ouroboros/wiring.md
+        ToqueCAN/ToqueCAN-Manual.md: toquecan/manual.md
+        PiCAN.md: pican.md
 
 extra:
   generator: false
@@ -107,46 +132,46 @@ nav:
   - index.md
   - "Birds' Nest Boards":
     - "Birds' Nest (USB)":
-      - "Manual": "Birds-Nests/Birds-Nest/Birds-Nest-Manual.md"
+      - "Manual": "birds-nest/usb/manual.md"
       - "GitHub Repository": "https://github.com/xbst/Birds-Nest/"
       - "Store Page": "https://store.isiks.tech/products/birds-nest"
     - "Birds' Nest CAN":
-      - "Manual": "Birds-Nests/Birds-Nest-CAN/Birds-Nest-CAN-Manual.md"
+      - "Manual": "birds-nest/can/manual.md"
       - "GitHub Repository": "https://github.com/xbst/Birds-Nest-CAN/"
       - "Store Page": "https://store.isiks.tech/products/birds-nest-CAN"
   - "Box Turtle Controllers":
     - "AFC-Lite":
-      - "Manual": "Box-Turtle-Controllers/AFC-Lite/AFC-Lite-Manual.md"
+      - "Manual": "box-turtle/afc-lite/manual.md"
       - "GitHub Repository": "https://github.com/xbst/AFC-Lite/"
       - "Store Page": "https://store.isiks.tech/products/AFC-Lite"
     - "AFC-Pro":
-      - "Manual": "Box-Turtle-Controllers/AFC-Pro/AFC-Pro-Manual.md"
+      - "Manual": "box-turtle/afc-pro/manual.md"
       - "GitHub Repository": "https://github.com/xbst/AFC-Pro/"
       - "Store Page": "https://store.isiks.tech/products/AFC-Pro"
   - "Hedgehog":
-    - "Manual": "Hedgehog/Hedgehog.md"
+    - "Manual": "hedgehog/manual.md"
     - "Store Page": "https://store.isiks.tech/products/hedgehog"
   - "KUSBA":
     - KUSBA:
-      - "Instructions": "KUSBA/KUSBA-manual.md"
+      - "Instructions": "kusba/manual.md"
       - "GitHub Repository": "https://github.com/xbst/KUSBA/"
       - "Store Page": "https://store.isiks.tech/products/kusba-klipper-usb-accelerometer"
     - KUSBA Pro:
       - "Instructions":
-        - "LIS2DW Instructions": "KUSBA/KUSBA-Pro/LIS2DW.md"
-        - "ADXL345 Instructions": "KUSBA/KUSBA-Pro/ADXL345.md"
-        - "Mount Assembly": "KUSBA/KUSBA-Pro/Mount.md"
+        - "LIS2DW Instructions": "kusba/pro/lis2dw.md"
+        - "ADXL345 Instructions": "kusba/pro/adxl345.md"
+        - "Mount Assembly": "kusba/pro/mount.md"
       - "GitHub Repository": "https://github.com/xbst/KUSBA-PRO/"
       - "Store Page": "https://store.isiks.tech/products/KUSBA-PRO"
   - "Nevermore Electronics":
     - "Nevermore PCBs":
-      - "Nevermore PCBs": "Nevermore/Controller.md"
+      - "Nevermore PCBs": "nevermore/controller.md"
       - "Mounts & Wiring":
-        - "Max 2 PCB": "Nevermore/Max-2-PCB.md"
-        - "Mini & Stealthmax PCB": "Nevermore/SM-PCB.md"
-        - "Stealthmax PCB 2": "Nevermore/SM2-PCB.md"
-        - "Stealthmax PCB 3": "Nevermore/SM3-PCB.md"
-      - "Firmware & Software Setup": "Nevermore/Firmware-Setup.md"
+        - "Max 2 PCB": "nevermore/max-2-pcb.md"
+        - "Mini & Stealthmax PCB": "nevermore/sm-pcb.md"
+        - "Stealthmax PCB 2": "nevermore/sm2-pcb.md"
+        - "Stealthmax PCB 3": "nevermore/sm3-pcb.md"
+      - "Firmware & Software Setup": "nevermore/firmware-setup.md"
     - "Nevermore BME280 & SGP40 Sensors": "https://github.com/xbst/Nevermore-Sensors"
     - "Store Pages":
       - "Nevermore Max PCB": "https://store.isiks.tech/products/nevermore-max-controller-pcb"
@@ -157,19 +182,19 @@ nav:
     - "GitHub Repository (Instructions)": "https://github.com/xbst/PiCAN"
     - "Store Page": "https://store.isiks.tech/products/pican-usb-to-can-bus-adapter"
   - "ToqueCAN":
-    - "Manual": "ToqueCAN/ToqueCAN-Manual.md"
+    - "Manual": "toquecan/manual.md"
     - "GitHub Repository": "https://github.com/xbst/ToqueCAN/"
     - "Store Page": "https://store.isiks.tech/products/toquecan"
   - "MOAR_CAN":
-    - "Manual": "MOAR_CAN/MOAR_CAN-Manual.md"
+    - "Manual": "moar-can/manual.md"
     - "GitHub Repository": "https://github.com/xbst/MOAR_CAN"
     - "Store Page": "https://store.isiks.tech/products/MOAR_CAN"
   - "Ouroboros":
-    - "Mount & Wiring": "Ouroboros/wiring.md"
-    - "Firmware Setup": "Ouroboros/Firmware-Setup.md"
+    - "Mount & Wiring": "ouroboros/wiring.md"
+    - "Firmware Setup": "ouroboros/firmware-setup.md"
     - "Motor Setup":
-      - "Stepper Motors": "Ouroboros/Stepper-Calibration.md"
+      - "Stepper Motors": "ouroboros/stepper-calibration.md"
     - "Other Docs":
-        - "Sensorless Homing": "Ouroboros/Sensorless-Homing.md"
-        - Ouroboros/Plugin-Reference.md
+        - "Sensorless Homing": "ouroboros/sensorless-homing.md"
+        - ouroboros/plugin-reference.md
     - "Store Page": "https://store.isiks.tech/products/ouroboros"
