@@ -22,7 +22,7 @@ AFC-Lite is a controller PCB designed for Armored Turtle's Box Turtle multi-fila
 
 ## Pinout
 
-![AFC-Lite Pinout](../../pinouts/afc-lite/afc-lite.pinout.html){ type=application/pinout style="height:60vh;min-height:500px;width:100%" }
+![AFC-Lite Pinout](../../pinouts/afc-lite/afc-lite.pinout.html){ type=application/pinout style="height:80vh;min-height:500px;width:100%" }
 
 ## 5V_SOURCE Switch
 

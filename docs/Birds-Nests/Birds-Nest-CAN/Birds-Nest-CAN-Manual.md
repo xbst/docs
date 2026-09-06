@@ -59,7 +59,7 @@ Birds' Nest CAN is a USB CAN hub PCB designed for tool changers with CAN toolhea
 
 ## Pinout
 
-![Birds' Nest CAN Pinout](../../pinouts/bnc/bnc.pinout.html){ type=application/pinout style="height:50vh;min-height:500px;width:100%" }
+![Birds' Nest CAN Pinout](../../pinouts/bnc/bnc.pinout.html){ type=application/pinout style="height:80vh;min-height:500px;width:100%" }
 
 ### Important Notes
 

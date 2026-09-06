@@ -57,7 +57,7 @@ Birds' Nest is a USB hub PCB designed for tool changers with USB toolhead PCBs. 
 
 ## Pinout
 
-![Birds' Nest Pinout](../../pinouts/bnu/bnu.pinout.html){ type=application/pinout style="height:60vh;min-height:500px;width:100%" }
+![Birds' Nest Pinout](../../pinouts/bnu/bnu.pinout.html){ type=application/pinout style="height:80vh;min-height:500px;width:100%" }
 
 ### Important Notes
 
