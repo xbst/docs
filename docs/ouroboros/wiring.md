@@ -11,7 +11,7 @@ hide:
 
 ## Ouroboros Wiring
 
-![Pinout](../pinouts/ouroboros/ouroboros.pinout.html){ type=application/pinout style="min-height:70vh;width:100%" }
+![Pinout](../pinouts/ouroboros/ouroboros.pinout.html){ type=application/pinout style="min-height:80vh;width:100%" }
 
 ### MCU_PWR
 

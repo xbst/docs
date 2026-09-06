@@ -9,7 +9,7 @@ hide:
 
 Controller PCB for the [Nevermore Max](https://github.com/nevermore3d/Nevermore_Max) air filter.
 
-!!! warning "This PCB does not support CAN bus communication. Use [USB Serial Communication](Firmware-Setup.md#firmware-flashing) when flashing firmware."
+!!! warning "This PCB does not support CAN bus communication. Use [USB Serial Communication](firmware-setup.md#firmware-flashing) when flashing firmware."
 
 ## Mount
 
@@ -30,4 +30,4 @@ All connectors except USB are JST-XH. Use the diagram below to wire your fans, s
 
 ## Next Steps
 
-Proceed to [Firmware & Software Setup](Firmware-Setup.md) for flashing instructions, SGP40 plugin installation, and Klipper config.
+Proceed to [Firmware & Software Setup](firmware-setup.md) for flashing instructions, SGP40 plugin installation, and Klipper config.

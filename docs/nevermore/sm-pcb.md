@@ -21,4 +21,4 @@ All connectors except USB are JST-PH. Use the diagram below to wire your fans, s
 
 ## Next Steps
 
-Proceed to [Firmware & Software Setup](Firmware-Setup.md) for flashing instructions, SGP40 plugin installation, and Klipper config.
+Proceed to [Firmware & Software Setup](firmware-setup.md) for flashing instructions, SGP40 plugin installation, and Klipper config.

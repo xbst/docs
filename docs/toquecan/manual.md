@@ -280,7 +280,7 @@ A CAN hub PCB with proper CAN topology (most CAN hubs on the market follow a sta
 
 More information about the Isik’s Tech MOAR_CAN:
 
-[https://docs.isiks.tech/MOAR_CAN/MOAR_CAN-Manual/](https://docs.isiks.tech/MOAR_CAN/MOAR_CAN-Manual/)
+[https://docs.isiks.tech/moar-can/manual/](../moar-can/manual.md)
 
 To use the ToqueCAN with a MOAR_CAN or similar CAN Bus hub PCB, you need to run 2 pairs of twisted CAN wires from the MOAR_CAN connector on the ToqueCAN. The inner and outer pairs of wires need to be twisted together. The 120Ω termination resistor jumper on the ToqueCAN should not be jumped. There should be a termination resistor on the 2 CAN devices connected to the ToqueCAN. All the CAN devices connected together need to share the same GND, so the GND of the CAN bus hub needs to be connected to the same source as ToqueCAN, or if using separate power supplies, GNDs of both power supplies need to be connected together with a thick wire.
 

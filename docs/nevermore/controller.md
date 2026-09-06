@@ -7,9 +7,9 @@ hide:
 
 Controller PCBs for the Nevermore Mini, Nevermore Max, and Nevermore Stealthmax air filters. 
 
-Choose your PCB below for mount and wiring instructions, or continue to [Firmware & Software Setup](Firmware-Setup.md).
+Choose your PCB below for mount and wiring instructions, or continue to [Firmware & Software Setup](firmware-setup.md).
 
-| Click for docs: | [Max 2 PCB](Max-2-PCB.md) | [Mini & Stealthmax PCB](SM-PCB.md) | [Stealthmax PCB 2](SM2-PCB.md) | [Stealthmax PCB 3](SM3-PCB.md) |
+| Click for docs: | [Max 2 PCB](max-2-pcb.md) | [Mini & Stealthmax PCB](sm-pcb.md) | [Stealthmax PCB 2](sm2-pcb.md) | [Stealthmax PCB 3](sm3-pcb.md) |
 |---|---|---|---|---|
 | | <img src="https://raw.githubusercontent.com/xbst/Nevermore-PCB/refs/heads/master/Images/Max.jpg" width="360"/> | <img src="https://raw.githubusercontent.com/xbst/Nevermore-PCB/refs/heads/master/Images/SM.jpg" width="360"/> | <img src="https://raw.githubusercontent.com/xbst/Nevermore-PCB/refs/heads/master/Images/SM2.jpg" width="360"/> | <img src="https://raw.githubusercontent.com/xbst/Stealthmax-PCB-3/refs/heads/master/Images/PCB.jpg" width="360"/> |
 | Nevermore Compatibility | [Max 2](https://github.com/nevermore3d/Nevermore_Max) | [Mini](https://www.printables.com/model/757663-nevermore-mini-3d-printer-hepa-and-carbon-air-filt) & <br> [Stealthmax](https://github.com/nevermore3d/StealthMax) | [Stealthmax v1](https://github.com/nevermore3d/StealthMax) | [Stealthmax v2](https://github.com/nevermore3d/Stealthmax_V2) |
