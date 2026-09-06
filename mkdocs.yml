@@ -76,6 +76,11 @@ markdown_extensions:
   - md_in_html
   - pinout_embed
 
+plugins:
+  - redirects:
+      redirect_maps:
+        Ouroboros/gibberish.md: Ouroboros/Plugin-Reference.md
+
 extra:
   generator: false
   analytics:
