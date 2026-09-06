@@ -32,7 +32,7 @@ Below are all the printed parts you can print for your Nevermore Stealthmax PCB 
 1. If using a port cover, mount that first following the above steps.
 2. Stealthmax PCB 3s ship with the heatsink placed on the board. Make sure this heatsink is on your PCB, and is seated down fully (parallel to the PCB).
 3. There are 2 mounting screws included with your PCB; one is 10mm long, the other is 8mm. 10mm is used for the heatsink side, and 8mm is used on the other side. Using these screws, mount the PCB in place with the spacer between the Stealthmax and the PCB.
-    ![Mount](https://github.com/xbst/docs/raw/master/docs/assets/nevermore/SM3-Mount.PNG)
+    ![Mount](../assets/nevermore/SM3-Mount.PNG)
 
 ## Wiring
 

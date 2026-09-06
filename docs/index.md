@@ -15,9 +15,9 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
   <tbody>
     <tr><th colspan="6" style="font-size: 32px">Box Turtle Controllers</th></tr>
     <tr>
-      <td width="25%" rowspan="3"><img src="https://github.com/xbst/AFC-Lite/blob/master/Images/PCB.jpg?raw=true"></td>
+      <td width="25%" rowspan="3"><img src="./assets/afc-lite/afc-lite-thumb.jpg"></td>
       <th colspan="2" style="font-size: 24px">AFC-Lite</th>
-      <td width="25%" rowspan="3"><img src="https://github.com/xbst/AFC-Pro/blob/master/Images/PCB.PNG?raw=true"></td>
+      <td width="25%" rowspan="3"><img src="./assets/afc-pro/afc-pro-thumb.png"></td>
       <th colspan="2" style="font-size: 24px">AFC-Pro</th>
     </tr>
     <tr>
@@ -32,9 +32,9 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
     </tr>
     <tr><th colspan="6" style="font-size: 32px">CAN Bus Adapters</th></tr>
     <tr>
-      <td width="25%" rowspan="3"><img src="https://github.com/xbst/PiCAN/blob/master/Images/PCB.jpg?raw=true"></td>
+      <td width="25%" rowspan="3"><img src="./assets/pican/pican-board.jpg"></td>
       <th colspan="2" style="font-size: 24px">PiCAN</th>
-      <td width="25%" rowspan="3"><img src="https://github.com/xbst/ToqueCAN/blob/master/Images/ToqueCAN_PCB.jpg?raw=true"></td>
+      <td width="25%" rowspan="3"><img src="./assets/ToqueCAN/toquecan-board.jpg"></td>
       <th colspan="2" style="font-size: 24px">ToqueCAN</th>
     </tr>
     <tr>
@@ -49,9 +49,9 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
     </tr>
     <tr><th colspan="6" style="font-size: 32px">KUSBA Accelerometers</th></tr>
     <tr>
-      <td width="25%" rowspan="3"><img src="https://store.isiks.tech/cdn/shop/files/FullSizeRender_506acff9-d0a4-4275-adc5-140f3d2246ca.jpg?v=1697927717&width=990"></td>
+      <td width="25%" rowspan="3"><img src="./assets/kusba/kusba-board.jpg"></td>
       <th colspan="2" style="font-size: 24px">KUSBA</th>
-      <td width="25%" rowspan="3"><img src="https://github.com/xbst/KUSBA-PRO/blob/master/Images/PCB-w-Mount.jpg?raw=true"></td>
+      <td width="25%" rowspan="3"><img src="./assets/kusba-pro/kusba-pro-board.jpg"></td>
       <th colspan="2" style="font-size: 24px">KUSBA Pro</th>
     </tr>
     <tr>
@@ -66,9 +66,9 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
     </tr>
     <tr><th colspan="6" style="font-size: 32px">Nevermore Air Filter Boards</th></tr>
     <tr>
-      <td width="25%" rowspan="3"><img src="https://github.com/xbst/Nevermore-PCB/blob/master/Images/SM2.jpg?raw=true"></td>
+      <td width="25%" rowspan="3"><img src="./assets/nevermore/SM2.jpg"></td>
       <th colspan="2" style="font-size: 24px">Nevermore PCB(s)</th>
-      <td width="25%" rowspan="3"><img src="https://store.isiks.tech/cdn/shop/files/IMG_E3548.heic?v=1694503476&width=990"></td>
+      <td width="25%" rowspan="3"><img src="./assets/nevermore/nevermore-sensor.jpg"></td>
       <th colspan="2" style="font-size: 24px">Nevermore Sensors</th>
     </tr>
     <tr>
@@ -83,7 +83,7 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
     </tr>
     <tr><th colspan="6" style="font-size: 32px">Servo Controllers</th></tr>
     <tr>
-      <td width="25%" rowspan="3"><img src="https://store.isiks.tech/cdn/shop/files/IMG_6688_08c6b8d9-4c76-4d05-92ba-53c7a9c5ef38.jpg?v=1756488227&width=990"></td>
+      <td width="25%" rowspan="3"><img src="./assets/ouroboros/ouroboros-board.jpg"></td>
       <th colspan="2" style="font-size: 24px">Ouroboros</th>
       <td width="25%" rowspan="3"></td>
       <th colspan="2" style="font-size: 24px"></th>
@@ -100,9 +100,9 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
     </tr>
     <tr><th colspan="6" style="font-size: 32px">Toolchanger Boards</th></tr>
     <tr>
-      <td width="25%" rowspan="3"><img src="https://github.com/xbst/Birds-Nest/blob/master/Images/PCB.jpg?raw=true"></td>
+      <td width="25%" rowspan="3"><img src="./assets/birds-nest/birds-nest-thumb.jpg"></td>
       <th colspan="2" style="font-size: 24px">Birds' Nest (USB)</th>
-      <td width="25%" rowspan="3"><img src="https://github.com/xbst/Birds-Nest-CAN/blob/master/Images/PCB.jpg?raw=true"></td>
+      <td width="25%" rowspan="3"><img src="./assets/birds-nest-can/birds-nest-can-thumb.jpg"></td>
       <th colspan="2" style="font-size: 24px">Birds' Nest CAN</th>
     </tr>
     <tr>
@@ -116,7 +116,7 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
       <th width="12.5%"><a href="https://store.isiks.tech/products/birds-nest-can">Store</a></th>
     </tr>
       <tr>
-      <td width="25%" rowspan="3"><img src="https://github.com/xbst/MOAR_CAN/blob/master/Images/PCB.jpg?raw=true"></td>
+      <td width="25%" rowspan="3"><img src="./assets/moar_can/moar_can-board.jpg"></td>
       <th colspan="2" style="font-size: 24px">MOAR_CAN</th>
       <td width="25%" rowspan="3"></td>
       <th colspan="2" style="font-size: 24px"></th>

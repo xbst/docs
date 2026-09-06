@@ -5,7 +5,7 @@ hide:
 
 # ToqueCAN
 
-<img src="https://github.com/xbst/ToqueCAN/blob/master/Images/ToqueCAN_PCB.jpg?raw=true">
+<img src="../assets/ToqueCAN/toquecan-board.jpg">
 
 ## ToqueCAN Features
 
