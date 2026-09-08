@@ -13,3 +13,7 @@ __pycache__/
 *.egg-info/
 build/
 venv/
+
+# Agent playbook + per-product worksheets for adding new product docs - local only, not committed
+/NEW-PRODUCT-PLAN.md
+/new-product-*.md
