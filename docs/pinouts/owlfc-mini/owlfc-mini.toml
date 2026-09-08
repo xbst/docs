@@ -1,0 +1,378 @@
+[board]
+title = "OwlFC-Mini Pinout"
+image = "owlfc-mini.png"
+width = 1920
+height = 1080
+theme = "isikstech"
+theme_dir = ".."
+
+[[connector]]
+id = "STP1"
+name = "Stepper 1"
+type = "XH-F"
+x1 = 1211
+y1 = 622
+x2 = 1317
+y2 = 846
+orientation = 90
+description = "Lane 1 stepper motor connector"
+label_style = "flat"
+symbol = "motor"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#FFBF00"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#3498DB"
+
+[[connector]]
+id = "STP2"
+name = "Stepper 2"
+type = "XH-F"
+x1 = 1211
+y1 = 243
+x2 = 1317
+y2 = 467
+orientation = 90
+description = "Lane 2 stepper motor connector"
+label_style = "flat"
+symbol = "motor"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "B"
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#FFBF00"
+
+  [[connector.pin]]
+  name = "A"
+  color = "#3498DB"
+
+[[connector]]
+id = "FAN"
+name = "Fan Connector"
+type = "XH-F"
+x1 = 1494
+y1 = 195
+x2 = 1600
+y2 = 331
+orientation = 90
+description = "Always-on fan connector"
+symbol = "fan"
+
+  [[connector.pin]]
+  name = "VIN"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "RGB"
+name = "ARGB LED Connector"
+type = "XH-F"
+x1 = 1494
+y1 = 430
+x2 = 1601
+y2 = 611
+orientation = 90
+symbol = "led"
+
+  [[connector.pin]]
+  name = "5V"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "PB3"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "SW1"
+name = "Switch Connector 1"
+type = "XH-F"
+x1 = 1352
+y1 = 757
+x2 = 1459
+y2 = 894
+orientation = 90
+description = "Lane 1 Prep Switch"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PB1"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW2"
+name = "Switch Connector 2"
+type = "XH-F"
+x1 = 1352
+y1 = 616
+x2 = 1459
+y2 = 753
+orientation = 90
+description = "Lane 1 Load Switch"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PB11"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW3"
+name = "Switch Connector 3"
+type = "XH-F"
+x1 = 1352
+y1 = 475
+x2 = 1459
+y2 = 612
+orientation = 90
+description = "Lane 2 Prep Switch"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PB12"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW4"
+name = "Switch Connector 4"
+type = "XH-F"
+x1 = 1352
+y1 = 335
+x2 = 1459
+y2 = 472
+orientation = 90
+description = "Lane 2 Load Switch"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PB4"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW5"
+name = "Switch Connector 5"
+type = "XH-F"
+x1 = 1352
+y1 = 195
+x2 = 1459
+y2 = 332
+orientation = 90
+description = "Hub Switch"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PB5"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW6"
+name = "Switch Connector 6"
+type = "XH-F"
+x1 = 1494
+y1 = 757
+x2 = 1601
+y2 = 894
+orientation = 90
+description = "Spare"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PB10"
+  color = "#9B59B6"
+
+[[connector]]
+id = "SW7"
+name = "Switch Connector 7"
+type = "XH-F"
+x1 = 1494
+y1 = 616
+x2 = 1601
+y2 = 753
+orientation = 90
+description = "Spare"
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PB2"
+  color = "#9B59B6"
+
+[[connector]]
+id = "TN"
+name = "TurtleNeck Connector"
+type = "PH-F"
+x1 = 320
+y1 = 623
+x2 = 453
+y2 = 870
+orientation = 270
+symbol = "switch"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "PA3"
+  color = "#3498DB"
+
+  [[connector.pin]]
+  name = "PA2"
+  color = "#9B59B6"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "3.3V"
+  color = "#E74C3C"
+
+[[connector]]
+id = "VIN"
+name = "Power & Data In"
+type = "XT30-2+2"
+x1 = 309
+y1 = 218
+x2 = 464
+y2 = 464
+orientation = 270
+description = "12-24VIN, CAN or USB data (H: CAN_H or D+, L: CAN_L or D-)"
+symbol = "lightning"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "VIN"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "H"
+  color = "#FFBF00"
+  row = 2
+
+  [[connector.pin]]
+  name = "L"
+  color = "#2ECC71"
+  row = 2
+
+[[connector]]
+id = "USB"
+name = "USB C"
+type = "USB-C"
+x1 = 574
+y1 = 787
+x2 = 731
+y2 = 916
+description = "USB C for firmware flashing"
+symbol = "usb"
+
+[[connector]]
+id = "CAN_TERM"
+name = "CAN Termination Switch"
+type = "slide-switch"
+x1 = 639
+y1 = 197
+x2 = 764
+y2 = 248
+description = "120 Ohm CAN termination, set if the board is at an end of the CAN bus."
+symbol = "gear"
+
+  [[connector.pin]]
+  name = "Terminated"
+
+  [[connector.pin]]
+  name = "No Termination"
+
+[[connector]]
+id = "CAN_MODE"
+name = "USB/CAN Mode Switch"
+type = "slide-switch"
+x1 = 791
+y1 = 197
+x2 = 916
+y2 = 248
+description = "Sets the mode of the MUX. Set to which data wires are connected to the \"Power & Data In\" connector."
+symbol = "gear"
+
+  [[connector.pin]]
+  name = "USB"
+
+  [[connector.pin]]
+  name = "CAN"
+
+[[connector]]
+id = "B"
+name = "BOOT Button"
+type = "button"
+x1 = 751
+y1 = 332
+x2 = 801
+y2 = 395
+orientation = 90
+description = "If held during reset or power-on, makes the STM32 MCU enter DFU mode (firmware flashing)"
+symbol = "gear"
+
+[[connector]]
+id = "R"
+name = "RESET Button"
+type = "button"
+x1 = 820
+y1 = 332
+x2 = 870
+y2 = 395
+orientation = 90
+description = "Resets the STM32 MCU"
+symbol = "gear"
