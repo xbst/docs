@@ -98,7 +98,7 @@ Katapult settings:
 
 ## Klipper Config
 
-Klipper config and other software needed can be found on Armored Turtle's AFC Klipper Add-on GitHub repository: <https://github.com/ArmoredTurtle/AFC-Klipper-Add-On/>
+Klipper config and other software needed can be found on the AFC Klipper Add-on GitHub repository: <https://github.com/AFCProject/AFC-Klipper-Add-On/>
 
 ## Troubleshooting
 
