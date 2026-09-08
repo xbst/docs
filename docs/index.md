@@ -13,23 +13,6 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
 </style>
 <table class="tg">
   <tbody>
-    <tr><th colspan="6" style="font-size: 32px">Box Turtle Controllers</th></tr>
-    <tr>
-      <td width="25%" rowspan="3"><img src="./assets/afc-lite/afc-lite-thumb.jpg"></td>
-      <th colspan="2" style="font-size: 24px">AFC-Lite</th>
-      <td width="25%" rowspan="3"><img src="./assets/afc-pro/afc-pro-thumb.png"></td>
-      <th colspan="2" style="font-size: 24px">AFC-Pro</th>
-    </tr>
-    <tr>
-      <td colspan="2">AFC-Lite is the Box Turtle AFC controller PCB with stepper and brushed DC motor drivers, switch and LED ports. It supports 4 lanes.</td>
-      <td colspan="2">AFC-Pro is a Box Turtle AFC controller PCB supporting 8 lanes and more switches, LEDs and more extra features.</td>
-      </tr>
-    <tr>
-      <th width="12.5%"><a href="box-turtle/afc-lite/manual/">Docs</a></th>
-      <th width="12.5%"><a href="https://store.isiks.tech/products/afc-lite">Store</a></th>
-      <th width="12.5%"><a href="box-turtle/afc-pro/manual/">Docs</a></th>
-      <th width="12.5%"><a href="https://store.isiks.tech/products/afc-pro">Store</a></th>
-    </tr>
     <tr><th colspan="6" style="font-size: 32px">CAN Bus Adapters</th></tr>
     <tr>
       <td width="25%" rowspan="3"><img src="./assets/pican/pican-board.jpg"></td>
@@ -46,6 +29,39 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
       <th width="12.5%"><a href="https://store.isiks.tech/products/pican-usb-to-can-bus-adapter">Store</a></th>
       <th width="12.5%"><a href="toquecan/manual/">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/toquecan">Store</a></th>
+    </tr>
+    <tr><th colspan="6" style="font-size: 32px">Filament Changer Controllers</th></tr>
+    <tr>
+      <td width="25%" rowspan="3"><img src="./assets/afc-lite/afc-lite-thumb.jpg"></td>
+      <th colspan="2" style="font-size: 24px">AFC-Lite</th>
+      <td width="25%" rowspan="3"><img src="./assets/afc-pro/afc-pro-thumb.png"></td>
+      <th colspan="2" style="font-size: 24px">AFC-Pro</th>
+    </tr>
+    <tr>
+      <td colspan="2">AFC-Lite is the Box Turtle AFC controller PCB with stepper and brushed DC motor drivers, switch and LED ports. It supports 4 lanes.</td>
+      <td colspan="2">AFC-Pro is a Box Turtle AFC controller PCB supporting 8 lanes and more switches, LEDs and more extra features.</td>
+      </tr>
+    <tr>
+      <th width="12.5%"><a href="box-turtle/afc-lite/manual/">Docs</a></th>
+      <th width="12.5%"><a href="https://store.isiks.tech/products/afc-lite">Store</a></th>
+      <th width="12.5%"><a href="box-turtle/afc-pro/manual/">Docs</a></th>
+      <th width="12.5%"><a href="https://store.isiks.tech/products/afc-pro">Store</a></th>
+    </tr>
+    <tr>
+      <td width="25%" rowspan="3"><img src="./assets/owlfc-mini/owlfc-mini-thumb.png"></td>
+      <th colspan="2" style="font-size: 24px">OwlFC-Mini</th>
+      <td width="25%" rowspan="3"></td>
+      <th colspan="2" style="font-size: 24px"></th>
+    </tr>
+    <tr>
+      <td colspan="2">OwlFC-Mini is a 2-lane filament changer controller designed for NightOwl filament changers, with onboard TMC2209 drivers and USB/CAN through a single cable.</td>
+      <td colspan="2"></td>
+      </tr>
+    <tr>
+      <th width="12.5%"><a href="owlfc-mini/manual/">Docs</a></th>
+      <th width="12.5%"><a href="https://store.isiks.tech/products/owlfc-mini">Store</a></th>
+      <th width="12.5%"></th>
+      <th width="12.5%"></th>
     </tr>
     <tr><th colspan="6" style="font-size: 32px">KUSBA Accelerometers</th></tr>
     <tr>

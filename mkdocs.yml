@@ -139,7 +139,7 @@ nav:
       - "Manual": "birds-nest/can/manual.md"
       - "GitHub Repository": "https://github.com/xbst/Birds-Nest-CAN/"
       - "Store Page": "https://store.isiks.tech/products/birds-nest-CAN"
-  - "Box Turtle Controllers":
+  - "Filament Changer Controllers":
     - "AFC-Lite":
       - "Manual": "box-turtle/afc-lite/manual.md"
       - "GitHub Repository": "https://github.com/xbst/AFC-Lite/"
@@ -148,6 +148,10 @@ nav:
       - "Manual": "box-turtle/afc-pro/manual.md"
       - "GitHub Repository": "https://github.com/xbst/AFC-Pro/"
       - "Store Page": "https://store.isiks.tech/products/AFC-Pro"
+    - "OwlFC-Mini":
+      - "Manual": "owlfc-mini/manual.md"
+      - "GitHub Repository": "https://github.com/xbst/OwlFC-Mini/"
+      - "Store Page": "https://store.isiks.tech/products/owlfc-mini"
   - "Hedgehog":
     - "Manual": "hedgehog/manual.md"
     - "Store Page": "https://store.isiks.tech/products/hedgehog"
