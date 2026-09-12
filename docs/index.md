@@ -25,7 +25,7 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
       <td colspan="2">A Raspberry Pi toque with, 2x CAN outputs, 3x USB ports and 5V buck converter for powering the Pi.</td>
       </tr>
     <tr>
-      <th width="12.5%"><a href="https://github.com/xbst/PiCAN">Docs</a></th>
+      <th width="12.5%"><a href="pican/manual/">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/pican-usb-to-can-bus-adapter">Store</a></th>
       <th width="12.5%"><a href="toquecan/manual/">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/toquecan">Store</a></th>

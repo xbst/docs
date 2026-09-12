@@ -104,7 +104,8 @@ plugins:
         Ouroboros/Stepper-Calibration.md: ouroboros/stepper-calibration.md
         Ouroboros/wiring.md: ouroboros/wiring.md
         ToqueCAN/ToqueCAN-Manual.md: toquecan/manual.md
-        PiCAN.md: pican.md
+        PiCAN.md: pican/manual.md
+        pican.md: pican/manual.md
 
 extra:
   generator: false
@@ -183,7 +184,8 @@ nav:
       - "Nevermore Stealthmax PCB 3": "https://store.isiks.tech/products/nevermore-stealthmax-pcb-3"
       - "Nevermore Sensors": "https://store.isiks.tech/products/bme280-sgp40-air-quality-sensors-for-nevermore-air-filters"
   - "PiCAN":
-    - "GitHub Repository (Instructions)": "https://github.com/xbst/PiCAN"
+    - "Manual": "pican/manual.md"
+    - "GitHub Repository": "https://github.com/xbst/PiCAN"
     - "Store Page": "https://store.isiks.tech/products/pican-usb-to-can-bus-adapter"
   - "ToqueCAN":
     - "Manual": "toquecan/manual.md"
