@@ -5,7 +5,7 @@ hide:
 
 # OwlFC-Mini Manual
 
-<img src="../assets/owlfc-mini/owlfc-mini-board.png" width="600"/>
+<img src="../assets/owlfc-mini/owlfc-mini-board.png" width="800"/>
 
 ## OwlFC-Mini Features
 
@@ -38,6 +38,9 @@ OwlFC-Mini carries both power and data over its single Power & Data In connector
 - **USB position**: H and L are USB D+ and D-. To connect them to a USB port on your host, use the [USB Adapter](https://store.isiks.tech/products/usb-adapter) to protect your SBC.
 
 The USB C port on the board is only used for firmware flashing, it's not easy to access when mounted inside a NightOwl.
+
+??? note "If you're using USB mode with a [USB Adapter](https://store.isiks.tech/products/usb-adapter), expand to see the adapter's pinout"
+    ![USB Adapter Pinout](../pinouts/usb-adapter/usb-adapter.pinout.html){ type=application/pinout style="height:80vh;min-height:500px;width:100%" }
 
 ### CAN Termination Switch
 
