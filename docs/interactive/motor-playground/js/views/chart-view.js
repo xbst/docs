@@ -18,6 +18,11 @@
  *   preset            'auto' (snapshot.motorPreset) or a presets.js key
  *   referencePreset   dashed comparison family when different (default 'stepper'; null = none)
  *   runCurrent        null (motor 0's iLimit, the run current) or amps
+ *   Added by chunk 05 (chapter 5):
+ *   results           null (snapshot.sweep.results) or { [volts]: mm/s }: the sweep diamonds, so a
+ *                     chapter can keep results across sweeps and world rebuilds
+ *   rms               false; true labels the run current in A rms (peak / √2), as Klipper's
+ *                     run_current for TMC drivers
  */
 import { CanvasView, TAU, haloText, clamp, num, niceStep, presetOf, mmPerRad } from './view-util.js';
 import { MOTOR_PRESETS, torqueSpeedPoints, torqueSpeedCurve } from '../sim/presets.js';
@@ -39,6 +44,7 @@ export class ChartView extends CanvasView {
   constructor(host, opts) {
     super(host, opts, {
       voltages: [12, 24, 36, 48, 60], maxMmS: 1500, preset: 'auto', referencePreset: 'stepper', runCurrent: null,
+      results: null, rms: false,
     });
     this.curves = [];
     this.refCurves = [];
@@ -226,8 +232,8 @@ export class ChartView extends CanvasView {
       haloText(g, this.str.knee, kxp + (g.textAlign === 'left' ? 4 : -4), y1 - 4, th.tipBg);
     }
 
-    // sweep results
-    const res = sw && sw.results;
+    // sweep results (the chapter's own table when it passes one)
+    const res = this.opts.results || (sw && sw.results);
     if (res) {
       for (const k of Object.keys(res)) {
         const V = Number(k), v = num(res[k], NaN);
@@ -322,7 +328,8 @@ export class ChartView extends CanvasView {
     if (!pr) return;
     s.legend = `this motor, L ${formatValue(pr.L * 1000, 1)} mH`;
     s.ref = this.refPreset ? `typical motor, L ${formatValue(this.refPreset.L * 1000, 1)} mH` : '';
-    s.cur = `run current ${formatValue(this.I, 2)} A`;
+    s.cur = this.opts.rms ? `run current ${formatValue(this.I / Math.SQRT2, 2)} A rms`
+      : `run current ${formatValue(this.I, 2)} A`;
     s.dot = `${formatValue(speed, 0)} mm/s`;
     const c = this.curves.find((cc) => cc.V === selV);
     s.knee = c && c.kneeMmS > 0 ? `falls from ${formatValue(c.kneeMmS, 0)} mm/s` : '';
