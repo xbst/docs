@@ -66,7 +66,10 @@ let stageSpec = null;
 const views = [];          // { slot, name, host, view, aspect, w, h, dpr }
 
 const ctx = { world: null, product, motorType: preferredMotor, app: null, highlight: null };
-const renderCtx = { theme: readTokens(), motorType: preferredMotor, chapterId: '', highlight: null, t: 0, metrics: null };
+// View render ctx (SPEC 4.5, plus `traces` = world.traces for views that read sub-frame
+// history, such as the gantry's path trails, and `product` for config-key captions).
+const renderCtx = { theme: readTokens(), motorType: preferredMotor, chapterId: '', highlight: null, t: 0, metrics: null,
+  traces: null, product };
 
 const scope = new Scope(el.scope);
 const readouts = new Readouts(el.ro);
@@ -632,6 +635,7 @@ function draw(now) {
   const snap = world.snapshot;
   renderCtx.t = snap ? snap.t : 0;
   renderCtx.metrics = world.metrics;
+  renderCtx.traces = world.traces;
   renderCtx.highlight = ctx.highlight;
   renderCtx.motorType = ctx.motorType;
   for (let i = 0; i < views.length; i++) {

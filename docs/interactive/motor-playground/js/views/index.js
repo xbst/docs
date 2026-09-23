@@ -1,21 +1,26 @@
 /**
  * View registry (SPEC 4.5): stage names used in a chapter's `stage` spec →
- * view classes. Chunk 01 maps every name to the placeholder; chunk 03 replaces
- * the mappings with the real views.
+ * view classes.
  *
  * A view class may declare `static aspect` (preferred height / width). main.js
  * uses it for the desktop stage height and the stacked mobile host heights;
  * a chapter's `stage.aspect` overrides it for the whole stage.
  */
 import { PlaceholderView } from './placeholder-view.js';
+import { MotorView } from './motor-view.js';
+import { GantryView } from './gantry-view.js';
+import { VectorView } from './vector-view.js';
+import { BlockDiagram } from './block-diagram.js';
+import { SchematicView } from './schematic-view.js';
+import { ChartView } from './chart-view.js';
 
 export const VIEWS = {
-  motor: PlaceholderView,
-  gantry: PlaceholderView,
-  vector: PlaceholderView,
-  blocks: PlaceholderView,
-  schematic: PlaceholderView,
-  chart: PlaceholderView,
+  motor: MotorView,
+  gantry: GantryView,
+  vector: VectorView,
+  blocks: BlockDiagram,
+  schematic: SchematicView,
+  chart: ChartView,
   placeholder: PlaceholderView,
 };
 
