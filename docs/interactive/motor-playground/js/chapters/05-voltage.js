@@ -256,7 +256,8 @@ export default {
     { name: 'iA', label: 'Phase A current', unit: 'A', color: 'phase-a' },
     { name: 'bemfA', label: 'Back-EMF, phase A', unit: 'V', color: 'axis-q' },
     { name: 'uMag', label: 'Voltage used', unit: 'V', color: 'phase-c' },
-    { name: 'uLimit', label: 'Bus voltage', unit: 'V', color: 'target', dashed: true },
+    // 'fit' for the volts group: the data extent (−back-EMF up to the bus), not ±2× the bus.
+    { name: 'uLimit', label: 'Bus voltage', unit: 'V', color: 'target', dashed: true, range: 'fit' },
     // Fixed range: the motor makes at most Kt × 3.54 A = 0.78 N·m; auto-zoom would blow the
     // no-load ripple up to full height.
     { name: 'torque', label: 'Torque', unit: 'N·m', color: 'phase-b', range: [-1, 1] },
