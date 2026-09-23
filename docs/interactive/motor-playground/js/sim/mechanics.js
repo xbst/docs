@@ -11,8 +11,9 @@
 // the friction balances the torque. This gives true static friction (breakaway at Tc + Tdrag)
 // instead of a slow creep inside |ω| < ω_eps, and it removes the linearization chatter.
 //
-// Tbump(t) = A·sin(π·t/T) for 0 ≤ t < T on the motors in the mask (same sign on all: in CoreXY
-// that is a shove along −x for A > 0).
+// Tbump(t) = A·sin(π·t/T)·s_i for 0 ≤ t < T on the motors in the mask. The per-motor scale s_i
+// defaults to 1 (same sign on all: in CoreXY that is a shove along −x for A > 0); chunk 06 added
+// the optional scales so a CoreXY shove can point in any direction (World.command('bump', {dir})).
 //
 // Kinematics (rd = rotation distance, mm per motor turn):
 //   axis, free: x = θ0·rd/(2π), y = 0
@@ -78,6 +79,8 @@ export class Mechanics {
     /** @type {number} current pulse amplitude [N·m] */ this.bumpA = 0;
     /** @type {number} current pulse duration [s] */ this.bumpDur = 0.04;
     /** @type {number} bit i = motor i */ this.bumpMask = 0;
+    /** @type {Float64Array} per-motor factor on the pulse (1 = the plain same-sign bump) */
+    this.bumpScale = new Float64Array(n).fill(1);
     /** @type {number} [mm] */ this.x = 0;
     /** @type {number} [mm] */ this.y = 0;
     /** @type {number} [mm/s] */ this.vx = 0;
@@ -121,6 +124,7 @@ export class Mechanics {
       this.theta = new Float64Array(n); this.omega = new Float64Array(n);
       this.Jt = new Float64Array(n); this.Jrotor = new Float64Array(n);
       this.tLoad = new Float64Array(n); this.tContact = new Float64Array(n);
+      this.bumpScale = new Float64Array(n).fill(1);
     }
     this.nMotors = n;
     for (let i = 0; i < this.maxMotors; i++) {
@@ -158,7 +162,7 @@ export class Mechanics {
       for (let i = 0; i < th.length; i++) th[i] = t0;
     }
     om.fill(0); this.tLoad.fill(0); this.tContact.fill(0);
-    this.bumpActive = false; this.bumpT = 0; this.bumpA = 0; this.bumpMask = 0;
+    this.bumpActive = false; this.bumpT = 0; this.bumpA = 0; this.bumpMask = 0; this.bumpScale.fill(1);
     this._kinematics();
   }
 
@@ -180,12 +184,19 @@ export class Mechanics {
    * @param {number} [torqueNm=this.bumpTorque] amplitude A [N·m]
    * @param {number} [durationS=this.bumpDuration] duration T [s]
    * @param {number} [motorMask] bit i = motor i; default all motors
+   * @param {ArrayLike<number>} [scales] per-motor factor on the pulse (default 1 each); CoreXY
+   *   scales (−(ux + uy), −(ux − uy)) shove the toolhead along the unit vector u
    */
-  bump(torqueNm = this.bumpTorque, durationS = this.bumpDuration, motorMask) {
+  bump(torqueNm = this.bumpTorque, durationS = this.bumpDuration, motorMask, scales) {
     const all = (1 << this.nMotors) - 1;
     this.bumpA = +torqueNm;
     this.bumpDur = durationS > 0 ? +durationS : this.bumpDuration;
     this.bumpMask = typeof motorMask === 'number' ? (motorMask & all) : all;
+    const sc = this.bumpScale;
+    for (let i = 0; i < sc.length; i++) {
+      const s = scales && i < scales.length ? +scales[i] : 1;
+      sc[i] = Number.isFinite(s) ? s : 1;
+    }
     this.bumpT = 0;
     this.bumpActive = this.bumpDur > 0 && this.bumpMask !== 0;
   }
@@ -225,12 +236,13 @@ export class Mechanics {
     }
 
     const B = this.B, fc = this.Tc + this.tDrag, tcStick = this.Tc, eps = this.omegaEps, tl = this.tLoadConst;
+    const bs = this.bumpScale;
     for (let i = 0; i < n; i++) {
       const w = om[i];
       const tn = Math.tanh(w / eps);
       const f = fc * tn;
       const fp = fc * (1 - tn * tn) / eps;
-      const tbi = (mask >> i) & 1 ? tb : 0;
+      const tbi = (mask >> i) & 1 ? tb * bs[i] : 0;
       const a0 = torqueIn[i] - B * w - tl - tbi - tC[i];   // everything but the Coulomb friction
       const a = a0 - f;
       const dw = dt * a / (Jt[i] + dt * (B + fp));

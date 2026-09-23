@@ -236,6 +236,7 @@ export class World {
     this._saveOmega = new Float64Array(2);
     this._va = new Float64Array(2);        // driver output voltage alpha (V)
     this._vb = new Float64Array(2);        // driver output voltage beta (V)
+    this._bumpScales = new Float64Array(2); // per-motor bump factors of a directed CoreXY bump
     /** @type {Lowpass1[]} */ this._noiseLpf = [];
     /** @type {Lowpass1[]} */ this._iAmpLpf = [];
     /** @type {Lowpass1[]} */ this._vAmpLpf = [];
@@ -371,7 +372,10 @@ export class World {
    * Runs a command (contract section 15): jog, moveTo, runPath, stop, bump, home, sweep,
    * singleStep, reset, setLoad, setTarget. jog, moveTo, runPath, singleStep and setTarget
    * first abort a running sweep or homing (each machine restores what it overrides: supply
-   * voltage, planner limits, hard stops, the FOC current limit).
+   * voltage, planner limits, hard stops, the FOC current limit). bump takes { torque,
+   * durationS, motors, dir }; `dir: [x, y]` (CoreXY only) shoves the toolhead along that
+   * direction instead of along −x, with the same force; the `bump` event carries the shove's
+   * unit direction as dirX, dirY.
    * @param {string} name
    * @param {object} [args]
    */
@@ -419,9 +423,26 @@ export class World {
         else if (Array.isArray(m)) { mask = 0; for (const i of m) mask |= (1 << i); mask &= all; }
         const torque = num(a.torque, sc.bump.torque);
         const durationS = num(a.durationS, sc.bump.durationS);
-        this.mechanics.bump(torque, durationS, mask);
+        // Shove direction in the XY plane (unit vector; the plain bump shoves along −x for a
+        // positive torque). `dir: [x, y]` (CoreXY only, chunk 06) shoves along that direction
+        // with the same force: per-motor scales (−(ux + uy), −(ux − uy)) on |torque|.
+        let dirX = torque < 0 ? 1 : -1, dirY = 0;
+        let scales = null;
+        const d = a.dir;
+        if (this.kinematics === 'corexy' && d && Number.isFinite(+d[0]) && Number.isFinite(+d[1])) {
+          const len = Math.hypot(+d[0], +d[1]);
+          if (len > 1e-9) {
+            const s = torque < 0 ? -1 : 1;
+            dirX = s * d[0] / len;
+            dirY = s * d[1] / len;
+            this._bumpScales[0] = -(dirX + dirY);
+            this._bumpScales[1] = -(dirX - dirY);
+            scales = this._bumpScales;
+          }
+        }
+        this.mechanics.bump(scales ? Math.abs(torque) : torque, durationS, mask, scales);
         // For the views (a bump icon) and chapters' onEvent; main.js announces nothing for it.
-        this._emit('bump', { torque, durationS, motors: mask, xMm: this.mechanics.x, yMm: this.mechanics.y });
+        this._emit('bump', { torque, durationS, motors: mask, xMm: this.mechanics.x, yMm: this.mechanics.y, dirX, dirY });
         break;
       }
       case 'home':
