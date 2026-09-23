@@ -57,7 +57,8 @@ export function isDark() {
  * @returns {Object<string, *>}
  */
 export function readTokens() {
-  if (!tokenNames) tokenNames = discoverTokens();
+  // Re-discover while only the built-in list is known (stylesheet not parsed yet).
+  if (!tokenNames || tokenNames.length <= BASE_TOKENS.length) tokenNames = discoverTokens();
   const cs = getComputedStyle(document.documentElement);
   const t = {};
   for (const name of tokenNames) t[camel(name)] = cs.getPropertyValue('--' + name).trim();

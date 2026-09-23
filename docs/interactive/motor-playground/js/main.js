@@ -765,7 +765,7 @@ async function init() {
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(() => { applyTheme(); fitTabs(); schedulePost(); });
   }
-  window.addEventListener('load', schedulePost);
+  window.addEventListener('load', () => { applyTheme(); schedulePost(); });
 }
 
 init();
