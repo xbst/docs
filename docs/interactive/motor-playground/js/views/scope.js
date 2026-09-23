@@ -13,13 +13,20 @@
  * Trace descriptor:
  *   { name, motor = 0, label, short, unit, group: 'analog' | 'digital',
  *     color: token name ('phase-a', 'target', …) or CSS color,
- *     dashed, range: 'auto' | [min, max], scale, minSpan }
+ *     dashed, range: 'auto' | 'fit' | [min, max], scale, minSpan, pulses }
  *   `short`   lane label for digital traces (default: label).
  *   `scale`   traces with the same scale key share a range (default: unit).
  *   `minSpan` smallest auto span, so a quiet trace does not blow its noise up
  *             to full height (defaults by unit, see MIN_SPAN).
  *   Auto range: symmetric around 0 when the data goes negative, else the data
  *   extent; padded 10 %, rounded to 1-2-2.5-5 steps, with hysteresis.
+ *   'fit' (chunk 04): always the data extent, also for negative data, so a
+ *   small ripple on a large value fills the plot (one trace sets it for its
+ *   whole scale group).
+ *   `pulses`  (chunk 04) digital lane whose samples count pulses since the
+ *             previous sample (the `stepN` trace): a baseline with one thin
+ *             spike per pulse, spread over the sample's interval; columns
+ *             denser than one pulse per px fill as a band.
  *
  * Drawing: one path per trace per frame, decimated to the min and max of each
  * css-px column. The render path does not allocate while running; value tags
@@ -161,7 +168,7 @@ export class Scope {
       if (!d || !d.name) continue;
       const digital = d.group === 'digital';
       const tr = {
-        d, key: d.name + '#' + (d.motor || 0), digital,
+        d, key: d.name + '#' + (d.motor || 0), digital, pulses: digital && !!d.pulses,
         label: d.label || d.name, short: d.short || d.label || d.name, unit: d.unit || '',
         dashed: !!d.dashed, fixed: Array.isArray(d.range) ? d.range : null,
         color: '#888888', tagText: '#111111', tagStr: '',
@@ -172,11 +179,12 @@ export class Scope {
         const gk = d.scale || d.unit || d.name;
         let grp = byKey.get(gk);
         if (!grp) {
-          grp = { key: gk, unit: d.unit || '', fixed: null, lo: -1, hi: 1, init: false, active: false,
+          grp = { key: gk, unit: d.unit || '', fixed: null, fit: false, lo: -1, hi: 1, init: false, active: false,
             minSpan: MIN_SPAN[d.unit] || 0, members: [], scaleStr: d.unit || '', scaleDirty: true };
           byKey.set(gk, grp);
           this.groups.push(grp);
         }
+        if (d.range === 'fit') grp.fit = true;
         if (tr.fixed && !grp.fixed) {
           grp.fixed = tr.fixed;
           grp.lo = tr.fixed[0]; grp.hi = tr.fixed[1]; grp.init = true;
@@ -347,7 +355,8 @@ export class Scope {
       g.fillText(tr.short, x0 - 6, (yT + yB) / 2, x0 - 8);
       const lo = tr.fixed ? tr.fixed[0] : 0, hi = tr.fixed ? tr.fixed[1] : 1;
       g.strokeStyle = tr.color;
-      this.strokeDigital(tr.ring, tL, x0, pps, yB, lo, (yB - yT) / ((hi - lo) || 1), x1);
+      if (tr.pulses) this.strokePulses(tr.ring, tL, x0, pps, yT, yB, x1);
+      else this.strokeDigital(tr.ring, tL, x0, pps, yB, lo, (yB - yT) / ((hi - lo) || 1), x1);
     }
 
     // analog scales
@@ -520,11 +529,11 @@ export class Scope {
     return ring.v[p];
   }
 
-  /** @private auto range with 10 % padding, nice steps and hysteresis */
+  /** @private auto range with 10 % padding, nice steps and hysteresis ('fit' groups: never symmetric) */
   updateRange(grp, mn, mx) {
     if (grp.fixed) return;
     let lo, hi;
-    if (mn < 0) {
+    if (mn < 0 && !grp.fit) {
       const m = niceCeil(Math.max(-mn, mx, grp.minSpan / 2, 1e-12) * 1.1);
       lo = -m; hi = m;
     } else {
@@ -623,6 +632,60 @@ export class Scope {
     if (col !== NONE) {
       this.emitDigital(x0 + col, cFirst, cMin, cMax, cLast, yb, lo, ys);
       g.lineTo(xEnd, this.yPrev);
+    }
+    g.stroke();
+  }
+
+  /**
+   * @private pulse-count lane: the low baseline plus one thin spike per pulse, spread evenly over
+   * the interval since the previous sample; at most one spike per px column, and a column run is
+   * filled when its sample holds more pulses than px (a band).
+   */
+  strokePulses(ring, tL, x0, pps, yT, yB, xEnd) {
+    const g = this.g, cap = ring.cap, len = ring.len, T = ring.t, V = ring.v;
+    let base = ring.head - len;
+    if (base < 0) base += cap;
+    let i = this.firstIndex(ring, tL, base);
+    let tPrev = NaN;
+    if (i > 0) {
+      let q = base + i - 1;
+      if (q >= cap) q -= cap;
+      tPrev = T[q];
+    }
+    g.beginPath();
+    if (i < len) {
+      // baseline from where the data starts (like the other lanes) to the right edge
+      let p0 = base + i;
+      if (p0 >= cap) p0 -= cap;
+      g.moveTo(tPrev === tPrev ? x0 : x0 + (T[p0] - tL) * pps, yB);
+      g.lineTo(xEnd, yB);
+    }
+    let lastCol = NONE;
+    for (; i < len; i++) {
+      let p = base + i;
+      if (p >= cap) p -= cap;
+      const n = V[p], t = T[p];
+      if (n >= 0.5) {
+        const ta = tPrev === tPrev ? (tPrev > tL ? tPrev : tL) : t;
+        const xa = x0 + (ta - tL) * pps;
+        const xb = x0 + (t - tL) * pps;
+        const k = Math.round(n), span = xb - xa;
+        if (k > 1 && span < k) {
+          for (let c = Math.floor(xa), c1 = Math.floor(xb); c <= c1; c++) {
+            if (c === lastCol) continue;
+            g.moveTo(c + 0.5, yB); g.lineTo(c + 0.5, yT);
+            lastCol = c;
+          }
+        } else {
+          for (let j = 0; j < k; j++) {
+            const c = Math.floor(xa + span * (j + 0.5) / k);
+            if (c === lastCol) continue;
+            g.moveTo(c + 0.5, yB); g.lineTo(c + 0.5, yT);
+            lastCol = c;
+          }
+        }
+      }
+      tPrev = t;
     }
     g.stroke();
   }
