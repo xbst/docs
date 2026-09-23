@@ -17,7 +17,7 @@
  *   voltage   show the voltage inset (default true)
  *   range     'limit' (the circle is the current limit) or a fixed radius in A
  */
-import { CanvasView, TAU, arrow, haloText, clamp, num, presetOf, mechanicsOf } from './view-util.js';
+import { CanvasView, TAU, arrow, haloText, clamp, num, presetOf, mechanicsOf, textColor, rimColor } from './view-util.js';
 import { formatValue } from '../format.js';
 
 const SOLID = [];
@@ -117,10 +117,10 @@ export class VectorView extends CanvasView {
     g.font = this.font.uiBold;
     g.textBaseline = 'middle';
     g.textAlign = 'left';
-    g.fillStyle = th.axisD;
+    g.fillStyle = textColor(th, th.axisD);
     haloText(g, L.small ? 'd' : 'd flux', cx + R * 1.04 + 4, cy, th.tipBg);
     g.textAlign = 'center';
-    g.fillStyle = th.axisQ;
+    g.fillStyle = textColor(th, th.axisQ);
     haloText(g, L.small ? 'q' : 'q torque', cx, cy - R * 1.04 - this.fpx(12) * 0.65, th.tipBg);
 
     // current-limit circle
@@ -188,9 +188,9 @@ export class VectorView extends CanvasView {
     g.stroke();
     g.setLineDash(SOLID);
     if (Math.hypot(id, iq) * k > 2) {
-      g.strokeStyle = th.tipBg;
-      g.fillStyle = th.tipBg;
-      g.lineWidth = 6;
+      g.strokeStyle = rimColor(th);
+      g.fillStyle = rimColor(th);
+      g.lineWidth = th.dark ? 6 : 5;
       arrow(g, cx, cy, xd, yq, 13);
       g.strokeStyle = th.field;
       g.fillStyle = th.field;

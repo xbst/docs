@@ -182,6 +182,14 @@ export class ChartView extends CanvasView {
       g.closePath();
       g.fill();
       g.globalAlpha = 1;
+      if (!th.dark) {
+        // gray rim under the amber curve: amber alone is faint on the light card
+        g.strokeStyle = th.lineColor;
+        g.lineWidth = 4.6;
+        g.globalAlpha = 0.55;
+        this.curve(selCurve.ts, X, Y);
+        g.globalAlpha = 1;
+      }
       g.strokeStyle = th.field;
       g.lineWidth = 3;
       this.curve(selCurve.ts, X, Y);

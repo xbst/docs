@@ -204,12 +204,21 @@ function drawPaths(g, th, buf, head, len, cap, ox, oy, k, width, tip, lim, cx, c
   g.strokeStyle = th.target;
   g.lineWidth = width * 0.85;
   g.setLineDash(DASH);
-  strokeTrail(g, buf, n, 0, ox, oy, k, tip ? tip.xCmd : NaN, tip ? tip.yCmd : NaN);
+  tracePath(g, buf, n, 0, ox, oy, k, tip ? tip.xCmd : NaN, tip ? tip.yCmd : NaN);
+  g.stroke();
   g.setLineDash(SOLID);
-  // actual path, solid amber
+  // actual path, solid amber (over a gray rim on the light card, where amber alone is faint)
+  tracePath(g, buf, n, 2, ox, oy, k, tip ? tip.x : NaN, tip ? tip.y : NaN);
+  if (!th.dark) {
+    g.strokeStyle = th.lineColor;
+    g.lineWidth = width + 1.6;
+    g.globalAlpha = 0.55;
+    g.stroke();
+    g.globalAlpha = 1;
+  }
   g.strokeStyle = th.field;
   g.lineWidth = width;
-  strokeTrail(g, buf, n, 2, ox, oy, k, tip ? tip.x : NaN, tip ? tip.y : NaN);
+  g.stroke();
 }
 
 /** Closed band between IDX[j0..j1]: along the commanded points, back along the actual ones. */
@@ -221,8 +230,11 @@ function bandPath(g, buf, j0, j1, ox, oy, k) {
   g.closePath();
 }
 
-/** One polyline through column pair `o` (0 = commanded, 2 = actual) of the picked points, plus the live tip. */
-function strokeTrail(g, buf, n, o, ox, oy, k, tx, ty) {
+/**
+ * Builds (does not stroke) one polyline through column pair `o` (0 = commanded, 2 = actual)
+ * of the picked points, plus the live tip.
+ */
+function tracePath(g, buf, n, o, ox, oy, k, tx, ty) {
   g.beginPath();
   let pen = false;
   for (let j = 0; j < n; j++) {
@@ -232,5 +244,4 @@ function strokeTrail(g, buf, n, o, ox, oy, k, tx, ty) {
     if (pen) g.lineTo(sx, sy); else { g.moveTo(sx, sy); pen = true; }
   }
   if (pen && tx === tx && ty === ty) g.lineTo(ox + tx * k, oy - ty * k);
-  g.stroke();
 }

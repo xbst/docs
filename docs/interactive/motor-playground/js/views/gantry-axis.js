@@ -182,10 +182,10 @@ export class AxisMode {
     roundRect(g, sx - half, cy0, A.cw, cy1 - cy0, 4);
     g.fill();
     g.fillStyle = th.field;
-    g.globalAlpha = 0.28;
+    g.globalAlpha = th.dark ? 0.28 : 0.45;
     g.fill();
     g.globalAlpha = 1;
-    g.strokeStyle = th.field;
+    g.strokeStyle = th.dark ? th.field : th.lineColor;       // amber alone is faint on the light card
     g.lineWidth = 1.5;
     g.stroke();
     g.strokeStyle = th.field;

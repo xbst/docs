@@ -39,6 +39,7 @@ import { AxisMode } from './gantry-axis.js';
 import { formatValue } from '../format.js';
 
 const SOLID = [];
+const DASH_FINE = [3, 3];
 const BUMP_FADE_MS = 700;
 const LOST_MIN_MM = 0.05;
 
@@ -293,17 +294,17 @@ export class GantryView extends CanvasView {
     const sxc = X(xc), syc = Y(yc);
     g.strokeStyle = th.target;
     g.lineWidth = 1.5;
-    g.setLineDash([3, 3]);
+    g.setLineDash(DASH_FINE);
     g.beginPath(); g.arc(sxc, syc, hs + 3, 0, TAU); g.stroke();
     g.setLineDash(SOLID);
     g.fillStyle = th.tipBg;
     roundRect(g, sx - hs, sy - hs, hs * 2, hs * 2, 3);
     g.fill();
     g.fillStyle = th.field;
-    g.globalAlpha = 0.35;
+    g.globalAlpha = th.dark ? 0.35 : 0.5;
     g.fill();
     g.globalAlpha = 1;
-    g.strokeStyle = th.field;
+    g.strokeStyle = th.dark ? th.field : th.lineColor;       // amber alone is faint on the light card
     g.lineWidth = 1.5;
     g.stroke();
     g.fillStyle = th.field;

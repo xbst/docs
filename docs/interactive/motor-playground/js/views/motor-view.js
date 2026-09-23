@@ -23,7 +23,7 @@
  *   legend, note    top legend line and the "repeats N times per turn" note (default true)
  */
 import {
-  CanvasView, TAU, arrow, arrowHead, haloText, clamp, num, presetOf, wrapAngle,
+  CanvasView, TAU, arrow, arrowHead, haloText, clamp, num, presetOf, wrapAngle, textColor, rimColor,
 } from './view-util.js';
 import { formatValue } from '../format.js';
 
@@ -207,14 +207,14 @@ export class MotorView extends CanvasView {
       g.setLineDash(SOLID);
     }
 
-    // current (field) vector, amber, with a halo
+    // current (field) vector, amber, over a halo (dark theme) or a gray rim (light theme)
     if (iMag > 0.01 * Irated) {
       const r = Math.min(iMag * vScale, L.Rin * 1.08);
       const x1 = cx + r * Math.cos(phi), y1 = cy - r * Math.sin(phi);
       g.lineCap = 'round';
-      g.strokeStyle = th.tipBg;
-      g.fillStyle = th.tipBg;
-      g.lineWidth = 6;
+      g.strokeStyle = rimColor(th);
+      g.fillStyle = rimColor(th);
+      g.lineWidth = th.dark ? 6 : 5;
       arrow(g, cx, cy, x1, y1, 13);
       g.strokeStyle = th.field;
       g.fillStyle = th.field;
@@ -311,7 +311,9 @@ export class MotorView extends CanvasView {
       g.fillRect(u0, tw, u1 - u0, cw);
       g.fillRect(u0, -tw - cw, u1 - u0, cw);
       g.globalAlpha = 1;
-      g.strokeStyle = col;
+      // outline in the phase color on the dark card; gray on the light one, where amber and
+      // green are too faint to carry the shape
+      g.strokeStyle = th.dark ? col : th.lineColor;
       g.lineWidth = 1.2;
       g.strokeRect(u0, tw, u1 - u0, cw);
       g.strokeRect(u0, -tw - cw, u1 - u0, cw);
@@ -370,9 +372,9 @@ export class MotorView extends CanvasView {
     g.font = `700 ${this.fpx(13)}px ${this.theme.fontUi}`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillStyle = th.rotorN;
+    g.fillStyle = textColor(th, th.rotorN);
     g.fillText('N', cx + rl * Math.cos(thetaE + off), cy - rl * Math.sin(thetaE + off));
-    g.fillStyle = th.rotorS;
+    g.fillStyle = textColor(th, th.rotorS);
     g.fillText('S', cx + rl * Math.cos(thetaE + Math.PI + off), cy - rl * Math.sin(thetaE + Math.PI + off));
   }
 
@@ -405,9 +407,9 @@ export class MotorView extends CanvasView {
     // Labels sit beside the axis ends, on the lagging side: a positive load angle puts the
     // current vector just ahead of d, so the label stays clear of it.
     const rl = r - 4, off = this.fpx(12) * 0.75;
-    g.fillStyle = th.axisD;
+    g.fillStyle = textColor(th, th.axisD);
     haloText(g, 'd', cx + rl * cd + off * sd, cy - rl * sd + off * cd, th.tipBg);
-    g.fillStyle = th.axisQ;
+    g.fillStyle = textColor(th, th.axisQ);
     haloText(g, 'q', cx + rl * cq + off * sq, cy - rl * sq + off * cq, th.tipBg);
   }
 

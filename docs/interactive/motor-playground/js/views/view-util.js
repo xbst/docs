@@ -240,8 +240,8 @@ export function led(g, th, x, y, r, lit, color) {
   }
 }
 
-/** '#111111' or '#ffffff', whichever contrasts more with a CSS hex or rgb() color. */
-export function inkOn(color) {
+/** WCAG relative luminance of a CSS hex or rgb() color. */
+export function luminance(color) {
   let r = 136, gg = 136, b = 136;
   const s = String(color || '').trim();
   if (s[0] === '#') {
@@ -252,8 +252,45 @@ export function inkOn(color) {
     if (m && m.length >= 3) { r = +m[0]; gg = +m[1]; b = +m[2]; }
   }
   const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
-  const L = 0.2126 * lin(r) + 0.7152 * lin(gg) + 0.0722 * lin(b);
-  return L > 0.179 ? '#111111' : '#ffffff';
+  return 0.2126 * lin(r) + 0.7152 * lin(gg) + 0.0722 * lin(b);
+}
+
+/** WCAG contrast ratio of two CSS colors (1 to 21). */
+export function contrast(a, b) {
+  const la = luminance(a), lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+const textCache = new WeakMap();
+
+/**
+ * `color` when it reads as text on the view background (contrast ≥ 4.5), otherwise the
+ * theme's text color: the light palette's pink q-axis color falls just short. Cached per
+ * theme object, so it is cheap per frame.
+ * @param {Object} th theme
+ * @param {string} color
+ * @returns {string}
+ */
+export function textColor(th, color) {
+  let m = textCache.get(th);
+  if (!m) { m = new Map(); textCache.set(th, m); }
+  let c = m.get(color);
+  if (c === undefined) {
+    c = contrast(color, th.tipBg) >= 4.5 ? color : th.text;
+    m.set(color, c);
+  }
+  return c;
+}
+
+/**
+ * Edge color drawn under bright strokes (amber, green): the card background in the dark
+ * theme (a halo that separates them from what lies below), a gray rim in the light theme,
+ * where amber and green alone are under 3:1 against the card.
+ * @param {Object} th theme
+ * @returns {string}
+ */
+export function rimColor(th) {
+  return th.dark ? th.tipBg : th.lineColor;
 }
 
 /* ---------------- numbers ---------------- */
