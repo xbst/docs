@@ -30,9 +30,13 @@
 //   optional 256-step interpolation; targets iA* = I cos θcmd, iB* = I sin θcmd.
 //   Current mode: per-phase PI, Kp = L·ωc, Ki = R·ωc, ωc = 2π·3 kHz, clamp ±Vbus (averaged)
 //   or a 40 kHz mean-centered chopper (switching fidelity, dt = 0.5 µs). Voltage mode:
-//   v = vAmp·cos(θcmd − φk), dvAmp/dt = (R/30 ms)·(I − LPF200|i|). Hybrid: current mode above
-//   hybridThresholdMmS. I = runCurrent (scenario null → the preset's Irated).
-// StallGuard (drivers/stallguard.js): sg = 1023·clamp(1 − |sin δ|·(1 + 0.3|ωm|/ωref), 0, 1),
+//   v = vAmp·cos(θcmd − φk), dvAmp/dt = (R/30 ms)·(I − LPF200|i|). Hybrid: current mode once the
+//   planner's commanded speed reaches hybridThresholdMmS, back to voltage mode below 0.9× that
+//   (hysteresis). I = runCurrent (scenario null → the preset's Irated); the compare motor
+//   (motor 1 with compareMotor set) uses compareMotor.runCurrent, null → its own preset's Irated
+//   (an open-loop compare motor on a BLDC scenario is the stepper: 3.54 A, not 5.6 A).
+// StallGuard (drivers/stallguard.js): sg = 1023·clamp(1 − 0.92·|sin δ|·(1 + 0.3|ωm|/ωref), 0, 1)
+//   (a stalled rotor reads about 82: SG_STALL_FLOOR 0.08),
 //   δ = atan2(iq, id) (current vector vs rotor d axis), ωref = 100 mm/s; null while the
 //   planner's commanded speed is below minSpeedMmS; diag = sg < 2·sgthrs.
 // FOC (drivers/foc.js), sampled at 25 kHz (every 40 µs control tick):
@@ -49,13 +53,17 @@
 //   cutoff, kixRefRatio position-I slider reference; see that object for the values):
 //   Kpq = Kpd = L·2πfc, Kiq = Kid = R·2πfc; Kpv = Jt·2πfv/Kt, Kiv = Kpv·2πfv·alpha;
 //   Kpx = 2πfx, Kix = 0 (KixRef = Kpx·2πfx·kixRefRatio); filters at fFilter and fVel;
-//   Umax = 0.96·Vlimit (Vbus, or Vbus/√3 three-phase); ωLimit = omegaLimitFactor·maxVelocity;
+//   Umax = 0.96·Vlimit (Vbus, or Vbus/√3 three-phase); ωLimit = omegaLimitFactor·maxVelocity
+//   (×√2 on CoreXY: a 45° move at maxVelocity drives one belt at √2·maxVelocity);
 //   iLimit = runCurrent (homingCurrent while homing). scenario.foc.gains holds multipliers.
 //   Values (2026-09-23): fFilter 1200, fc 400, fv 75, alpha 0.25, fVel 225, fx 28, kixRefRatio 2.
 //   Status output: snapshot.motors[i].status is latched like the chip's STATUS_FLAGS (set on any
 //   masked flag, cleared once the flags are gone and the carriage has been off every stop for
 //   50 ms); motors[i].flags stay live.
 // Planner (planner.js): trapezoidal moves along polylines, Klipper junction speeds (scv).
+//   Leaving a setTarget speed command hands the ramp's current speed to the planner (moveTo and
+//   runPath brake from it, jog ramps from it). jog, moveTo, runPath, singleStep and setTarget
+//   first abort a running sweep or homing (restoring what those machines override).
 // Homing (world-machines.js): FOC ramp 250 mm/s² by default; no rebase on the trigger, the
 //   command stays where it triggered and the driver keeps pressing at the homing current;
 //   freeIqPeak = max |iq*| (FOC) or |i|; the trigger is the latched status (rising edge).
@@ -63,21 +71,24 @@
 // Time step: dt = 40 µs (averaged) or 0.5 µs (switching). Planner, FOC and the averaged current
 // PI run every 40 µs control tick. Per step: planner (control ticks) → step generators →
 // drivers → motors → mechanics → encoders/StallGuard → snapshot, homing/sweep machines,
-// metrics, traces (every `decimation` steps, decimation = max(1, round(traceWindow/(4096·dt)))).
+// metrics, traces (every `decimation` steps, decimation = max(1, ceil(traceWindow/(4096·dt))),
+// so the ring spans at least traceWindow; see traceDecimation in world-traces.js).
 //
 // Derived snapshot values: loadAngle = atan2(iq, id); cmdAngleErr = wrapPi(θcmd − θe);
 // lostCycles = round((θcmd − θe)/2π) (open loop; always 0 for FOC), lostMm = lostCycles·rd/p;
 // heat = exponential 1 s mean of Σ iPhase²/(kf·Irated²) (1.0 = rated current continuously).
 // Noise signal world.noise[i] (A, the `noise` trace): FOC (uq − LPF500(uq))/Kpq with the ×1
-// (optimal) Kpq, so a torque P multiplier of 6 shows 6× the noise; open loop iA − LPF500(iA).
+// (optimal) Kpq, so a torque P multiplier of 6 shows 6× the noise; open loop e − LPF500(e) with
+// the regulation error e = iA − iA* (the current fundamental cancels at speed).
 //
 // Metrics (metrics.js, published every 100 ms of sim time, motor 0): overshootPct/Mm (peak
 // past the final position after a stop, % of the deceleration distance), settleMs (until
 // |error| < 0.02 mm), cornerErrMm (max distance to the commanded polyline near corners),
 // oscFreqHz/oscAmp (at rest: high-passed iq for FOC, in A; high-passed rotor speed omegaM for
-// open loop, in rad/s), noiseIdx (RMS of world.noise[0] / Irated), rippleRms/Pp
-// (iA − LPF2000(iA)), iAmpPct (LPF200|i| vs target), phaseLagDeg (θcmd vs current angle),
-// stepRate, lostStepsMm, pressInMm, freeMotionIqPeak, rise (L·I/(Vbus − R·I)), sweep,
+// open loop, in rad/s), noiseIdx (RMS of world.noise[0] / Irated), rippleRms/Pp (phase-A
+// chopper ppLast in switching fidelity, rms = pp/(2√3); 0 in averaged fidelity and for FOC),
+// iAmpPct (LPF200|i| vs target), phaseLagDeg (θcmd vs current angle), stepRate, lostStepsMm
+// (CoreXY: magnitude of the x/y loss from both belts), pressInMm, freeMotionIqPeak, rise (L·I/(Vbus − R·I)), sweep,
 // posErrMm, velErrMmS, heat.
 // ---------------------------------------------------------------------------------------------
 //
@@ -100,7 +111,7 @@ import {
   SCENARIO_DEFAULTS, cloneDeep, deepMerge, setPath, isStructural, normalizeScenario, normalizeGains,
   normalizeFilters, normalizeDriverMode, unitGains,
 } from './world-scenario.js';
-import { RingBuffer, TRACE_CAP, buildTraces } from './world-traces.js';
+import { RingBuffer, buildTraces, traceDecimation } from './world-traces.js';
 import { buildSnapshot, fillSnapshot, stepWorld, updateCommand, CONTROL_DT, FOC_POS, FOC_VEL, FOC_TRQ } from './world-step.js';
 import { HomingMachine, SweepMachine } from './world-machines.js';
 
@@ -210,7 +221,10 @@ export class World {
     this._iTarget = new Float64Array(2);
     this._prevLost = new Float64Array(2);
     this._prevDiag = new Uint8Array(2);
+    /** Previous latched status level per motor (flagSet rising edge, see fillFoc). */
     this._prevStatus = new Uint8Array(2);
+    /** @type {object|null} event rate-limit state (EventGates, created by buildSnapshot) */
+    this._gates = null;
     /** Latched status per motor (1 = the status output is high), see fillFoc. */
     this._statusLatch = new Uint8Array(2);
     /** Steps the clear condition has held per motor. */
@@ -303,6 +317,8 @@ export class World {
     this._runCurrentAuto = !(typeof sc.runCurrent === 'number' && Number.isFinite(sc.runCurrent));
     normalizeScenario(sc, hint);
     if (sc.foc.gains !== 'optimal') sc.foc.gains = normalizeGains(sc.foc.gains);
+    // A running sweep's temporary supply voltage lives only in the scenario being replaced.
+    this._dropSweep();
     this._sc = sc;
     this._scView = null;
     this._build();
@@ -311,9 +327,10 @@ export class World {
   /**
    * Sets one scenario value by dotted path, then pushes all non-structural parameters into
    * the modules without touching the state. Structural keys (motorType, motorPreset, driver,
-   * fidelity, mechanics, compareMotor, encoder.cpr) rebuild the world; traceWindow only
-   * clears the traces. Setting `foc.gains.<key>` while gains are 'optimal' first expands them
-   * to the all-×1 object.
+   * fidelity, mechanics, compareMotor, every encoder.* key) rebuild the world; a rebuild ends a
+   * running sweep and puts its original supply voltage back. traceWindow only clears the
+   * traces. Setting `foc.gains.<key>` while gains are 'optimal' first expands them to the
+   * all-×1 object.
    * @param {string} path e.g. 'supplyV', 'foc.gains.velocityP'
    * @param {*} value
    * @param {{ reset?: boolean }} [opts] reset: rebuild as configure does
@@ -321,6 +338,10 @@ export class World {
   set(path, value, opts) {
     const sc = this._sc;
     const p = String(path);
+    const rebuild = (opts && opts.reset === true) || isStructural(p);
+    // A rebuild ends a running sweep: its original supply voltage goes back first, so a
+    // supplyV set with { reset: true } still wins.
+    if (rebuild) this._dropSweep();
     if (p.startsWith('foc.gains.') && sc.foc.gains === 'optimal') sc.foc.gains = unitGains();
     setPath(sc, p, cloneDeep(value));
     const root = p.split('.')[0];
@@ -332,7 +353,7 @@ export class World {
     normalizeScenario(sc, motorKey ? root : null);
     if (sc.foc.gains !== 'optimal') sc.foc.gains = normalizeGains(sc.foc.gains);
     this._scView = null;
-    if ((opts && opts.reset === true) || isStructural(p)) {
+    if (rebuild) {
       this._build();
       return;
     }
@@ -346,7 +367,9 @@ export class World {
 
   /**
    * Runs a command (contract section 15): jog, moveTo, runPath, stop, bump, home, sweep,
-   * singleStep, reset, setLoad, setTarget.
+   * singleStep, reset, setLoad, setTarget. jog, moveTo, runPath, singleStep and setTarget
+   * first abort a running sweep or homing (each machine restores what it overrides: supply
+   * voltage, planner limits, hard stops, the FOC current limit).
    * @param {string} name
    * @param {object} [args]
    */
@@ -356,10 +379,12 @@ export class World {
     const sc = this._sc;
     switch (name) {
       case 'jog':
+        this._abortMachines();
         this._leaveVelocityTarget();
         pl.jog(num(a.speedMmS, 0), num(a.vyMmS, 0));
         break;
       case 'moveTo':
+        this._abortMachines();
         this._leaveVelocityTarget();
         pl.moveTo(num(a.xMm, pl.x), num(a.yMm, pl.y));
         break;
@@ -368,6 +393,7 @@ export class World {
         if (nm === 'homeX') { this.command('home', a); break; }
         const path = a.path || nm || sc.path;
         if (!path) break;
+        this._abortMachines();
         this._leaveVelocityTarget();
         pl.runPath(path);
         break;
@@ -404,6 +430,7 @@ export class World {
         break;
       case 'singleStep': {
         const dir = num(a.dir, 1) < 0 ? -1 : 1;
+        this._abortMachines();
         this._leaveVelocityTarget();
         this._singleStep(dir);
         break;
@@ -418,6 +445,7 @@ export class World {
         this.mechanics.setLoads(sc.loads.drag, sc.loads.torque);
         break;
       case 'setTarget':
+        if (typeof a.omegaMmS === 'number' || typeof a.iq === 'number') this._abortMachines();
         if (typeof a.omegaMmS === 'number') {
           if (!this._velActive) {
             pl.stop(true);
@@ -439,8 +467,10 @@ export class World {
 
   /** Rebuilds every module from `this._sc` and resets the state (configure, structural set). */
   _build() {
+    // Homing and sweep machines are recreated below; nothing of theirs survives a rebuild. A
+    // running sweep's temporary supply voltage must not either.
+    this._dropSweep();
     const sc = this._sc;
-    // Homing and sweep machines are recreated below; nothing of theirs survives a rebuild.
     this._dt = sc.fidelity === 'switching' ? DT_SWITCHING : DT_AVERAGED;
     const dt = this._dt;
     this.controlEvery = Math.max(1, Math.round(CONTROL_DT / dt));
@@ -571,9 +601,9 @@ export class World {
     this._fillSnapshot();
   }
 
-  /** decimation = max(1, round(traceWindow/(cap·dt))). */
+  /** decimation = traceDecimation(traceWindow, dt) = max(1, ceil(traceWindow/(cap·dt))). */
   _setupDecimation() {
-    this._decimation = Math.max(1, Math.round(this._sc.traceWindow / (TRACE_CAP * this._dt)));
+    this._decimation = traceDecimation(this._sc.traceWindow, this._dt);
     this._decimCount = 0;
   }
 
@@ -616,7 +646,8 @@ export class World {
         this.stepgens[i].configure({ stepsPerRev: spr, dt });
         if (!fresh) this.stepgens[i].rebase(this.cmdTheta[i]);
       }
-      this._iTarget[i] = sc.runCurrent;
+      const runCurrent = this._runCurrent(i);
+      this._iTarget[i] = runCurrent;
       if (isFoc) {
         const code = this.driverModes[i] === 'velocity' ? FOC_VEL : this.driverModes[i] === 'torque' ? FOC_TRQ : FOC_POS;
         if (!fresh && code !== this._focMode[i]) modeChanged = true;
@@ -626,7 +657,7 @@ export class World {
         this._uLimitOL[i] = vLimit(pr, sc.supplyV);
         this.openloop[i].configure({
           mode: this.driverModes[i], fidelity: sc.fidelity, microsteps: sc.microsteps, interpolate: sc.interpolate !== false,
-          runCurrent: sc.runCurrent, Vbus: sc.supplyV, hybridThresholdRadS: num(sc.hybridThresholdMmS, 60) / this._mmPerRad,
+          runCurrent, Vbus: sc.supplyV, hybridThresholdRadS: num(sc.hybridThresholdMmS, 60) / this._mmPerRad,
           preset: pr, dt, controlDt: CONTROL_DT, chopper: cloneDeep(sc.chopper), currentLoopHz: 3000,
         });
         const sgc = sc.stallguard || EMPTY;
@@ -679,10 +710,28 @@ export class World {
     };
   }
 
-  /** @returns {number} FOC position-loop speed limit (mech rad/s). */
+  /**
+   * FOC position-loop speed limit (mech rad/s): omegaLimitFactor·maxVelocity as belt speed,
+   * ×√2 on CoreXY (a 45° move at maxVelocity drives one belt at √2·maxVelocity).
+   * @returns {number}
+   */
   _omegaLimit() {
     const sc = this._sc;
-    return num(sc.foc.omegaLimitFactor, 1.2) * num(sc.planner.maxVelocity, 150) / this._mmPerRad;
+    const belt = this.kinematics === 'corexy' ? Math.SQRT2 : 1;
+    return belt * num(sc.foc.omegaLimitFactor, 1.2) * num(sc.planner.maxVelocity, 150) / this._mmPerRad;
+  }
+
+  /**
+   * Run current of motor i (A): the scenario runCurrent, except the compare motor (motor 1
+   * with compareMotor set), which uses compareMotor.runCurrent or, when that is null, its own
+   * preset's Irated (an open-loop compare motor on a BLDC scenario is the stepper).
+   * @param {number} i
+   * @returns {number}
+   */
+  _runCurrent(i) {
+    const sc = this._sc;
+    if (i === 1 && this.compareActive) return num(sc.compareMotor.runCurrent, this.presets[1].Irated);
+    return sc.runCurrent;
   }
 
   /**
@@ -892,15 +941,51 @@ export class World {
     this._updateCommand(0);
   }
 
-  /** Ends a setTarget constant-speed command: the planner takes over at the commanded position. */
+  /**
+   * Aborts a running homing or sweep before a new motion command. Homing restores the run
+   * current limit and the planner overrides; the sweep restores the supply voltage, planner
+   * limits and hard stops (and resets the motion state, as its abort does).
+   */
+  _abortMachines() {
+    this.homing.abort();
+    this.sweep.abort();
+  }
+
+  /**
+   * Forgets a running sweep ahead of a rebuild (which recreates the machine): the sweep's
+   * original supply voltage goes back into the current scenario and the cached view is
+   * cleared, so the temporary sweep voltage does not outlive the sweep.
+   */
+  _dropSweep() {
+    const sw = this.sweep;
+    if (!sw || !sw.snap.running) return;
+    this._sc.supplyV = sw.origV;
+    this._scView = null;
+    sw.snap.running = false;
+  }
+
+  /**
+   * Ends a setTarget constant-speed command: the planner takes over at the commanded position
+   * and speed (a jog at the ramp's current speed), so a following moveTo/runPath brakes from
+   * that speed and a jog ramps from it instead of the command dropping to 0 in one tick.
+   */
   _leaveVelocityTarget() {
     if (!this._velActive) return;
     const pl = this.planner;
-    pl.setPosition(pl.x + this._velTheta * this._mmPerRad, pl.y);
+    const k = this._mmPerRad;
+    const v = this._velCmd * k;
+    pl.setPosition(pl.x + this._velTheta * k, pl.y);
     this._velActive = false;
     this._velCmd = 0;
     this._velTarget = 0;
     this._velTheta = 0;
+    if (v !== 0) {
+      pl.jog(v, 0);
+      // jog() only sets the target velocity; the current velocity is the handed-over one.
+      pl.vx = v;
+      pl.vy = 0;
+      pl.speed = v < 0 ? -v : v;
+    }
     this._updateCommand(0);
   }
 

@@ -4,7 +4,10 @@
 // `runCurrent` defaults to null, which normalization resolves to the motor preset's Irated
 // (3.54 A for the stepper presets, 5.6 A for the BLDC), so the scenario always holds a number
 // after configure/set. `stopStiffness` (N·m/rad, default 2) is the hard-stop contact stiffness
-// passed to the mechanics as kStop.
+// passed to the mechanics as kStop. `compareMotor.runCurrent` (only when `compareMotor` is an
+// object) is the compare motor's own current: null (the default) follows that motor's own preset
+// Irated, which World resolves (an open-loop compare motor on a BLDC scenario is the stepper,
+// 3.54 A, not the scenario's 5.6 A).
 
 import { MOTOR_PRESETS } from './presets.js';
 
@@ -42,7 +45,7 @@ export const SCENARIO_DEFAULTS = deepFreeze({
     mask: ['iqTargetLimit', 'uqOutputLimit', 'udOutputLimit'], virtualSteps: { fullStepsPerRev: 4096, microsteps: 2 },
     omegaLimitFactor: 1.2,
   },
-  compareMotor: null,
+  compareMotor: null,   // or { driver, driverMode, runCurrent: null (= its own preset's Irated) }
   traceWindow: 2.0, seed: 1,
 });
 
@@ -54,7 +57,7 @@ export const OPENLOOP_MODES = Object.freeze(['voltage', 'current', 'hybrid']);
 /** FOC driver modes. */
 export const FOC_MODES = Object.freeze(['position', 'velocity', 'torque']);
 
-/** Top-level scenario keys whose change rebuilds the world (plus `encoder.cpr`). */
+/** Top-level scenario keys whose change rebuilds the world (plus every `encoder.*` key). */
 const STRUCTURAL_ROOTS = new Set(['motorType', 'motorPreset', 'driver', 'fidelity', 'mechanics', 'compareMotor']);
 
 /**
@@ -137,14 +140,15 @@ export function getPath(obj, path) {
 
 /**
  * True when setting `path` must rebuild the world (contract section 15: `motorType, motorPreset,
- * driver, fidelity, mechanics, compareMotor, encoder.cpr`). `traceWindow` is handled separately
- * (it only clears the traces).
+ * driver, fidelity, mechanics, compareMotor`, plus every `encoder.*` key: the encoder is only
+ * configured on a rebuild, so `encoder.cpr` and `encoder.windowS` both rebuild). `traceWindow` is
+ * handled separately (it only clears the traces).
  * @param {string} path
  * @returns {boolean}
  */
 export function isStructural(path) {
   const root = String(path).split('.')[0];
-  return STRUCTURAL_ROOTS.has(root) || path === 'encoder' || path === 'encoder.cpr';
+  return STRUCTURAL_ROOTS.has(root) || root === 'encoder';
 }
 
 /**
@@ -201,6 +205,8 @@ export function normalizeDriverMode(driver, mode) {
  * - `microsteps` is a positive integer and `planner.microsteps` mirrors it.
  * - `runCurrent` null/undefined (or not a finite number ≥ 0) resolves to the preset's Irated.
  * - `stopStiffness` is a finite number > 0 (default 2 N·m/rad).
+ * - `compareMotor`, when an object, gets `runCurrent`: a finite number ≥ 0 stays, anything else
+ *   becomes null (= the compare motor's own preset Irated, resolved by World).
  * @param {object} sc merged scenario
  * @param {'motorType'|'motorPreset'|null} [hint]
  * @returns {object} sc
@@ -230,5 +236,9 @@ export function normalizeScenario(sc, hint = null) {
   if (!(typeof rc === 'number' && Number.isFinite(rc) && rc >= 0)) sc.runCurrent = MOTOR_PRESETS[sc.motorPreset].Irated;
   const ks = sc.stopStiffness;
   if (!(typeof ks === 'number' && Number.isFinite(ks) && ks > 0)) sc.stopStiffness = 2;
+  if (isPlainObject(sc.compareMotor)) {
+    const crc = sc.compareMotor.runCurrent;
+    if (!(typeof crc === 'number' && Number.isFinite(crc) && crc >= 0)) sc.compareMotor.runCurrent = null;
+  }
   return sc;
 }

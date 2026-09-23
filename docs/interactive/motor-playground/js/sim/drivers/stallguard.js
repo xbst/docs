@@ -1,12 +1,20 @@
 // StallGuard-like load estimator (a behavior model, not the chip's circuit).
 //
-//   sg   = 1023·clamp(1 − |sin δ|·(1 + 0.3·|ωm|/ωref), 0, 1)   when |omegaCmd| ≥ minSpeed, else null
+//   sg   = 1023·(1 − min(1 − SG_STALL_FLOOR, |sin δ|·(1 + 0.3·|ωm|/ωref)))
+//          when |omegaCmd| ≥ minSpeed, else null
 //   diag = sg !== null && sg < 2·sgthrs
 //
 // δ is the load angle (current vector vs rotor d axis, rad), ωm the mechanical speed (rad/s),
 // ωref the mechanical speed of 100 mm/s. The result is continuous (not rounded to an integer).
+// SG_STALL_FLOOR = 0.08 floors the reading at about 82 whatever the load angle and speed, so a
+// stalled rotor, including one that slips and rebounds against a compliant stop, never reads
+// 0 and a too-dull threshold (2·sgthrs < 82, sgthrs below ~41) never detects the stall.
+// Unloaded readings are unchanged (the floor only clips the low end).
 
 import { mmSToRadS } from '../units.js';
+
+/** Fraction of full scale a stalled rotor (ωm = 0, δ = 90°) still reads: sg ≈ 1023·0.08 ≈ 82. */
+export const SG_STALL_FLOOR = 0.08;
 
 /**
  * StallGuard-like estimator for one motor.
@@ -64,10 +72,9 @@ export class StallGuard {
     let sn = Math.sin(loadAngleRad);
     if (sn < 0) sn = -sn;
     const wm = omegaM < 0 ? -omegaM : omegaM;
-    let x = 1 - sn * (1 + 0.3 * wm / this.omegaRefRadS);
-    if (x < 0) x = 0;
-    else if (x > 1) x = 1;
-    const sg = 1023 * x;
+    let load = sn * (1 + 0.3 * wm / this.omegaRefRadS);
+    if (load > 1 - SG_STALL_FLOOR) load = 1 - SG_STALL_FLOOR;   // floor: a stall reads ~82, never 0
+    const sg = 1023 * (1 - load);
     this.sg = sg;
     this.diag = sg < this.threshold;
   }

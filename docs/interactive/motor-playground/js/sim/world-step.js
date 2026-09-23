@@ -9,10 +9,22 @@
 //   4. motors, 5. mechanics, 6. encoders and StallGuard
 //   7. snapshot, homing/sweep machines, metrics, traces (every `decimation` steps), t += dt
 // FOC step gets the encoder count as its 5th argument (the position error is counted in whole
-// encoder cells). StallGuard's minimum-speed gate reads the commanded speed from the planner
-// (world.cmdOmega, mechanical rad/s), not the step-rate EMA, so it switches exactly at
-// minSpeedMmS without flicker. The noise signal (world.noise, amps) is, for FOC motors,
-// (uq − LPF500(uq))/Kpq with the ×1 (optimal) Kpq, and for open-loop motors iA − LPF500(iA).
+// encoder cells). The planner's commanded speed (world.cmdOmega, mechanical rad/s) drives every
+// speed-dependent decision, not the step-rate EMA (world._omegaCmdOL, kept for readers): the
+// StallGuard minimum-speed gate (switches exactly at minSpeedMmS without flicker), the open-loop
+// hybrid threshold (OpenLoopDriver.step's speed argument) and the step generator's DIR
+// (StepGen.update's velSign, so DIR flips before the first reversed pulse).
+// The noise signal (world.noise, amps) is, for FOC motors, (uq − LPF500(uq))/Kpq with the ×1
+// (optimal) Kpq, and for open-loop motors e − LPF500(e) with the regulation error
+// e = iA − iA* (at standstill the chopper ripple; at speed the current fundamental cancels).
+// Voltage headroom: FOC motors report uMag = |(ud, uq)| against uLimit = Umax. Open-loop
+// two-phase motors report uMag = max(|vA|, |vB|) against uLimit = Vbus (each H-bridge can only
+// impose ±Vbus per phase; the α/β vector magnitude would reach √2·Vbus), and their current-mode
+// vAmp is LPF200 of that same quantity (so vAmp ≤ Vbus).
+// Events: flagSet on the rising edge of the LATCHED status (once per latch); stallDetected on the
+// DIAG rising edge, then held off for 20 ms; stepLost at most once per 50 ms per motor, carrying
+// `mm` (the signed distance lost since the previous stepLost event) next to `lostMm` (running
+// total). The holdoff times live in world._gates (EventGates, created by buildSnapshot).
 // Nothing here allocates on the steady path; events allocate one small object when they fire.
 
 import { TWO_PI, wrapPi } from './units.js';
@@ -27,10 +39,33 @@ export const FOC_TRQ = 2;
 /** Control period of the planner, FOC and averaged current loops (s). */
 export const CONTROL_DT = 40e-6;
 
+/** Holdoff after a stallDetected event before the next DIAG rising edge may fire one (s). */
+export const STALL_HOLDOFF_S = 0.02;
+/** Minimum spacing of stepLost events per motor (s); the lost distance accumulates meanwhile. */
+export const STEP_LOST_HOLDOFF_S = 0.05;
+
 const SQRT3_2 = Math.sqrt(3) / 2;
 
 /**
- * Allocates the snapshot object for a built world (configure only). Field list: contract
+ * Per-motor event rate-limit state: sim time of the last stallDetected and stepLost event
+ * (−Infinity = none yet, so the first event fires at once). Times stay valid across
+ * World._resetState (t keeps running); a rebuild creates a fresh instance with t = 0.
+ */
+export class EventGates {
+  /**
+   * @param {number} n motor count
+   */
+  constructor(n) {
+    /** @type {Float64Array} time of the last stallDetected event per motor (s) */
+    this.stallT = new Float64Array(n).fill(-Infinity);
+    /** @type {Float64Array} time of the last stepLost event per motor (s) */
+    this.lostT = new Float64Array(n).fill(-Infinity);
+  }
+}
+
+/**
+ * Allocates the snapshot object for a built world (configure only) and the world's event
+ * rate-limit state (`w._gates`, an EventGates). Field list: contract
  * section 15 (SPEC 5.7 names plus the additive driver, driverMode, nMotors, cmdAngleErr,
  * currentAngle, iAmp, iLimit, stepgen, lostCycles, triggeredAtMm, detail, currentV) and
  * `motors[i].mode` (the driver mode in effect: voltage/current/position/velocity/torque).
@@ -60,6 +95,7 @@ export function buildSnapshot(w) {
   }
   const lostMm = [];
   for (let i = 0; i < n; i++) lostMm.push(0);
+  w._gates = new EventGates(n);
   return {
     t: 0, dt: w._dt, motorType: sc.motorType, supplyV: sc.supplyV, fidelity: sc.fidelity,
     driver: sc.driver, driverMode: sc.driverMode, nMotors: n,
@@ -113,19 +149,22 @@ export function updateCommand(w, cdt) {
 
 /**
  * Step generator and driver of motor i; writes the driver output voltage into w._va/_vb.
+ * DIR and the open-loop hybrid switch follow the planner's commanded speed (w.cmdOmega);
+ * w._omegaCmdOL keeps the step-rate EMA speed for its readers.
  * @param {object} w World
  * @param {number} i motor index
  * @param {boolean} ctrl control tick
  */
 function driveMotor(w, i, ctrl) {
   const sgen = w.stepgens[i];
-  const pulses = sgen.update(w.cmdTheta[i]);
+  const omegaCmd = w.cmdOmega[i];
+  const velSign = omegaCmd > 1e-6 ? 1 : omegaCmd < -1e-6 ? -1 : 0;
+  const pulses = sgen.update(w.cmdTheta[i], velSign);
   const ol = w.openloop[i];
   if (ol !== null) {
     ol.consumePulses(pulses);
-    const wCmd = sgen.rate * w._stepAngle[i] * sgen.dir;
-    w._omegaCmdOL[i] = wCmd;
-    ol.step(w.motors[i], wCmd);
+    w._omegaCmdOL[i] = sgen.rate * w._stepAngle[i] * sgen.dir;
+    ol.step(w.motors[i], omegaCmd);
     w._va[i] = ol.vAlpha;
     w._vb[i] = ol.vBeta;
     return;
@@ -240,7 +279,16 @@ function fillOpenLoop(w, i, m, thE) {
   const vb = motor.vBeta;
   m.ud = va * c + vb * sn;
   m.uq = -va * sn + vb * c;
-  const um = Math.sqrt(va * va + vb * vb);
+  // Two-phase: each H-bridge imposes at most ±Vbus on its own phase, so the headroom is the
+  // larger phase voltage against Vbus (the α/β vector magnitude would reach √2·Vbus).
+  let um;
+  if (st.length === 2) {
+    const aa = va < 0 ? -va : va;
+    const ab = vb < 0 ? -vb : vb;
+    um = aa > ab ? aa : ab;
+  } else {
+    um = Math.sqrt(va * va + vb * vb);
+  }
   m.uMag = um;
   m.uLimit = w._uLimitOL[i];
   const vf = w._vAmpLpf[i].process(um);
@@ -251,7 +299,13 @@ function fillOpenLoop(w, i, m, thE) {
   m.sg = sgd.sg;
   const diag = sgd.diag;
   m.diag = diag;
-  if (diag && w._prevDiag[i] === 0) w._emit('stallDetected', { motor: i, sg: sgd.sg, xMm: w.mechanics.x });
+  if (diag && w._prevDiag[i] === 0) {
+    const g = w._gates;
+    if (w._t - g.stallT[i] >= STALL_HOLDOFF_S) {
+      g.stallT[i] = w._t;
+      w._emit('stallDetected', { motor: i, sg: sgd.sg, xMm: w.mechanics.x });
+    }
+  }
   w._prevDiag[i] = diag ? 1 : 0;
   m.status = false;
   m.iLimit = w._iTarget[i];
@@ -326,13 +380,16 @@ function fillFoc(w, i, m, thE) {
   }
   w._statusLatch[i] = latched ? 1 : 0;
   m.status = latched;
-  if (status && w._prevStatus[i] === 0) {
+  // flagSet on the rising edge of the latched output (once per latch, not per live-flag edge;
+  // a limit cycle toggles the live flags thousands of times per second). w._prevStatus holds
+  // the previous latched level. The flags reported are the live ones that set the latch.
+  if (latched && w._prevStatus[i] === 0) {
     w._emit('flagSet', {
       motor: i, iqTargetLimit: ff.iqTargetLimit, xOutputLimit: ff.xOutputLimit, uqOutputLimit: ff.uqOutputLimit,
       udOutputLimit: ff.udOutputLimit, vErrSumLimit: ff.vErrSumLimit,
     });
   }
-  w._prevStatus[i] = status ? 1 : 0;
+  w._prevStatus[i] = latched ? 1 : 0;
   m.iLimit = foc.iLimit;
   m.sg = null;
   m.diag = false;
@@ -394,18 +451,28 @@ function fillMotor(w, i) {
     const uq = focI.uq;
     w.noise[i] = (uq - w._noiseLpf[i].process(uq)) * w._noiseScale[i];
   } else {
-    const iA = ip[0];
-    w.noise[i] = iA - w._noiseLpf[i].process(iA);
+    // Open loop: high-passed regulation error e = iA − iA*, so the current fundamental cancels
+    // at speed and the chopper ripple remains at standstill.
+    const e = ip[0] - w.openloop[i].iStar[0];
+    w.noise[i] = e - w._noiseLpf[i].process(e);
   }
   w.iAmpLpfOut[i] = w._iAmpLpf[i].process(iAmp);
 
   const lost = w.openloop[i] !== null ? fillOpenLoop(w, i, m, thE) : fillFoc(w, i, m, thE);
-  if (lost !== w._prevLost[i]) {
-    w._prevLost[i] = lost;
-    w._emit('stepLost', { motor: i, lostCycles: lost, lostMm: lost * w.rd / p });
+  const mmPerCycle = w.rd / p;
+  // stepLost at most once per STEP_LOST_HOLDOFF_S per motor. w._prevLost is the lost count at
+  // the last event, so a change inside the holdoff accumulates into the next event's `mm`.
+  const prevLost = w._prevLost[i];
+  if (lost !== prevLost) {
+    const g = w._gates;
+    if (w._t - g.lostT[i] >= STEP_LOST_HOLDOFF_S) {
+      g.lostT[i] = w._t;
+      w._prevLost[i] = lost;
+      w._emit('stepLost', { motor: i, lostCycles: lost, lostMm: lost * mmPerCycle, mm: (lost - prevLost) * mmPerCycle });
+    }
   }
   m.lostCycles = lost;
-  s.gantry.lostMm[i] = lost * w.rd / p;
+  s.gantry.lostMm[i] = lost * mmPerCycle;
 
   const enc = w.encoders[i];
   const me = m.encoder;
@@ -423,8 +490,9 @@ function fillMotor(w, i) {
 }
 
 /**
- * Copies the module state into `w.snapshot` and raises edge events (stepLost, stallDetected,
- * flagSet, contact). Does not allocate except when an event fires.
+ * Copies the module state into `w.snapshot` and raises edge events (stepLost and stallDetected
+ * rate-limited, flagSet once per status latch, contact). Does not allocate except when an
+ * event fires.
  * @param {object} w World
  */
 export function fillSnapshot(w) {

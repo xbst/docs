@@ -3,7 +3,9 @@
 // `Metrics.update(world)` runs once per sim step. It reads only documented fields:
 //   world.snapshot  (motors[0..1], step, gantry, homing, sweep, supplyV)
 //   world.planner   (mode, phase, justFinished, atCorner, segStartX/Y, segEndX/Y, speed, x, y, vx, vy)
-//   world.scenario  (driver, mechanics, runCurrent, planner.accel, planner.maxVelocity)
+//   world.scenario  (driver, mechanics, fidelity, runCurrent, planner.accel, planner.maxVelocity)
+//   world.openloop[0].chopA.ppLast (switching fidelity only: the phase-A chopper's per-cycle
+//                    ripple, EMA of cycle peak - valley, A; absent or null for FOC motor 0)
 //   world.vxCmd, world.vyCmd (commanded toolhead velocity, mm/s: the planner's, or the setTarget
 //                    ramp while the planner idles; used for "at rest" and velErrMmS)
 //   world.noise     (Float64Array, per motor, A: the world's noise signal; FOC motors
@@ -16,7 +18,12 @@
 //
 // Definitions (motor 0 unless stated):
 //   noiseIdx          RMS of world.noise[0] over the period / Irated (the world does the high-pass)
-//   rippleRms/Pp      RMS and peak-to-peak of (iA - LPF2000(iA)) over the period
+//   rippleRms/Pp      chopper current ripple of phase A. Switching fidelity: ripplePp = the phase-A
+//                     chopper's ppLast at publish time, rippleRms = ppLast / (2 * sqrt(3)) (triangle
+//                     approximation). A high-pass of iA is not used: once the motor turns it is
+//                     dominated by the current's fundamental. Averaged fidelity (no chopper), FOC and
+//                     voltage mode (no hysteresis chopper): both 0; chapters show the analytic ripple
+//                     there instead.
 //   oscFreqHz/oscAmp  high-passed signal (iq - LPF50(iq)) for FOC, (omegaM - LPF50(omegaM)) for open
 //                     loop (a current-regulated stepper hides its ringing in the current but shows it
 //                     in the rotor speed), so oscAmp is in A for FOC and in rad/s for open loop;
@@ -34,6 +41,8 @@
 //   cornerErrMm       max distance of the toolhead from the current/previous commanded segment,
 //                     sampled while planner.atCorner, since the current path started
 //   rise              L * I / (Vbus - R * I) * 1000 (ms), Infinity when Vbus <= R * I
+//   lostStepsMm       axis/free: gantry.lostMm[0]; corexy: toolhead shift magnitude
+//                     sqrt(((lA + lB) / 2)^2 + ((lA - lB) / 2)^2) from lostMm[0], lostMm[1]
 //   posErrMm/velErrMmS instantaneous |error| (x for axis/free, Euclidean for corexy) at publish time
 // Axis and free mechanics have no physical y; the commanded y stands in for the actual y there,
 // so every distance reduces to the x error.
@@ -51,10 +60,13 @@ const OSC_HYST_FRAC = 0.25;
 const REST_EPS_MMS = 1e-9;
 /** Filter cutoffs (Hz). */
 const F_OSC = 50;
+/** Former ripple high-pass cutoff; lpRipple is kept configured but no longer feeds a metric. */
 const F_RIPPLE = 2000;
 const F_IAMP = 200;
 const F_LAG = 50;
 const RAD_TO_DEG = 180 / Math.PI;
+/** RMS / peak-to-peak of a symmetric triangle wave. */
+const TRI_RMS_PER_PP = 1 / (2 * Math.sqrt(3));
 
 /**
  * Distance from point (px, py) to the segment (ax, ay)-(bx, by). Allocation free.
@@ -272,11 +284,8 @@ export class Metrics {
     const nzA = nz ? nz[0] : 0;
     this.noiseSq += nzA * nzA;
 
-    // Chopper ripple.
-    const hpR = iA - this.lpRipple.process(iA);
-    this.rippleSq += hpR * hpR;
-    if (hpR < this.rippleMin) this.rippleMin = hpR;
-    if (hpR > this.rippleMax) this.rippleMax = hpR;
+    // Chopper ripple is read from the phase-A chopper at publish time (see the header); the
+    // ripple filter and accumulators (lpRipple, rippleSq/Min/Max) are no longer fed.
 
     // Oscillation at rest.
     const hpO = oscIn - this.lpOsc.process(oscIn);
@@ -419,8 +428,6 @@ export class Metrics {
 
     if (n > 0) {
       v.noiseIdx = this.Irated > 0 ? Math.sqrt(this.noiseSq / n) / this.Irated : 0;
-      v.rippleRms = Math.sqrt(this.rippleSq / n);
-      v.ripplePp = this.rippleMax - this.rippleMin;
       const amp = 0.5 * (this.oscMax - this.oscMin);
       this.oscHyst = OSC_HYST_FRAC * amp;
       if (this.oscAllRest) {
@@ -447,8 +454,26 @@ export class Metrics {
     v.iAmpPct = iTarget > 0 ? (100 * this.iAmpF) / iTarget : 0;
     v.phaseLagDeg = foc ? 0 : this.lagF * RAD_TO_DEG;
     v.stepRate = s.step.rate;
-    const lost = s.gantry.lostMm[0];
-    v.lostStepsMm = lost === undefined ? 0 : lost;
+    // Chopper ripple: phase-A chopper's per-cycle p-p in switching fidelity, else 0.
+    let pp = 0;
+    if (sc.fidelity === 'switching') {
+      const ol = w.openloop;
+      const d0 = ol ? ol[0] : null;
+      const ch = d0 ? d0.chopA : null;
+      if (ch && ch.ppLast > 0) pp = ch.ppLast;
+    }
+    v.ripplePp = pp;
+    v.rippleRms = pp * TRI_RMS_PER_PP;
+    const lm = s.gantry.lostMm;
+    const lA = lm[0] === undefined ? 0 : lm[0];
+    if (sc.mechanics === 'corexy') {
+      const lB = lm[1] === undefined ? 0 : lm[1];
+      const lx = 0.5 * (lA + lB);
+      const ly = 0.5 * (lA - lB);
+      v.lostStepsMm = Math.sqrt(lx * lx + ly * ly);
+    } else {
+      v.lostStepsMm = lA;
+    }
     v.pressInMm = s.homing.pressInMm;
     v.freeMotionIqPeak = s.homing.freeIqPeak;
     const I = sc.runCurrent;

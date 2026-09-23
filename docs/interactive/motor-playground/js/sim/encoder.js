@@ -7,8 +7,9 @@
 //
 // Speed is estimated from edge times, the way drives do with hardware edge capture (the
 // M/T method): each step that changes the count records the time of the last edge it
-// crossed, interpolated inside the step from the shaft angle, in a ring of the last 32
-// edges. On every edge, omegaEst = (count change)·(2π/cpr)/(time between edges), measured
+// crossed (count·2π/cpr moving up, (count + 1)·2π/cpr moving down, also when one step
+// crosses several counts), interpolated inside the step from the shaft angle, in a ring
+// of the last 32 edges. On every edge, omegaEst = (count change)·(2π/cpr)/(time between edges), measured
 // from the newest edge back to the first older edge at least windowS earlier (or the
 // oldest one stored). Between edges the estimate is held; once the time since the newest
 // edge exceeds max(windowS, 1.5 × the last edge interval), |omegaEst| is bounded by one
@@ -100,8 +101,10 @@ export class Encoder {
     const c0 = this.countPrev, c1 = this.count;
     const rpc = this.radPerCount;
     if (c1 !== c0) {
-      // Time of the last edge crossed in this step, interpolated on the angle.
-      const thEdge = (c1 > c0 ? c1 : c0) * rpc;
+      // Time of the last edge crossed in this step, interpolated on the angle. Moving up,
+      // the last edge is the lower bound of cell c1; moving down, it is the upper bound
+      // of cell c1, (c1 + 1)·rpc (equal to c0·rpc only for a single-count step).
+      const thEdge = (c1 > c0 ? c1 : c1 + 1) * rpc;
       const dTh = thetaM - this.thetaPrev;
       let tEdge = dTh !== 0 ? tPrev + this.dt * (thEdge - this.thetaPrev) / dTh : t;
       if (!(tEdge >= tPrev)) tEdge = tPrev;

@@ -9,6 +9,11 @@
 // pressing at the homing current. freeIqPeak is the peak free-motion load of motor 0 before
 // contact: FOC max |iq*| (the velocity loop's demand, what the iqTargetLimit flag compares),
 // open loop max |i|.
+//
+// Sweep results: results[V] is the sag speed (commanded speed where the current amplitude first
+// falls below sagFrac of its target), the quantity that scales with the supply voltage; the slip
+// speed stays in detail[V].slipMmS (an unloaded stepper slips far past the knee, and a
+// high-inductance motor may never slip within maxMmS).
 
 /** Carriage within this distance of the x stop (or penetrating) counts as contact (mm). */
 const CONTACT_NEAR_MM = 0.5;
@@ -206,6 +211,8 @@ export class HomingMachine {
  * `accelMmS2`. `sagMmS` = commanded speed at the first step where LPF200(|i|) < sagFrac·I
  * (after it had reached sagFrac·I at rest); `slipMmS` = commanded speed when
  * |gantry.lostMm[0]| ≥ 0.8 mm, or maxMmS if the ramp reaches it without slipping.
+ * `results[V]` = `detail[V].sagMmS`, or maxMmS when no sag was recorded (the sag speed scales
+ * with the voltage; the slip speed does not, so it is only kept in `detail[V].slipMmS`).
  * Finally restores `supplyV`, the planner limits and the stops, resets, emits `sweepDone`.
  * `snap` is `world.snapshot.sweep` (`results` and `detail` keep their identity).
  */
@@ -297,13 +304,15 @@ export class SweepMachine {
   }
 
   /**
-   * Records the result of the current voltage and moves on.
+   * Records the result of the current voltage (results = sag speed, or maxMmS without a sag;
+   * the slip speed goes to detail) and moves on.
    * @param {number} slipMmS
    */
   _endVoltage(slipMmS) {
     const w = this.world;
-    this.det.slipMmS = slipMmS;
-    this.snap.results[this.voltages[this.index]] = slipMmS;
+    const det = this.det;
+    det.slipMmS = slipMmS;
+    this.snap.results[this.voltages[this.index]] = det.sagMmS !== null ? det.sagMmS : this.maxMmS;
     w.planner.stop(true);
     this.index++;
     if (this.index < this.voltages.length) this._beginVoltage();

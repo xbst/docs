@@ -7,13 +7,30 @@
 // adds beltPos#i. Each trace is a (code, motor) pair resolved at configure time; pushTraces
 // evaluates them with one switch, so pushing neither calls closures nor allocates.
 // `noise#i` is world.noise[i] in amps: FOC (uq − LPF500(uq))/Kpq(optimal), open loop
-// iA − LPF500(iA) (the signal metrics.noiseIdx measures).
+// e − LPF500(e) with e = iA − iA* (the signal metrics.noiseIdx measures).
+// Sample times are Float64 (absolute sim time keeps sub-microsecond resolution after hours; a
+// Float32 time lost the 0.5 µs switching step after minutes); values stay Float32. The scope
+// reads `t`/`v` directly and does not depend on the array types.
+// Decimation (traceDecimation) rounds up, so the 4096-sample ring always spans at least
+// traceWindow.
 
 /** Samples per trace ring. */
 export const TRACE_CAP = 4096;
 
 /**
- * Fixed-capacity ring of (time, value) samples in Float32Arrays.
+ * Sim steps per trace sample: max(1, ceil(traceWindow/(TRACE_CAP·dt))), so the ring covers at
+ * least `traceWindow` (round() left it up to a third short).
+ * @param {number} traceWindow scope window (s)
+ * @param {number} dt sim step (s)
+ * @returns {number} decimation (integer ≥ 1)
+ */
+export function traceDecimation(traceWindow, dt) {
+  return Math.max(1, Math.ceil(traceWindow / (TRACE_CAP * dt)));
+}
+
+/**
+ * Fixed-capacity ring of (time, value) samples: times in a Float64Array (absolute sim time,
+ * full resolution), values in a Float32Array.
  * `head` is the index of the next write, `len` the number of valid samples (≤ cap). Logical
  * sample i (0 = oldest) lives at `(head − len + i + cap) % cap`; the newest at
  * `(head − 1 + cap) % cap`. NaN values mark gaps (e.g. `sg = null`).
@@ -24,7 +41,7 @@ export class RingBuffer {
    */
   constructor(cap = TRACE_CAP) {
     /** @type {number} */ this.cap = cap;
-    /** @type {Float32Array} sample times (s of sim time, non-decreasing) */ this.t = new Float32Array(cap);
+    /** @type {Float64Array} sample times (s of sim time, non-decreasing) */ this.t = new Float64Array(cap);
     /** @type {Float32Array} sample values */ this.v = new Float32Array(cap);
     /** @type {number} index of the next write */ this.head = 0;
     /** @type {number} valid samples */ this.len = 0;

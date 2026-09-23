@@ -2,7 +2,9 @@
 //
 // Chopper:    fixed-frequency current chopper, SpreadCycle-like (on, fast decay, slow decay),
 //             with the trip level raised by the measured peak-to-mean ripple so the mean current
-//             lands on the target (hysteresis decrement) instead of sitting below it.
+//             lands on the target (hysteresis decrement) instead of sitting below it. A current
+//             that climbs back over the trip level during slow decay (back-EMF against a falling
+//             target) starts another fast decay within the same cycle.
 // BipolarPwm: center-aligned bipolar voltage PWM, StealthChop-like.
 //
 // Both are stepped once per simulation sub-step (dt = 0.5 us in switching fidelity) and
@@ -20,7 +22,10 @@ const PH_SLOW = 2;
  * `sgn·iMeas ≥ sgn·iStar + max(hystA/2, offLast)`; then fast decay (`v = −sgn·Vbus`) for
  * `fastFrac/freqHz`; then slow decay (`v = 0`) until the cycle ends. If the trip never happens
  * the on-state lasts the whole cycle. A fast decay that would outlast the cycle is cut short by
- * the next cycle.
+ * the next cycle. While in slow decay, if `sgn·iMeas` rises back to the trip level (the back-EMF
+ * pushes the current up at 0 V while the target falls), another fast decay of `fastFrac/freqHz`
+ * starts, as often as needed until the cycle ends. At standstill the current only falls during
+ * slow decay, so the sequence stays on, fast, slow.
  *
  * Mean centering: over each cycle the max, min and mean of `sgn·iMeas` are tracked; at the end
  * of a cycle in which the trip happened, `ppLast` (EMA over about 4 cycles of `max − min`) and
@@ -160,7 +165,9 @@ export class Chopper {
     this.nSum++;
     const half = 0.5 * this.hystA;
     const off = this.offLast > half ? this.offLast : half;
-    if (this.phase === PH_ON && y >= sgn * iStar + off) {
+    // Trip from the on-state, or re-enter fast decay from slow decay when the current climbs
+    // back over the trip level.
+    if ((this.phase === PH_ON || this.phase === PH_SLOW) && y >= sgn * iStar + off) {
       this.phase = PH_FAST;
       this.fastLeft = this.tFast;
       this.tripped = true;

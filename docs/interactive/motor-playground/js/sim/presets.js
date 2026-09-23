@@ -131,7 +131,11 @@ export function torqueSpeedCurve(preset, Vbus, I, opts = {}) {
 
 /**
  * Fills chart arrays with `n` points of the torque-speed curve from 0 to `maxMmS`
- * (linear in speed). Does not allocate.
+ * (linear in speed). Built on {@link torqueSpeedCurve}, so it applies the same voltage limit
+ * (4/π overmodulation for two-phase presets, 1 for three-phase, `opts.overmodulation`
+ * overrides) and every point equals `torqueSpeedCurve(preset, Vbus, I, opts).torqueAt`.
+ * Allocates the curve's closures once per call (chart code, not the hot path); the output
+ * arrays are filled in place.
  * @param {object} preset from {@link getMotorPreset}
  * @param {number} Vbus supply voltage [V]
  * @param {number} I target current amplitude [A peak]
@@ -140,15 +144,13 @@ export function torqueSpeedCurve(preset, Vbus, I, opts = {}) {
  * @param {number} n number of points
  * @param {Float64Array} outMmS receives the speeds [mm/s]
  * @param {Float64Array} outNm receives the torques [N·m]
+ * @param {{overmodulation?: number}} [opts] passed to {@link torqueSpeedCurve}
  */
-export function torqueSpeedPoints(preset, Vbus, I, maxMmS, rd, n, outMmS, outNm) {
-  const R = preset.R, L = preset.L, p = preset.p, Kt = preset.Kt;
-  const lam = lambdaOf(preset);
-  const Vl = vLimit(preset, Vbus);
+export function torqueSpeedPoints(preset, Vbus, I, maxMmS, rd, n, outMmS, outNm, opts = {}) {
+  const curve = torqueSpeedCurve(preset, Vbus, I, opts);
   for (let i = 0; i < n; i++) {
     const mmS = n > 1 ? maxMmS * i / (n - 1) : 0;
-    const omegaM = TWO_PI * mmS / rd;
     outMmS[i] = mmS;
-    outNm[i] = Kt * Math.min(I, iAvailRaw(R, L, lam, p, Vl, omegaM));
+    outNm[i] = curve.torqueAt(TWO_PI * mmS / rd);
   }
 }

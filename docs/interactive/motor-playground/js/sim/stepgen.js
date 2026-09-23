@@ -2,10 +2,13 @@
 //
 // Every sim step the commanded angle (rad) is rounded to the nearest step
 // position; the difference to the steps already sent is emitted as signed
-// pulses. DIR is updated in the same call, before the pulses of that call
-// count, so DIR always leads the first pulse of a new direction. The pulse
-// rate is an exponential moving average (5 ms time constant) of the per-step
-// pulse count divided by dt. No allocation in `update`.
+// pulses. When the caller passes the sign of the commanded velocity, DIR
+// follows it and flips at the reversal point (v = 0), ahead of the first
+// reversed pulse, as a real controller sets DIR before it steps. Without it,
+// DIR is the direction of the last pulse, updated in the same call before the
+// pulses of that call count. A pulse always carries its own direction on DIR.
+// The pulse rate is an exponential moving average (5 ms time constant) of the
+// per-step pulse count divided by dt. No allocation in `update`.
 
 import { TWO_PI } from './units.js';
 
@@ -17,8 +20,10 @@ const RATE_TAU = 5e-3;
  *
  * Fields (read after `update`):
  * - `level`: 1 if at least one pulse was emitted this step, else 0 (the STEP line).
- * - `dir`: +1 or -1, direction of the last pulse (the DIR line); changes in the
- *   same step that emits the first pulse of the new direction, before it counts.
+ * - `dir`: +1 or -1, the DIR line. With a velocity sign passed to `update`, the
+ *   sign of the commanded velocity (flips at v = 0, before the first reversed
+ *   pulse); otherwise the direction of the last pulse, changed in the same step
+ *   that emits the first pulse of the new direction, before it counts.
  * - `count`: net signed pulses since `reset`.
  * - `rate`: pulse rate magnitude in pulses/s (EMA, 5 ms time constant, always >= 0).
  * - `pulsesThisStep`: signed pulses emitted by the last `update`.
@@ -84,9 +89,14 @@ export class StepGen {
   /**
    * Advances one sim step toward the commanded angle.
    * @param {number} thetaTargetRad commanded motor angle, rad
+   * @param {number} [velSign=0] sign of the commanded velocity (+1, -1, or 0 when
+   *   unknown or zero). Nonzero sets DIR before this step's pulses are emitted; 0
+   *   keeps DIR at the last pulse direction.
    * @returns {number} signed pulses emitted this step (may exceed 1 in magnitude)
    */
-  update(thetaTargetRad) {
+  update(thetaTargetRad, velSign = 0) {
+    if (velSign > 0) this.dir = 1;
+    else if (velSign < 0) this.dir = -1;
     const target = Math.round(thetaTargetRad * this.invStepAngle);
     const n = target - this.sent;
     this.sent = target;

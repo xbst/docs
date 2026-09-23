@@ -7,7 +7,10 @@
 //   current mode (SpreadCycle-like): averaged fidelity uses a per-phase PI with Kp = L·ωc,
 //     Ki = R·ωc, ωc = 2π·currentLoopHz, output clamped to ±Vbus with back-calculation
 //     anti-windup (never past zero, like drivers/foc.js); switching fidelity uses one fixed-frequency Chopper per phase.
-//   hybrid: current mode at |omegaCmd| ≥ hybridThresholdRadS, voltage mode below.
+//   hybrid: TPWMTHRS-like with hysteresis: switches to current mode once |omegaCmd| ≥
+//     hybridThresholdRadS and back to voltage mode only once |omegaCmd| < 0.9·hybridThresholdRadS,
+//     so ripple on the speed argument cannot make the mode chatter. omegaCmd must be the planner's
+//     commanded speed (mechanical rad/s), not a step-rate estimate.
 //
 // Electrical angles in rad (unwrapped), currents in A, voltages in V, time in s.
 // Two-phase (stepper) only: phase A = α (spatial angle 0), phase B = β (spatial angle π/2).
@@ -25,12 +28,16 @@ const AMP_LPF_HZ = 200;
 const QUANTUM = HALF_PI / 256;
 /** A pulse after a pause longer than this many previous intervals is applied without a glide. */
 const RESTART_RATIO = 4;
+/** Hybrid mode returns to voltage mode below this fraction of the threshold (hysteresis). */
+const HYBRID_HYST = 0.9;
 
 /**
  * Open-loop microstepping driver for a two-phase stepper.
  *
  * Usage per sim step: `consumePulses(n)` with the signed pulse count from the step generator,
  * then `step(motor, omegaCmdRadS)`; read `vAlpha`, `vBeta` and feed them to the motor.
+ * `omegaCmdRadS` is the planner's commanded speed in mechanical rad/s (not a step-rate estimate,
+ * whose ripple would sit on the hybrid threshold).
  *
  * Fields: `thetaCmd` (commanded electrical angle, unwrapped, quantized to (π/2)/256 when
  * interpolating), `thetaStep` (stepped target), `iStar` (Float64Array(2) phase targets),
@@ -56,7 +63,10 @@ export class OpenLoopDriver {
     this.runCurrent = 3.54;
     /** Bus voltage (V). */
     this.Vbus = 24;
-    /** Hybrid threshold (rad/s, same units as omegaCmdRadS passed to step). */
+    /**
+     * Hybrid threshold (mechanical rad/s, same units as omegaCmdRadS passed to step): current
+     * mode at ≥ this, back to voltage mode below 0.9× this.
+     */
     this.hybridThresholdRadS = 2 * Math.PI * 60 / 40;
     /** Motor preset used for R and L at reset (step reads motor.preset). */
     this.preset = null;
@@ -140,7 +150,8 @@ export class OpenLoopDriver {
    * @param {boolean} [cfg.interpolate]
    * @param {number} [cfg.runCurrent] A
    * @param {number} [cfg.Vbus] V
-   * @param {number} [cfg.hybridThresholdRadS] rad/s (same units as step's omegaCmdRadS)
+   * @param {number} [cfg.hybridThresholdRadS] mechanical rad/s (same units as step's
+   *   omegaCmdRadS); current mode at ≥ this, voltage mode again below 0.9× this
    * @param {object} [cfg.preset] motor preset (R, L)
    * @param {number} cfg.dt sim step (s)
    * @param {number} [cfg.controlDt] averaged current-PI period (s)
@@ -277,7 +288,8 @@ export class OpenLoopDriver {
    * Advance one sim step: interpolation, targets, regulation. Writes vAlpha, vBeta, vPhase.
    * @param {{iAlpha: number, iBeta: number, iPhase: ArrayLike<number>, iAmp: number,
    *          preset: {R: number, L: number}}} motor
-   * @param {number} omegaCmdRadS commanded speed (for hybrid switching)
+   * @param {number} omegaCmdRadS the planner's commanded speed (mechanical rad/s), for hybrid
+   *   switching; pass the commanded speed, not the step-rate estimate
    */
   step(motor, omegaCmdRadS) {
     const dt = this.dt;
@@ -287,12 +299,17 @@ export class OpenLoopDriver {
     const R = pr ? pr.R : this.R;
     const L = pr ? pr.L : this.L;
 
-    // Hybrid switching.
+    // Hybrid switching with hysteresis: up at ≥ threshold, down below 0.9·threshold.
     if (this.mode === 'hybrid') {
       const w = omegaCmdRadS < 0 ? -omegaCmdRadS : omegaCmdRadS;
-      const want = w >= this.hybridThresholdRadS ? 'current' : 'voltage';
-      if (want !== this.modeActive) {
-        this.modeActive = want;
+      const thr = this.hybridThresholdRadS;
+      if (this.modeActive === 'current') {
+        if (w < HYBRID_HYST * thr) {
+          this.modeActive = 'voltage';
+          this._handover();
+        }
+      } else if (w >= thr) {
+        this.modeActive = 'current';
         this._handover();
       }
     }
