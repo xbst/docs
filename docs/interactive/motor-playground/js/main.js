@@ -1,6 +1,7 @@
 /**
  * Motor Control Playground: bootstrap, router, chapter lifecycle, frame loop,
- * stage layout, fullscreen and embed height posting (SPEC 4.2, 4.3, 4.8, 4.10).
+ * stage layout, fullscreen and embed height posting (SPEC 4.2, 4.3, 4.8, 4.10;
+ * the generic fullscreen and postMessage helpers live in embed.js).
  *
  * URL parameters: chapter=<id|number> (default 1), nav=0 (solo mode: no tabs,
  * an "Open the full playground" link), product=<key> (products.js; unknown =
@@ -28,9 +29,9 @@ import { Controls } from './controls.js';
 import { getProduct } from './products.js';
 import { readTokens, onThemeChange } from './theme.js';
 import { formatValue, timeScaleLabel } from './format.js';
+import { createHeightPoster, onFullscreenChange, toggleFullscreen } from './embed.js';
 
 const params = new URLSearchParams(location.search);
-const EMBEDDED = window.parent !== window;
 const SOLO = params.get('nav') === '0';
 const DEBUG = params.get('debug') === '1';
 const MOBILE = matchMedia('(max-width: 720px)');
@@ -253,7 +254,7 @@ function buildToolbar() {
     const v = tsSteps[+el.time.value];
     if (v) setTimeScaleValue(v);
   });
-  el.fs.addEventListener('click', toggleFullscreen);
+  el.fs.addEventListener('click', () => toggleFullscreen(standaloneUrl));
   if (SOLO) {
     el.app.classList.add('solo');
     el.openfull.hidden = false;
@@ -704,36 +705,12 @@ function updateUrl() {
   try { history.replaceState(history.state, '', location.pathname + '?' + p.toString() + location.hash); } catch (err) { /* sandboxed */ }
 }
 
-/* ---------------- fullscreen (SPEC 4.10) ---------------- */
-function isFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+/* ---------------- fullscreen and auto-height (SPEC 4.10; helpers in embed.js) ---------------- */
+const standaloneUrl = () => new URL(buildUrl(false), location.href).href;
+const poster = createHeightPoster(() => (ch ? idealHeight() : 0));
+function schedulePost() { poster.schedule(); }
 
-function fullscreenAvailable() {
-  return 'fullscreenEnabled' in document ? !!document.fullscreenEnabled : !!document.webkitFullscreenEnabled;
-}
-
-function openStandalone() {
-  window.open(new URL(buildUrl(false), location.href).href, '_blank', 'noopener');
-}
-
-function toggleFullscreen() {
-  if (isFullscreen()) {
-    const exit = document.exitFullscreen || document.webkitExitFullscreen;
-    if (exit) exit.call(document);
-    return;
-  }
-  const root = document.documentElement;
-  const request = root.requestFullscreen || root.webkitRequestFullscreen;
-  if (!fullscreenAvailable() || !request) { openStandalone(); return; }
-  try {
-    const p = request.call(root);
-    if (p && typeof p.catch === 'function') p.catch(() => openStandalone());
-  } catch (err) {
-    openStandalone();
-  }
-}
-
-function onFullscreenChange() {
-  const fs = isFullscreen();
+onFullscreenChange((fs) => {
   document.documentElement.classList.toggle('is-fs', fs);
   el.fsOn.hidden = fs;
   el.fsOff.hidden = !fs;
@@ -741,26 +718,8 @@ function onFullscreenChange() {
   el.fs.title = fs ? 'Exit fullscreen' : 'Fullscreen';
   applyTheme();
   fitTabs();
-  if (!fs) { lastPosted = 0; schedulePost(); }
-}
-document.addEventListener('fullscreenchange', onFullscreenChange);
-document.addEventListener('webkitfullscreenchange', onFullscreenChange);
-
-/* ---------------- embed auto-height (SPEC 4.10) ---------------- */
-let lastPosted = 0, postTimer = 0;
-
-function schedulePost() {
-  if (!EMBEDDED || postTimer) return;
-  postTimer = setTimeout(() => { postTimer = 0; postHeight(); }, 30);
-}
-
-function postHeight() {
-  if (isFullscreen() || document.documentElement.clientWidth === 0 || !ch) return;
-  const h = idealHeight();
-  if (!(h > 0) || Math.abs(h - lastPosted) <= 1) return;
-  lastPosted = h;
-  try { window.parent.postMessage({ pinconnectHeight: h }, '*'); } catch (err) { /* parent gone */ }
-}
+  if (!fs) { poster.reset(); schedulePost(); }
+});
 
 /**
  * Desktop: padding + toolbar + the stage height this chapter wants + scope +
