@@ -3,9 +3,13 @@
  * chips, plus one polite live region that announces events (stall detected,
  * steps lost, homing done) and shows them briefly as a pill.
  *
- * Item: { label, value, unit, warn, ok, led: 'on'|'off'|'trip', title, digits }
+ * Item: { label, value, unit, warn, ok, led: 'on'|'off'|'trip', title, digits, bar }
  *   value: number (formatted to ~3 significant digits, or `digits` decimals) or string.
  *   warn / ok: tint the chip (warn wins). led: prepend an LED dot.
+ *   bar: { value, max, mark, low, off } appends a small level bar (chunk 05, the StallGuard
+ *     reading): filled to value/max, a tick at mark/max (e.g. the DIAG threshold), red while
+ *     `low`, empty and gray while `off` (no reading). Decorative (aria-hidden); the value text
+ *     carries the number.
  * Up to 8 chips; they wrap on desktop and scroll sideways on mobile. DOM nodes
  * are reused and only touched when their text or state changes.
  */
@@ -45,10 +49,39 @@ export class Readouts {
     const val = document.createElement('b');
     const unit = document.createElement('span');
     unit.className = 'u';
+    const bar = document.createElement('span');
+    bar.className = 'bar';
+    bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    const fill = document.createElement('span');
+    fill.className = 'f';
+    const mark = document.createElement('span');
+    mark.className = 'm';
+    bar.append(fill, mark);
     // Real spaces for screen readers; flex layout ignores whitespace-only text.
-    chip.append(led, lbl, ' ', val, ' ', unit);
+    chip.append(led, lbl, ' ', val, ' ', unit, bar);
     this.list.append(chip);
-    return { el: chip, led, lbl, val, unit, cls: 'chip', ledState: '', hidden: false, title: '' };
+    return { el: chip, led, lbl, val, unit, bar, fill, mark, barKey: '', cls: 'chip', ledState: '', hidden: false, title: '' };
+  }
+
+  /** @private level bar of a chip (item.bar), touched only when its state changes */
+  setBar(c, b) {
+    if (!b || !(b.max > 0)) {
+      if (c.barKey !== '') { c.bar.hidden = true; c.barKey = ''; }
+      return;
+    }
+    const clamp01 = (x) => (x > 0 ? (x < 1 ? x : 1) : 0);
+    const f = b.off ? 0 : clamp01(+b.value / b.max);
+    const m = typeof b.mark === 'number' ? clamp01(b.mark / b.max) : -1;
+    const state = b.off ? 'off' : b.low ? 'low' : '';
+    const key = `${(f * 100).toFixed(1)}|${(m * 100).toFixed(1)}|${state}`;
+    if (key === c.barKey) return;
+    c.barKey = key;
+    c.bar.hidden = false;
+    c.bar.className = 'bar' + (state ? ' ' + state : '');
+    c.fill.style.width = (f * 100).toFixed(1) + '%';
+    c.mark.hidden = m < 0;
+    if (m >= 0) c.mark.style.left = (m * 100).toFixed(1) + '%';
   }
 
   /**
@@ -79,6 +112,7 @@ export class Readouts {
       }
       const title = it.title || '';
       if (c.title !== title) { c.el.title = title; c.title = title; }
+      this.setBar(c, it.bar);
     }
   }
 

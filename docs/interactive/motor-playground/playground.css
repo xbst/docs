@@ -219,6 +219,13 @@ a{color:inherit}
 .cap{font:400 .75rem "Roboto Mono",monospace;color:var(--muted);overflow-wrap:anywhere}
 .note{font-size:.78rem;line-height:1.5;color:var(--desc-color);border-left:3px solid var(--divider);padding-left:9px}
 .note code{font:400 .92em "Roboto Mono",monospace;color:var(--text)}
+/* small result tables inside notes (chapter 5's sweep table) */
+.note table{border-collapse:collapse;margin-top:4px}
+.note th,.note td{padding:2px 12px 2px 0;text-align:right;white-space:nowrap;vertical-align:baseline}
+.note th{font-weight:500;color:var(--desc-color)}
+.note td{font:400 .95em "Roboto Mono",monospace;color:var(--text)}
+.note th:first-child,.note td:first-child{text-align:left}
+.note td .x{color:var(--muted)}
 .pills{display:flex;flex-wrap:wrap;gap:4px}
 .pills button{background:var(--tip-bg);color:var(--desc-color);border:1px solid var(--tip-border);border-radius:7px;
   padding:4px 9px;font:500 .75rem Roboto,sans-serif;min-width:34px}
@@ -260,6 +267,13 @@ a{color:inherit}
 .led{flex:none;width:8px;height:8px;border-radius:50%;background:var(--led-off);box-shadow:inset 0 0 0 1px var(--line-color)}
 .led.on{background:var(--led-on);box-shadow:0 0 6px var(--led-on)}
 .led.trip{background:var(--led-trip);box-shadow:0 0 6px var(--led-trip)}
+/* level bar inside a chip (readouts.js item.bar; chapter 4's StallGuard reading) */
+.chip .bar{position:relative;flex:none;width:56px;height:6px;border-radius:3px;background:var(--divider);
+  box-shadow:inset 0 0 0 1px var(--tip-border)}
+.chip .bar .f{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--phase-c)}
+.chip .bar .m{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;border-radius:1px;background:var(--text)}
+.chip .bar.low .f{background:var(--err)}
+.chip .bar.off .f{display:none}
 .live{flex:none;font-size:.75rem;font-weight:500;color:var(--text);border:1px solid var(--hs-stroke);
   background:var(--hs-active);border-radius:10px;padding:3px 10px;white-space:nowrap;
   max-width:50%;overflow:hidden;text-overflow:ellipsis;transition:opacity .4s}
