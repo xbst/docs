@@ -549,8 +549,10 @@ export class Scope {
     }
     // Keep the current range while the data fits and still uses a fair part of it.
     if (grp.init && mn >= grp.lo && mx <= grp.hi && (hi - lo) >= 0.4 * (grp.hi - grp.lo)) return;
+    // The first range always gets its legend text, even when it equals the ±1 placeholder.
+    const first = !grp.init;
     grp.init = true;
-    if (lo !== grp.lo || hi !== grp.hi) {
+    if (first || lo !== grp.lo || hi !== grp.hi) {
       grp.lo = lo; grp.hi = hi;
       grp.scaleStr = rangeText(lo, hi, grp.unit);
       grp.scaleDirty = true;
