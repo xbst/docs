@@ -8,6 +8,9 @@
 // evaluates them with one switch, so pushing neither calls closures nor allocates.
 // `noise#i` is world.noise[i] in amps: FOC (uq − LPF500(uq))/Kpq(optimal), open loop
 // e − LPF500(e) with e = iA − iA* (the signal metrics.noiseIdx measures).
+// `stepN#0` (chunk 04) is the number of STEP pulses motor 0's step generator emitted since the
+// previous sample (0, 1, 2, …), so a scope lane can draw every pulse even when several fall into
+// one sample; `step#0` keeps its alternating 1/0 level encoding.
 // Sample times are Float64 (absolute sim time keeps sub-microsecond resolution after hours; a
 // Float32 time lost the 0.5 µs switching step after minutes); values stay Float32. The scope
 // reads `t`/`v` directly and does not depend on the array types.
@@ -93,7 +96,7 @@ const T_ENCB = 24, T_ENCCOUNT = 25, T_NOISE = 26, T_HEAT = 27, T_XCMD = 28, T_XA
 const T_VXCMD = 31, T_VXACT = 32, T_YCMD = 33, T_YACT = 34, T_YERR = 35, T_VYCMD = 36, T_VYACT = 37;
 const T_BELTPOS = 38, T_POSCMD = 39, T_POSACT = 40, T_POSERR = 41, T_VELCMD = 42, T_VELACT = 43, T_SG = 44;
 const T_SGTHR = 45, T_DIAG = 46, T_PWMA = 47, T_PWMB = 48, T_STATUS = 49, T_FLAGIQ = 50, T_FLAGUQ = 51;
-const T_ILIMIT = 52, T_STEP = 53, T_DIR = 54;
+const T_ILIMIT = 52, T_STEP = 53, T_DIR = 54, T_STEPN = 55;
 
 /**
  * Builds the trace map for a configured world (configure-time only; allocates). Reads
@@ -175,6 +178,7 @@ export function buildTraces(world) {
   }
   add('step', 0, T_STEP);
   add('dir', 0, T_DIR);
+  add('stepN', 0, T_STEPN);
   return { map, bufs, codes: Int32Array.from(codes), motors: Int32Array.from(motors) };
 }
 
@@ -265,6 +269,7 @@ export function pushTraces(w) {
         w.stepEdges = 0;
         break;
       case T_DIR: v = snap.step.dir > 0 ? 1 : 0; break;
+      case T_STEPN: v = w.stepPulses; w.stepPulses = 0; break;
       default: v = NaN;
     }
     // Inline RingBuffer.push: a call would box the two doubles when it is not inlined.

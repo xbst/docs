@@ -19,13 +19,16 @@ const RING_CAP = 4096;
 const DT_AVERAGED = 40e-6, DT_SWITCHING = 0.5e-6;
 const SQRT3_2 = Math.sqrt(3) / 2;
 
-/** Canonical trace names (SPEC 5.7) followed by the per-phase PWM and belt traces. */
+/**
+ * Canonical trace names (SPEC 5.7) followed by the per-phase PWM and belt traces, and
+ * `stepN` (pulses since the previous sample, chunk 04).
+ */
 export const TRACE_NAMES = [
   'step', 'dir', 'posCmd', 'posAct', 'posErr', 'velCmd', 'velAct', 'iA', 'iB', 'iC',
   'iAStar', 'iBStar', 'iCStar', 'vA', 'vB', 'vC', 'bemfA', 'iAmp', 'vAmp', 'id', 'iq',
   'idStar', 'iqStar', 'ud', 'uq', 'uMag', 'uLimit', 'torque', 'loadTorque', 'loadAngle',
   'sg', 'sgThreshold', 'diag', 'status', 'flagIqTarget', 'flagUq', 'encA', 'encB',
-  'encCount', 'noise', 'heat', 'iLimit', 'pwmA', 'pwmB', 'pwmC', 'beltPos',
+  'encCount', 'noise', 'heat', 'iLimit', 'pwmA', 'pwmB', 'pwmC', 'beltPos', 'stepN',
 ];
 const K = Object.fromEntries(TRACE_NAMES.map((n, i) => [n, i]));
 const FOC_ONLY = new Set(['idStar', 'iqStar', 'status', 'flagIqTarget', 'flagUq', 'iLimit']);
@@ -466,6 +469,7 @@ export class FakeWorld {
       this.lastStep[m] = stepV;
       this.edges[m] = 0;
       vals[K.step] = stepV;
+      vals[K.stepN] = edges;
       vals[K.dir] = this.dirLevel[m];
       const corexy = this.nMotors === 2;
       vals[K.posCmd] = corexy ? (m === 0 ? this.x : this.y) : this.x;

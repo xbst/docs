@@ -248,7 +248,10 @@ export function stepWorld(w) {
   if (w.homing.phase !== 0) w.homing.update(w._dt);
   if (w.sweep.phase !== 0) w.sweep.update(w._dt);
   w.metricsEngine.update(w);
-  w.stepEdges += w.stepgens[0].level;
+  const sg0 = w.stepgens[0];
+  w.stepEdges += sg0.level;
+  const pn = sg0.pulsesThisStep;
+  w.stepPulses += pn < 0 ? -pn : pn;
   if (++w._decimCount >= w._decimation) {
     w._decimCount = 0;
     pushTraces(w);

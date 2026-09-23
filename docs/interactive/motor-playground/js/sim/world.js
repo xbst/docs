@@ -258,9 +258,11 @@ export class World {
     this._accelOverride = 0;
     this._homingCurrentOverride = 0;
     this._sweepNoStops = false;
-    // Step trace state (see world-traces.js).
+    // Step trace state (see world-traces.js). stepPulses: motor 0's pulses since the last trace
+    // sample (the `stepN` trace).
     this.stepEdges = 0;
     this.stepLast = 0;
+    this.stepPulses = 0;
     this._prevStopX = false;
     this._prevStopY = false;
     this.eventsDropped = 0;
@@ -820,6 +822,7 @@ export class World {
     this._tick = 0;
     this.stepEdges = 0;
     this.stepLast = 0;
+    this.stepPulses = 0;
     this._prevStopX = false;
     this._prevStopY = false;
     if (startPath && sc.path) pl.runPath(sc.path);
