@@ -469,7 +469,7 @@ export class BlockDiagram {
       const track = mk('rect', { x: x + 7, y: by, width: bw - 14, height: 6, rx: 3 }, s);
       this.style(track, 'track');
       const fill = mk('rect', { x: x + 7, y: by, width: 0, height: 6, rx: 3 }, s);
-      this.bar = { el: fill, w: bw - 14, x: x + 7, last: -1 };
+      this.bar = { el: fill, w: bw - 14, x: x + 7, last: -1, on: null };
     }
   }
 
@@ -498,7 +498,7 @@ export class BlockDiagram {
       c.rect.setAttribute('fill', th.tipBg);
       c.rect.setAttribute('stroke', th.lineColor);
     }
-    if (this.bar) this.bar.el.setAttribute('fill', th.axisQ);
+    if (this.bar) { this.bar.el.setAttribute('fill', th.axisQ); this.bar.on = null; }
     for (const id of Object.keys(this.leds)) this.leds[id].on = null;
   }
 
@@ -597,11 +597,15 @@ export class BlockDiagram {
       this.setLed('flag', iqLim, th);
       this.setLed('status', status, th);
       if (this.bar) {
-        const fw = lim > 0 ? clamp(iqs / lim, 0, 1) * this.bar.w : 0;
-        if (Math.abs(fw - this.bar.last) > 0.5) {
-          this.bar.last = fw;
-          this.bar.el.setAttribute('width', fw.toFixed(1));
-          this.bar.el.setAttribute('fill', iqLim ? th.ledTrip : th.axisQ);
+        const b = this.bar;
+        const fw = lim > 0 ? clamp(iqs / lim, 0, 1) * b.w : 0;
+        if (Math.abs(fw - b.last) > 0.5) {
+          b.last = fw;
+          b.el.setAttribute('width', fw.toFixed(1));
+        }
+        if (b.on !== iqLim) {
+          b.on = iqLim;
+          b.el.setAttribute('fill', iqLim ? th.ledTrip : th.axisQ);
         }
       }
       return;

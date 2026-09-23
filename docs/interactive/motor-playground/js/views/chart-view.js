@@ -42,7 +42,7 @@ export class ChartView extends CanvasView {
     });
     this.curves = [];
     this.refCurves = [];
-    this.curveKey = '';
+    this.inputs = null;
     this.speeds = new Float64Array(N);
     this.tMax = 1;
     this.iEma = NaN;
@@ -61,15 +61,17 @@ export class ChartView extends CanvasView {
     const ref = refKey && MOTOR_PRESETS[refKey] !== pr && MOTOR_PRESETS[refKey].phases === pr.phases ? MOTOR_PRESETS[refKey] : null;
     const m = snap.motors[0];
     const I = num(o.runCurrent, 0) > 0 ? o.runCurrent : (num(m && m.iLimit, 0) > 0 ? m.iLimit : pr.Irated);
-    const vs = Array.isArray(o.voltages) && o.voltages.length ? o.voltages.slice() : [24, 48];
     const sel = num(snap.supplyV, 24);
-    if (!vs.includes(sel)) vs.push(sel);
-    vs.sort((a, b) => a - b);
     const maxMmS = num(o.maxMmS, 1500) > 10 ? o.maxMmS : 1500;
     const rd = num(snap.rd, 40);
-    const key = `${pr.key}|${ref ? ref.key : ''}|${I.toFixed(3)}|${vs.join(',')}|${maxMmS}|${rd}`;
-    if (key === this.curveKey) return;
-    this.curveKey = key;
+    // unchanged inputs: nothing to do (checked without allocating, once per frame)
+    const c = this.inputs;
+    if (c && c.pr === pr && c.ref === ref && Math.abs(c.I - I) < 5e-4 && c.sel === sel && c.volts === o.voltages
+      && c.maxMmS === maxMmS && c.rd === rd) return;
+    this.inputs = { pr, ref, I, sel, volts: o.voltages, maxMmS, rd };
+    const vs = Array.isArray(o.voltages) && o.voltages.length ? o.voltages.slice() : [24, 48];
+    if (!vs.includes(sel)) vs.push(sel);
+    vs.sort((a, b) => a - b);
     this.preset = pr;
     this.refPreset = ref;
     this.I = I;
@@ -100,7 +102,7 @@ export class ChartView extends CanvasView {
     L.x0 = Math.round(f * 3.3) + 10;
     L.x1 = w - Math.max(14, f * 1.7);         // room for half of the last tick label
     L.xStep = niceStep(this.maxMmS / Math.max(2, Math.floor((L.x1 - L.x0) / 70)));
-    const top = this.tMax * 1.15;
+    const top = this.tMax * 1.3;                 // headroom for the legend rows above the curves
     L.yStep = niceStep(top / Math.max(2, Math.floor((L.y1 - L.y0) / 40)));
     L.yTop = Math.ceil(top / L.yStep) * L.yStep;
     this.layoutDirty = false;
@@ -268,28 +270,32 @@ export class ChartView extends CanvasView {
       haloText(g, this.str.dot, px + (g.textAlign === 'left' ? 9 : -9), Math.min(py, Y(tMeas)) - 6, th.tipBg);
     }
 
-    // legend
+    // run current on the title line; the motor families in the empty top right of the plot
+    // (above every curve: the curves are flat at the run-current torque, then fall)
     g.font = this.font.ui;
     g.textBaseline = 'middle';
     g.textAlign = 'right';
     const ly = 8 + this.fpx(12) / 2;
-    let lx = x1;
     g.fillStyle = th.descColor;
-    g.fillText(this.str.cur, lx, ly);
-    lx -= g.measureText(this.str.cur).width + 14;
-    if (this.refCurves.length && lx > x0 + 120) {
-      g.fillText(this.str.ref, lx, ly);
-      const rw = g.measureText(this.str.ref).width;
+    g.fillText(this.str.cur, x1, ly, Math.max(40, x1 - x0 - 40));
+    const lh = this.fpx(12) + 5;
+    let ry = y0 + lh / 2 + 2;
+    g.fillStyle = th.text;
+    g.fillText(this.str.legend, x1 - 4, ry, x1 - x0 - 34);
+    let lw = g.measureText(this.str.legend).width;
+    g.strokeStyle = th.target;
+    g.lineWidth = 1.4;
+    g.beginPath(); g.moveTo(x1 - lw - 26, ry); g.lineTo(x1 - lw - 9, ry); g.stroke();
+    if (this.refCurves.length) {
+      ry += lh;
+      g.fillStyle = th.descColor;
+      g.fillText(this.str.ref, x1 - 4, ry, x1 - x0 - 34);
+      lw = g.measureText(this.str.ref).width;
       g.strokeStyle = th.muted;
       g.lineWidth = 1;
       g.setLineDash(DASH);
-      g.beginPath(); g.moveTo(lx - rw - 22, ly); g.lineTo(lx - rw - 5, ly); g.stroke();
+      g.beginPath(); g.moveTo(x1 - lw - 26, ry); g.lineTo(x1 - lw - 9, ry); g.stroke();
       g.setLineDash(SOLID);
-      lx -= rw + 36;
-    }
-    if (lx > x0 + 60) {
-      g.fillStyle = th.text;
-      g.fillText(this.str.legend, lx, ly, lx - x0 - 40);
     }
   }
 
@@ -314,8 +320,8 @@ export class ChartView extends CanvasView {
   formatStrings(snap, selV, speed) {
     const s = this.str, pr = this.preset;
     if (!pr) return;
-    s.legend = `${pr.name}, L ${formatValue(pr.L * 1000, 1)} mH`;
-    s.ref = this.refPreset ? `${this.refPreset.name}, L ${formatValue(this.refPreset.L * 1000, 1)} mH` : '';
+    s.legend = `this motor, L ${formatValue(pr.L * 1000, 1)} mH`;
+    s.ref = this.refPreset ? `typical motor, L ${formatValue(this.refPreset.L * 1000, 1)} mH` : '';
     s.cur = `run current ${formatValue(this.I, 2)} A`;
     s.dot = `${formatValue(speed, 0)} mm/s`;
     const c = this.curves.find((cc) => cc.V === selV);
