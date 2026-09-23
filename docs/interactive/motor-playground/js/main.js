@@ -449,7 +449,9 @@ function mountView(slot, host, name) {
     console.error(`[playground] view "${name}" failed to start:`, err);
     return;
   }
-  const aspect = View.aspect > 0 ? View.aspect : 0.75;
+  // viewOptions.<name>.aspect (height/width) overrides the view's own preferred aspect, e.g. a
+  // taller gantry host for a square CoreXY frame (desktop stage height and mobile host height).
+  const aspect = opts.aspect > 0 ? +opts.aspect : View.aspect > 0 ? View.aspect : 0.75;
   host.style.setProperty('--ar', String(aspect));
   const v = { slot, name, host, view, aspect, w: 0, h: 0, dpr: 0 };
   views.push(v);

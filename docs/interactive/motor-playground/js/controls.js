@@ -245,9 +245,12 @@ const BUILD = {
     box.setAttribute('aria-labelledby', lab.id);
     box.id = id;
     const options = normOptions(spec.options);
-    const buttons = options.map((o) => {
+    const buttons = options.map((o, i) => {
       const b = el('button', null, o.label != null ? o.label : String(o.value));
       b.type = 'button';
+      // An id per option, so focus comes back to the pressed option when its onChange
+      // re-renders the controls (render() restores focus by id).
+      b.id = id + '-' + i;
       b.disabled = !!(o.disabled || spec.disabled);
       if (o.title) b.title = o.title;
       b.addEventListener('click', () => {

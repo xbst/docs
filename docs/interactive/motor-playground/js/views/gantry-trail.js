@@ -120,13 +120,15 @@ export class PathTrail {
   }
 
   /**
-   * Draw the fine trail inside a circle of radius `rPx` around (cxMm, cyMm) at `k` px/mm,
-   * centered on screen at (sx, sy). The caller clips.
+   * Draw the trail inside a circle of radius `rPx` around (cxMm, cyMm) at `k` px/mm,
+   * centered on screen at (sx, sy). The caller clips. `coarse` draws the long coarse ring
+   * (a loupe held on a fixed point: several laps back) instead of the fine one.
    */
-  drawLoupe(g, th, sx, sy, cxMm, cyMm, k, rPx, tip) {
+  drawLoupe(g, th, sx, sy, cxMm, cyMm, k, rPx, tip, coarse) {
     const ox = sx - cxMm * k, oy = sy + cyMm * k;
     const lim = (rPx / k) * 1.4;
-    drawPaths(g, th, this.fine, this.fHead, this.fLen, FINE_N, ox, oy, k, 2, tip, lim, cxMm, cyMm);
+    if (coarse) drawPaths(g, th, this.coarse, this.cHead, this.cLen, COARSE_N, ox, oy, k, 2, tip, lim, cxMm, cyMm);
+    else drawPaths(g, th, this.fine, this.fHead, this.fLen, FINE_N, ox, oy, k, 2, tip, lim, cxMm, cyMm);
   }
 }
 
