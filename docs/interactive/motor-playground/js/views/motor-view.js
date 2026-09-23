@@ -585,7 +585,7 @@ export class MotorView extends CanvasView {
     g.beginPath(); g.moveTo(x, y); g.lineTo(x + 16, y); g.stroke();
     g.setLineDash(SOLID);
     g.fillStyle = th.descColor;
-    g.fillText(label, x + 21, y);
+    g.fillText(label, x + 21, y, Math.max(20, this.w - x - 27));
     return x + 21 + g.measureText(label).width + 12;
   }
 

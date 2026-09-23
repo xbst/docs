@@ -38,6 +38,7 @@ const NS = 'http://www.w3.org/2000/svg';
 const ARIA_MS = 1000;
 const FRESH_MS = 100;
 const DEG = 180 / Math.PI;
+const CHAIN_BOX_MIN = 96;      // narrowest chain box (css px) that holds "Iq → 0.00 A"
 
 /** Create an SVG element with attributes, appended to `parent` when given. */
 function mk(tag, attrs, parent) {
@@ -183,8 +184,12 @@ export class BlockDiagram {
       return { w: 180, h: 12 + (lh * 2 + 4) * 4 + (lh * 4 + 6) + lh + 5 * 8 };
     }
     const lh = f + 3, n = 5;
-    if (this.w >= this.h * 2.2) return { w: n * 64, h: lh * 2 + 18 + (this.chainName === 'foc' ? 14 : 0) };
-    return { w: 150, h: n * (lh * 2 + 6) + (n - 1) * 12 + 10 };
+    if (this.w >= this.h * 2.2) {
+      // a row: the 'foc' chain merges into three boxes when narrow; 'limit' needs five wide ones
+      const w = this.chainName === 'foc' ? 3 * CHAIN_BOX_MIN * this.fs + 2 * 12 + 10 : 5 * 130 * this.fs + 4 * 12 + 10;
+      return { w, h: lh * 2 + 18 + (this.chainName === 'foc' ? 14 : 0) };
+    }
+    return { w: 165 * this.fs, h: n * (lh * 2 + 6) + (n - 1) * 12 + 10 };
   }
 
   /** @private register an element for a theme role */
@@ -362,8 +367,19 @@ export class BlockDiagram {
 
   /* ---------------- compact chains ---------------- */
 
-  /** @private chapter 7: one control cycle */
+  /**
+   * @private chapter 7: one control cycle. In a row too narrow for five boxes of 96 px (a
+   * phone), the steps merge into three.
+   */
   focNodes() {
+    const row = this.w >= this.h * 2.2;
+    if (row && (this.w - 10 - 4 * 12) / 5 < CHAIN_BOX_MIN * this.fs) {
+      return [
+        { id: 'park', title: 'Measure, Park', v1: 'Iq', v2: 'Id' },
+        { id: 'current', title: 'PI loops', v1: 'Iq →', v2: 'Id → 0' },
+        { id: 'pwm', title: 'Inv. Park, PWM', v1: 'voltage', v2: '' },
+      ];
+    }
     return [
       { id: 'measure', title: 'Measure', v1: 'angle', v2: 'currents' },
       { id: 'park', title: 'Park', v1: 'Iq', v2: 'Id' },

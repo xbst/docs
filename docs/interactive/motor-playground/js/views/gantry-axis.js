@@ -259,9 +259,17 @@ export class AxisMode {
     const d = this.opts.detailMm > 0 ? this.opts.detailMm : 5;
     const left = 10, right = this.w - 10, y0 = A.dTop, hh = A.dH;
     const kd = (right - left) / (2 * d);
-    let a = x - d * 0.7;
-    const aMin = Math.min(-d * 0.4, x - d * 0.3);          // keep a pressed-in face in view
-    if (a < aMin) a = aMin;
+    // Window start: the face 0.7 d from the left edge; within d of the stop the window holds
+    // the stop face too (and a face pressed past it), and between d and 2 d it pans smoothly.
+    const aFar = x - d * 0.7, aNear = -d * 0.15;
+    let a;
+    if (x <= d) a = Math.min(aFar, aNear);
+    else if (x >= 2 * d) a = aFar;
+    else {
+      let t = (x - d) / d;
+      t = t * t * (3 - 2 * t);
+      a = aNear + (aFar - aNear) * t;
+    }
     if (a > Lmm - d * 1.6) a = Lmm - d * 1.6;
     const Xd = (mm) => left + (mm - a) * kd;
     const f = this.fpx(12);
