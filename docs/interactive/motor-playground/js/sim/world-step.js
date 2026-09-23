@@ -69,6 +69,10 @@ export class EventGates {
  * section 15 (SPEC 5.7 names plus the additive driver, driverMode, nMotors, cmdAngleErr,
  * currentAngle, iAmp, iLimit, stepgen, lostCycles, triggeredAtMm, detail, currentV) and
  * `motors[i].mode` (the driver mode in effect: voltage/current/position/velocity/torque).
+ * Chunk 03 (views) added: top-level `mechanics`, `motorPreset`, `axisLength` (mm), `rd` (mm per
+ * motor turn) and `loads` ({ drag, torque, bump } in N·m, bump = the bump torque right now);
+ * per motor `thetaStar` (position target, mech rad), `omegaStar` (velocity-loop target, mech
+ * rad/s) and `omegaFilt` (the speed the velocity loop sees, mech rad/s), see fillMotor/fillFoc.
  * @param {object} w World
  * @returns {object} snapshot
  */
@@ -91,6 +95,7 @@ export function buildSnapshot(w) {
       cmdAngleErr: 0, currentAngle: 0, iAmp: 0, iLimit: 0,
       stepgen: { level: 0, dir: 1, rate: 0, count: 0 },
       driver: w.driverKinds[i], mode: w.driverModes[i], lostCycles: 0,
+      thetaStar: 0, omegaStar: 0, omegaFilt: 0,
     });
   }
   const lostMm = [];
@@ -99,6 +104,9 @@ export function buildSnapshot(w) {
   return {
     t: 0, dt: w._dt, motorType: sc.motorType, supplyV: sc.supplyV, fidelity: sc.fidelity,
     driver: sc.driver, driverMode: sc.driverMode, nMotors: n,
+    mechanics: w.kinematics, motorPreset: sc.motorPreset,
+    axisLength: typeof sc.axisLength === 'number' ? sc.axisLength : 350, rd: w.rd,
+    loads: { drag: 0, torque: 0, bump: 0 },
     motors,
     step: { level: 0, dir: 1, rate: 0, count: 0 },
     planner: { mode: 'idle', x: 0, y: 0, vx: 0, vy: 0, phase: 'idle', segmentIndex: 0, done: false },
@@ -395,6 +403,10 @@ function fillFoc(w, i, m, thE) {
   m.diag = false;
   m.mode = foc.mode;
   m.cmdAngleErr = posMode ? wrapPi(thetaCmd - thE) : 0;
+  // Loop targets for the block diagram (fillMotor set the open-loop meaning first).
+  if (posMode) m.thetaStar = foc.thetaStar;
+  m.omegaStar = foc.omegaStarOut;
+  m.omegaFilt = foc.omegaFilt;
   return 0;
 }
 
@@ -457,6 +469,10 @@ function fillMotor(w, i) {
     w.noise[i] = e - w._noiseLpf[i].process(e);
   }
   w.iAmpLpfOut[i] = w._iAmpLpf[i].process(iAmp);
+  // Commanded angle and speed (fillFoc replaces them with the FOC loop targets).
+  m.thetaStar = w.cmdTheta[i];
+  m.omegaStar = w.cmdOmega[i];
+  m.omegaFilt = mech.omega[i];
 
   const lost = w.openloop[i] !== null ? fillOpenLoop(w, i, m, thE) : fillFoc(w, i, m, thE);
   const mmPerCycle = w.rd / p;
@@ -520,6 +536,10 @@ export function fillSnapshot(w) {
   sp.done = pl.done;
 
   const mech = w.mechanics;
+  const ld = s.loads;
+  ld.drag = mech.tDrag;
+  ld.torque = mech.tLoadConst;
+  ld.bump = mech.bumpActive ? mech.bumpA * Math.sin(Math.PI * mech.bumpT / mech.bumpDur) : 0;
   const g = s.gantry;
   g.x = mech.x;
   g.y = mech.y;

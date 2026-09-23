@@ -415,7 +415,11 @@ export class World {
         const m = a.motors;
         if (typeof m === 'number') mask = (1 << m) & all;
         else if (Array.isArray(m)) { mask = 0; for (const i of m) mask |= (1 << i); mask &= all; }
-        this.mechanics.bump(num(a.torque, sc.bump.torque), num(a.durationS, sc.bump.durationS), mask);
+        const torque = num(a.torque, sc.bump.torque);
+        const durationS = num(a.durationS, sc.bump.durationS);
+        this.mechanics.bump(torque, durationS, mask);
+        // For the views (a bump icon) and chapters' onEvent; main.js announces nothing for it.
+        this._emit('bump', { torque, durationS, motors: mask, xMm: this.mechanics.x, yMm: this.mechanics.y });
         break;
       }
       case 'home':
@@ -624,6 +628,7 @@ export class World {
     this._pushDriverParams(false);
     this.snapshot.supplyV = sc.supplyV;
     this.snapshot.driverMode = sc.driverMode;
+    this.snapshot.axisLength = num(sc.axisLength, 350);
   }
 
   /**
