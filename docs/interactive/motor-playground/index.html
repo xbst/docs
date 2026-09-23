@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Motor Control Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&family=Roboto:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="playground.css">
+<!-- Theme sync, copied verbatim from ../can-topology.html. It stays inline in
+     <head> (module scripts are deferred) so the right palette paints first;
+     js/theme.js reads the resulting tokens for the canvas views. -->
+<script>
+(function(){
+  var root=document.documentElement;
+  function apply(t){
+    if(t==='dark'||t==='light')root.setAttribute('data-theme',t);
+    else root.removeAttribute('data-theme');
+  }
+  window.addEventListener('message',function(e){
+    if(e.data&&typeof e.data==='object'&&'pinconnectTheme' in e.data)apply(e.data.pinconnectTheme);
+  });
+  var forced=null;
+  try{forced=new URLSearchParams(location.search).get('theme')}catch(err){}
+  if(forced==='dark'||forced==='light'){apply(forced);return}
+  function fromParent(){
+    try{
+      if(window.parent===window)return null;
+      var pd=window.parent.document;
+      var md=(pd.body&&pd.body.getAttribute('data-md-color-scheme'))||
+             pd.documentElement.getAttribute('data-md-color-scheme');
+      if(md)return md==='slate'?'dark':'light';
+      var dt=pd.documentElement.getAttribute('data-theme')||
+             (pd.body&&pd.body.getAttribute('data-theme'));
+      if(dt==='dark'||dt==='light')return dt;
+      if(pd.documentElement.classList.contains('dark')||
+         (pd.body&&pd.body.classList.contains('dark')))return 'dark';
+      return null;
+    }catch(err){return null}
+  }
+  function sync(){var t=fromParent();if(t)apply(t)}
+  sync();
+  try{
+    if(window.parent!==window){
+      var pd=window.parent.document;
+      var mo=new MutationObserver(sync);
+      mo.observe(pd.documentElement,{attributes:true});
+      if(pd.body)mo.observe(pd.body,{attributes:true});
+    }
+  }catch(err){}
+})();
+</script>
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="tb" id="tb">
+    <div class="tb-row tb-nav">
+      <nav class="tabs" id="tabs" aria-label="Chapters"></nav>
+      <select class="tabsel" id="tabsel" aria-label="Chapter"></select>
+      <div class="pn">
+        <button class="btn icon" id="prev" type="button" aria-label="Previous chapter">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg></button>
+        <button class="btn icon" id="next" type="button" aria-label="Next chapter">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg></button>
+      </div>
+    </div>
+    <div class="tb-row tb-ctl">
+      <div class="tb-grp">
+        <span class="tb-lbl" id="motor-lbl">Motor</span>
+        <div class="seg" id="motor" role="group" aria-labelledby="motor-lbl">
+          <button type="button" data-motor="stepper" aria-pressed="true">Stepper</button>
+          <button type="button" data-motor="bldc" aria-pressed="false">BLDC</button>
+        </div>
+      </div>
+      <button class="btn" id="play" type="button" aria-label="Pause the simulation">&#10074;&#10074; Pause</button>
+      <div class="tb-grp time">
+        <label class="tb-lbl" for="time">Time</label>
+        <input type="range" id="time" min="0" max="1" step="1" value="0">
+        <span class="time-h" id="time-h" aria-hidden="true">Real time</span>
+        <span class="badge" id="slowed" hidden>slowed to keep up</span>
+      </div>
+      <span class="tb-sp"></span>
+      <button class="btn icon" id="sound" type="button" aria-label="Sound" title="Sound" hidden>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10L5 10H2z"/><path d="M11.5 5.5a3.5 3.5 0 0 1 0 5"/></svg></button>
+      <a class="btn" id="openfull" target="_blank" rel="noopener" hidden>Open the full playground
+        <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2">
+          <path d="M9 3h4v4M13 3 7 9M11 9v4H3V5h4"/></svg></a>
+      <button class="btn icon" id="fs" type="button" aria-label="Enter fullscreen" title="Fullscreen">
+        <svg viewBox="0 0 16 16" aria-hidden="true" id="fs-on"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg>
+        <svg viewBox="0 0 16 16" aria-hidden="true" id="fs-off" hidden><path d="M6 2v4H2M14 6h-4V2M10 14v-4h4M2 10h4v4"/></svg></button>
+    </div>
+  </header>
+
+  <div class="main" id="main">
+    <section class="stage" id="stage" aria-label="Simulation views">
+      <div class="views" id="views">
+        <div class="vh p" id="vh-primary" role="img" aria-label="Simulation view"></div>
+        <div class="vh s" id="vh-secondary" role="img" aria-label="Simulation view" hidden></div>
+      </div>
+      <div class="vh strip" id="vh-strip" role="img" aria-label="Simulation view" hidden></div>
+    </section>
+    <div class="panel" id="panel">
+      <div class="p-head">
+        <div class="p-num" id="p-num"></div>
+        <h1 class="p-title" id="p-title">Motor Control Playground</h1>
+        <p class="p-take" id="p-take"></p>
+      </div>
+      <div class="p-text" id="p-text"></div>
+      <div class="p-try" id="p-try" hidden>
+        <h2 class="p-h">Try this</h2>
+        <ul id="p-try-list"></ul>
+      </div>
+      <div class="p-ctl" id="p-ctl" role="group" aria-label="Chapter controls"></div>
+      <details class="p-deep" id="p-deep" hidden>
+        <summary>Deeper</summary>
+        <div class="p-deep-body" id="p-deep-body"></div>
+      </details>
+    </div>
+  </div>
+
+  <section class="card scope" id="scope" aria-label="Oscilloscope"></section>
+  <div class="ro" id="ro"></div>
+  <div class="bb" id="bb"></div>
+</div>
+<noscript><p style="padding:16px">The motor control playground needs JavaScript.</p></noscript>
+</body>
+</html>
