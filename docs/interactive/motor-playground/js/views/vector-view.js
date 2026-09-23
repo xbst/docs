@@ -152,9 +152,14 @@ export class VectorView extends CanvasView {
       g.lineCap = 'butt';
       g.font = this.font.ui;
       g.fillStyle = th.text;
-      g.textAlign = x1 >= cx ? 'left' : 'right';
-      g.textBaseline = 'top';
-      haloText(g, this.str.cmp, x1 + (x1 >= cx ? 4 : -4), y1 + 4, th.tipBg);
+      // Above the tip (clear of the d-axis label, which sits on the axis), kept inside the view.
+      const tw = g.measureText(this.str.cmp).width;
+      let lx = x1 + (x1 >= cx ? 4 : -4), align = x1 >= cx ? 'left' : 'right';
+      if (align === 'left' && lx + tw > this.w - 4) { lx = this.w - 4; align = 'right'; }
+      if (align === 'right' && lx - tw < 4) { lx = 4; align = 'left'; }
+      g.textAlign = align;
+      g.textBaseline = 'bottom';
+      haloText(g, this.str.cmp, lx, y1 - 5, th.tipBg);
     }
 
     // target (dashed)

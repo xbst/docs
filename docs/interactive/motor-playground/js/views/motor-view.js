@@ -88,7 +88,10 @@ export class MotorView extends CanvasView {
     L.legend = !compact && o.legend !== false;
     L.panel = 0;
     if (o.showTransforms && !compact) {
-      if (w >= 1.3 * h) {
+      // Side panel only when its three stacked stages fit (see drawPanel); a short host, such
+      // as a laptop in fullscreen with the stage strip, gets the bottom panel.
+      const sideNeed = 3 * ((this.fpx(12) + 4) * 5 + 8) + 20;
+      if (w >= 1.3 * h && bot - top - (o.legend !== false ? line : 0) >= sideNeed) {
         L.panel = 1;
         L.pw = clamp(w * 0.36, 150, 250);
         L.px = right - L.pw;
