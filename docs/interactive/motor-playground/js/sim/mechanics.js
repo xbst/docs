@@ -213,7 +213,7 @@ export class Mechanics {
   }
 
   /**
-   * step() with the step length already in `stepDt` (the world sets it at configure): the
+   * step() with the step length already in `stepDt` (the world writes it before each call): the
    * world's per-step path, without a double argument, which is boxed when a call is not inlined.
    * @param {Float64Array|number[]} torqueIn electromagnetic torque per motor [N·m]
    */
