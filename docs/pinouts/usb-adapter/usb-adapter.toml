@@ -1,0 +1,85 @@
+[board]
+title = "USB Toolhead Adapter Pinout"
+image = "usb-adapter.png"
+width = 1500
+height = 1200
+theme = "isikstech"
+theme_dir = ".."
+
+[[connector]]
+id = "out"
+name = "Toolhead Out"
+type = "MX-F-2R"
+x1 = 563
+y1 = 134
+x2 = 939
+y2 = 434
+symbol = "data"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+  [[connector.pin]]
+  name = "VIN"
+  row = 2
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "DN"
+  row = 2
+  color = "#2ECC71"
+
+  [[connector.pin]]
+  name = "DP"
+  row = 2
+  color = "#FFBF00"
+
+[[connector]]
+id = "VIN"
+name = "Power In"
+type = "ST-508"
+x1 = 417
+y1 = 731
+x2 = 723
+y2 = 1031
+symbol = "lightning"
+
+  [[connector.pin]]
+  name = "VIN"
+  color = "#E74C3C"
+
+  [[connector.pin]]
+  name = "GND"
+  color = "#2C3E50"
+
+[[connector]]
+id = "USB"
+name = "USB C In"
+type = "USB-C"
+x1 = 796
+y1 = 846
+x2 = 1064
+y2 = 1066
+symbol = "usb"
+
+[[connector]]
+id = "fuse"
+name = "Replaceable Fuse"
+type = "none"
+x1 = 610
+y1 = 547
+x2 = 893
+y2 = 696
+symbol = "fuse"
+
+  [[connector.pin]]
+  name = "PIN1"

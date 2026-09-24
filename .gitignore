@@ -13,3 +13,13 @@ __pycache__/
 *.egg-info/
 build/
 venv/
+
+# Agent playbook + per-product worksheets for adding new product docs - local only, not committed
+/NEW-PRODUCT-PLAN.md
+/new-product-*.md
+
+# Project plans (master spec + per-agent instructions), local sim tests and the
+# embed test page for the motor control playground - local only, not committed
+/plans/
+/tests/
+/docs/playground-test.md

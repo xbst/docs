@@ -78,39 +78,39 @@ Hedgehog uses a STM32G0B1 MCU, supporting Klipper, STM32Duino and many other fir
 
 - Because the pins on this board don't have a pre-defined use case and can be used for anything, there's no Klipper config included in this document. 
 
-| Pin  | ADC                         | Bus                                                          | HW Timer |
-| ---- | --------------------------- | ------------------------------------------------------------ | -------- |
-| PA6  | Yes - Not Pulled-Up         | -                                                            | -        |
-| PA7  | Yes - Not Pulled-Up         | -                                                            | Yes      |
-| PB2  | Yes - Not Pulled-Up         | SPI2 MISO (spi2_PB2_PB11_PB10)                               | -        |
-| PB10 | Yes - Not Pulled-Up         | SPI2 SCK (spi2_PB2_PB11_PB10)<br />I2C2 SCL (i2c2_PB10_PB11) | Yes      |
-| PB11 | Yes - Not Pulled-Up         | SPI2 MOSI (spi2_PB2_PB11_PB10)<br />I2C2 SDA (i2c2_PB10_PB11) | Yes      |
-| PB12 | Yes - Not Pulled-Up         | -                                                            | -        |
-| PB13 | -                           | SPI2 SCK (spi2_PB14_PB15_PB13)                               | -        |
-| PB14 | -                           | SPI2 MISO (spi2_PB14_PB15_PB13)                              | Yes      |
-| PB15 | -                           | SPI2 MOSI (spi2_PB14_PB15_PB13)                              | Yes      |
-| PA8  | -                           | -                                                            | Yes      |
-| PA9  | -                           | -                                                            | Yes      |
-| PC6  | -                           | -                                                            | Yes      |
-| PC7  | -                           | -                                                            | Yes      |
-| PA10 | -                           | -                                                            | Yes      |
-| PB9  | -                           | I2C1 SDA (i2c1_PB8_PB9)                                      | Yes      |
-| PB8  | -                           | I2C1 SCL (i2c1_PB8_PB9)                                      | Yes      |
-| PA15 | -                           | -                                                            | -        |
-| PD0  | -                           | -                                                            | Yes      |
-| PD1  | -                           | SPI - No Klipper Support                                     | Yes      |
-| PD2  | -                           | SPI - No Klipper Support                                     | -        |
-| PD3  | -                           | SPI - No Klipper Support                                     | -        |
-| PB3  | -                           | SPI1 SCK (spi1_PB4_PB5_PB3)                                  | Yes      |
-| PB4  | -                           | SPI1 MISO (spi1_PB4_PB5_PB3)                                 | Yes      |
-| PB5  | -                           | SPI1 MOSI (spi1_PB4_PB5_PB3)                                 | Yes      |
-| PB6  | -                           | -                                                            | Yes      |
-| PB7  | -                           | -                                                            | -        |
-| PC13 | -                           | -                                                            | -        |
-| PA1  | Yes - Pulled-Up / Protected | -                                                            | -        |
-| PA3  | Yes - Pulled-Up / Protected | -                                                            | -        |
-| PA2  | Yes - Pulled-Up / Protected | -                                                            | -        |
-| PA5  | Yes - Not Pulled-Up         | -                                                            | Yes      |
+| Pin  | ADC                         | Bus                                                          | HW Timer | 5V Tolerant |
+| ---- | --------------------------- | ------------------------------------------------------------ | -------- | ----------- |
+| PA6  | Yes - Not Pulled-Up         | -                                                            | -        | Yes         |
+| PA7  | Yes - Not Pulled-Up         | -                                                            | Yes      | Yes         |
+| PB2  | Yes - Not Pulled-Up         | SPI2 MISO (spi2_PB2_PB11_PB10)                               | -        | Yes         |
+| PB10 | Yes - Not Pulled-Up         | SPI2 SCK (spi2_PB2_PB11_PB10)<br />I2C2 SCL (i2c2_PB10_PB11) | Yes      | Yes         |
+| PB11 | Yes - Not Pulled-Up         | SPI2 MOSI (spi2_PB2_PB11_PB10)<br />I2C2 SDA (i2c2_PB10_PB11) | Yes      | Yes         |
+| PB12 | Yes - Not Pulled-Up         | -                                                            | -        | Yes         |
+| PB13 | -                           | SPI2 SCK (spi2_PB14_PB15_PB13)                               | -        | Yes         |
+| PB14 | -                           | SPI2 MISO (spi2_PB14_PB15_PB13)                              | Yes      | Yes         |
+| PB15 | -                           | SPI2 MOSI (spi2_PB14_PB15_PB13)                              | Yes      | Yes         |
+| PA8  | -                           | -                                                            | Yes      | Yes         |
+| PA9  | -                           | -                                                            | Yes      | Yes         |
+| PC6  | -                           | -                                                            | Yes      | Yes         |
+| PC7  | -                           | -                                                            | Yes      | Yes         |
+| PA10 | -                           | -                                                            | Yes      | Yes         |
+| PB9  | -                           | I2C1 SDA (i2c1_PB8_PB9)                                      | Yes      | Yes         |
+| PB8  | -                           | I2C1 SCL (i2c1_PB8_PB9)                                      | Yes      | Yes         |
+| PA15 | -                           | -                                                            | -        | Yes         |
+| PD0  | -                           | -                                                            | Yes      | Yes         |
+| PD1  | -                           | SPI - No Klipper Support                                     | Yes      | Yes         |
+| PD2  | -                           | SPI - No Klipper Support                                     | -        | Yes         |
+| PD3  | -                           | SPI - No Klipper Support                                     | -        | Yes         |
+| PB3  | -                           | SPI1 SCK (spi1_PB4_PB5_PB3)                                  | Yes      | Yes         |
+| PB4  | -                           | SPI1 MISO (spi1_PB4_PB5_PB3)                                 | Yes      | Yes         |
+| PB5  | -                           | SPI1 MOSI (spi1_PB4_PB5_PB3)                                 | Yes      | Yes         |
+| PB6  | -                           | -                                                            | Yes      | Yes         |
+| PB7  | -                           | -                                                            | -        | Yes         |
+| PC13 | -                           | -                                                            | -        | Yes         |
+| PA1  | Yes - Pulled-Up / Protected | -                                                            | -        | Yes         |
+| PA3  | Yes - Pulled-Up / Protected | -                                                            | -        | Yes         |
+| PA2  | Yes - Pulled-Up / Protected | -                                                            | -        | Yes         |
+| PA5  | Yes - Not Pulled-Up         | -                                                            | Yes      | No          |
 
 ## Designing Custom PCBs with Hedgehog
 

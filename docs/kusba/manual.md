@@ -5,7 +5,7 @@ hide:
 ---
 
 # Klipper USB Accelerometer
-<img src="https://store.isiks.tech/cdn/shop/files/FullSizeRender_506acff9-d0a4-4275-adc5-140f3d2246ca.jpg?v=1697927717&width=600">
+<img src="../assets/kusba/kusba-board.jpg">
 
 A PCB designed to make [Klipper's](https://github.com/KevinOConnor/klipper) [input shaping](https://github.com/Klipper3d/klipper/blob/master/docs/Resonance_Compensation.md) much easier by simplifying the wiring and config for [measuring resonances](https://github.com/KevinOConnor/klipper/blob/master/docs/Measuring_Resonances.md). You just need this PCB and a USB C cable.
 
