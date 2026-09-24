@@ -21,8 +21,8 @@
  *   Added by chunk 05 (chapter 5):
  *   results           null (snapshot.sweep.results) or { [volts]: mm/s }: the sweep diamonds, so a
  *                     chapter can keep results across sweeps and world rebuilds
- *   rms               false; true labels the run current in A rms (peak / √2), as Klipper's
- *                     run_current for TMC drivers
+ *   rms               false (the run current in A peak); true labels it in A RMS (peak / √2),
+ *                     as Klipper's run_current for TMC drivers
  */
 import { CanvasView, TAU, haloText, clamp, num, niceStep, presetOf, mmPerRad } from './view-util.js';
 import { MOTOR_PRESETS, torqueSpeedPoints, torqueSpeedCurve } from '../sim/presets.js';
@@ -328,8 +328,8 @@ export class ChartView extends CanvasView {
     if (!pr) return;
     s.legend = `this motor, L ${formatValue(pr.L * 1000, 1)} mH`;
     s.ref = this.refPreset ? `typical motor, L ${formatValue(this.refPreset.L * 1000, 1)} mH` : '';
-    s.cur = this.opts.rms ? `run current ${formatValue(this.I / Math.SQRT2, 2)} A rms`
-      : `run current ${formatValue(this.I, 2)} A`;
+    s.cur = this.opts.rms ? `run current ${formatValue(this.I / Math.SQRT2, 2)} A RMS`
+      : `run current ${formatValue(this.I, 2)} A peak`;
     s.dot = `${formatValue(speed, 0)} mm/s`;
     const c = this.curves.find((cc) => cc.V === selV);
     s.knee = c && c.kneeMmS > 0 ? `falls from ${formatValue(c.kneeMmS, 0)} mm/s` : '';

@@ -85,7 +85,7 @@ const MOVES = [
  */
 const PRESETS = [
   { id: 'optimal', label: 'Optimal (×1)', move: 'square', loupeMm: LOUPE_DEFAULT,
-    symptom: 'the well-tuned starting point: corner error below 0.1 mm, no overshoot, and nothing but sensor noise at rest.' },
+    symptom: 'corners within 0.1 mm, no overshoot, and only sensor noise at rest.' },
   { id: 'posP-high', label: 'Position P too high', gains: { positionP: 8 }, move: 'line', highlight: 'position', loupeMm: LOUPE_DEFAULT,
     symptom: 'the axis overshoots its stops and then buzzes there at about 150 Hz with amps of current (see the overshoot and the rest oscillation). On hardware you hear a loud buzz at every stop.' },
   { id: 'posP-low', label: 'Position P too low', gains: { positionP: 0.25 }, move: 'square', highlight: 'position', loupeMm: 4,
@@ -107,7 +107,7 @@ const PRESETS = [
       ? 'the current loop is unstable and buzzes at about 800 Hz with amps of current when stationary.'
       : 'a faint 400 Hz buzz when stationary, three times the normal noise; a little more and the current loop goes unstable.') },
   { id: 'fluxP-high', label: 'Flux P too high', gains: { fluxP: 5 }, move: 'square', highlight: 'flux', loupeMm: LOUPE_DEFAULT,
-    symptom: 'the flux loop rings at about 1 kHz, so Id, which makes no torque, swings by more than an amp: audible noise and a motor running hot for nothing (see the heating readout).' },
+    symptom: 'the flux loop rings at about 1 kHz, so Id, which makes no torque, swings by more than an amp: audible noise and a motor running hot for nothing (see the Heat readout).' },
   { id: 'filters-low', label: 'Filters too low', filters: { torque: 0.5, flux: 0.5, velocity: 0.33 }, move: 'square', highlight: 'filters', loupeMm: 4,
     symptom: 'the loops see their measurements late. The corners round off and after each stop the axis hunts at about 65 Hz; push the filters lower and the current loops go unstable.' },
   { id: 'filters-high', label: 'Filters too high', filters: { torque: 10, flux: 10, velocity: 10 }, move: 'square', highlight: 'filters', loupeMm: LOUPE_DEFAULT,
@@ -262,38 +262,39 @@ function symptomHtml(ctx) {
   return `<p><strong>${head}:</strong> ${s}</p>`;
 }
 
-const TEXT = '<p>Every move runs through a cascade. The <strong>position loop</strong> compares the target with the encoder '
-  + 'and asks for a speed. The <strong>velocity loop</strong> compares that with the measured speed and asks for torque '
-  + 'current, Iq. The <strong>torque loop</strong> drives the coil voltage until the measured Iq matches, and the '
+const ROWS = [
+  ['Whine or buzz at rest', 'torque P or I down'],
+  ['Speed hunts after corners', 'velocity P or I down'],
+  ['Rounded corners, lag', 'velocity P, then position P up'],
+  ['Overshoot and buzz at stops', 'position P down'],
+  ['Corner overshoot, hook back', 'position I to 0'],
+  ['Hiss while moving', 'filters down'],
+];
+const TEXT = '<p>Chapter 7\'s torque and flux loops are the inner half of a cascade: the <strong>position loop</strong> '
+  + 'turns position error into a speed target, the <strong>velocity loop</strong> turns speed error into a torque '
+  + 'current (Iq) target, the <strong>torque loop</strong> sets the coil voltage until Iq matches, and the '
   + '<strong>flux loop</strong> holds Id at zero.</p>'
-  + '<p>Each loop is a PI controller. <strong>P</strong> reacts to the error now: too little lags, too much overshoots '
-  + 'and oscillates. <strong>I</strong> adds up past error to remove a steady offset; too much winds up.</p>'
-  + '<p>Tune from the inside out: a ringing torque loop cannot be fixed from outside, because the outer loops can only '
-  + 'ask it for more or less.</p>'
-  + '<p>The <strong>filters</strong> are low-passes on the measured currents and speed: too high lets sensor noise '
-  + 'through (hiss), too low feeds the loops late, and a loop fed late oscillates.</p>'
-  + '<table style="border-collapse:collapse;font-size:.95em;margin-top:.6em">'
-  + '<tr><th style="text-align:left;padding:0 10px 2px 0;font-weight:500">Symptom</th><th style="text-align:left;padding:0 0 2px;font-weight:500">Knob</th></tr>'
-  + '<tr><td style="padding:1px 10px 1px 0;vertical-align:top">Whine or buzz at rest</td><td style="padding:1px 0">torque P or I down</td></tr>'
-  + '<tr><td style="padding:1px 10px 1px 0;vertical-align:top">Speed hunts after corners</td><td style="padding:1px 0">velocity P or I down</td></tr>'
-  + '<tr><td style="padding:1px 10px 1px 0;vertical-align:top">Rounded corners, lag</td><td style="padding:1px 0">velocity P up, then position P up</td></tr>'
-  + '<tr><td style="padding:1px 10px 1px 0;vertical-align:top">Overshoot and buzz at stops</td><td style="padding:1px 0">position P down</td></tr>'
-  + '<tr><td style="padding:1px 10px 1px 0;vertical-align:top">Corner overshoot, hook back</td><td style="padding:1px 0">position I to 0</td></tr>'
-  + '<tr><td style="padding:1px 10px 1px 0;vertical-align:top">Hiss, or noise at rest</td><td style="padding:1px 0">filters down, or up</td></tr>'
+  + '<p>Each is a PI controller: <strong>P</strong> reacts to the error now (too little lags, too much oscillates), '
+  + '<strong>I</strong> removes a steady offset (too much winds up). Tune from the inside out: no outer loop can calm '
+  + 'a ringing torque loop.</p>'
+  + '<p>The <strong>filters</strong> smooth the measured currents and speed: too high lets sensor noise through '
+  + '(hiss), too low delays the loops until they oscillate.</p>'
+  + '<table><tr><th>Symptom</th><th>Knob</th></tr>'
+  + ROWS.map(([s, k]) => `<tr><td>${s}</td><td>${k}</td></tr>`).join('')
   + '</table>';
 
 const DEEPER = `<p>Loop bandwidths in this model: current loops ${TUNING.fc} Hz with their sense filters at `
   + `${formatValue(TUNING.fFilter / 1000, 1)} kHz, velocity loop ${TUNING.fv} Hz with its filter at ${TUNING.fVel} Hz, `
   + `position loop ${TUNING.fx} Hz. The position loop has no feed-forward, so at cruise the toolhead trails the command by `
-  + `speed / Kpx (${formatValue(150 / (2 * Math.PI * TUNING.fx), 2)} mm at 150 mm/s) even when well tuned; the corners `
+  + `speed / P (${formatValue(150 / (2 * Math.PI * TUNING.fx), 2)} mm at 150 mm/s) even when well tuned; the corners `
   + 'stay sharp because both axes trail alike.</p>'
-  + '<p>Rows of the calibration tables this model does not reproduce, so they have no preset: torque P too low '
-  + '(overshoot on fast moves), torque I too low (slow position loss under a static load), flux P too low (less torque '
-  + 'at speed), position I too low (drift during long prints). On hardware you would also see those.</p>';
+  + '<p>On hardware you would also see symptoms this model does not reproduce, so they have no preset: torque P too '
+  + 'low (overshoot on fast moves), torque I too low (slow position loss under a static load), flux P too low (less '
+  + 'torque at speed) and position I too low (drift during long prints).</p>';
 
 export default {
   id: 'pi-loops', number: 8, title: 'The four PI loops', short: 'PI loops',
-  takeaway: 'Position asks velocity, velocity asks torque, torque asks the coils. Tune from the inside out.',
+  takeaway: 'Position asks velocity, velocity asks torque, torque asks the coils: tune from the inside out.',
   motorTypes: ['stepper', 'bldc'],
   timeScale: { default: 0.25, min: 0.01, max: 1 },
   traceWindow: 2.0,
@@ -365,10 +366,10 @@ export default {
     { name: 'posErr', motor: 0, label: 'Position error X', unit: 'mm', color: 'err', scale: 'error', minSpan: 0.5 },
     { name: 'velCmd', motor: 0, label: 'Commanded speed X', unit: 'mm/s', color: 'target', dashed: true },
     { name: 'velAct', motor: 0, label: 'Actual speed X', unit: 'mm/s', color: 'phase-c' },
-    { name: 'iqStar', motor: 0, label: 'Iq target (motor A)', unit: 'A', color: 'axis-q', dashed: true },
-    { name: 'iq', motor: 0, label: 'Iq (motor A)', unit: 'A', color: 'axis-q' },
-    { name: 'id', motor: 0, label: 'Id (motor A)', unit: 'A', color: 'axis-d' },
-    { name: 'noise', motor: 0, label: 'Current noise (motor A)', unit: 'A', color: 'phase-b', scale: 'noise', minSpan: 0.05 },
+    { name: 'iqStar', motor: 0, label: 'Iq target, motor A', unit: 'A', color: 'axis-q', dashed: true },
+    { name: 'iq', motor: 0, label: 'Torque current Iq, motor A', unit: 'A', color: 'axis-q' },
+    { name: 'id', motor: 0, label: 'Flux current Id, motor A', unit: 'A', color: 'axis-d' },
+    { name: 'noise', motor: 0, label: 'Current noise, motor A', unit: 'A', color: 'phase-b', scale: 'noise', minSpan: 0.05 },
   ],
 
   onEvent(ev) {
@@ -447,8 +448,8 @@ export default {
     items.push({ label: 'Flux current peak', value: S.idPeak, unit: 'A', digits: 2, warn: S.idPeak > 0.5, ok: S.idPeak <= 0.2,
       title: 'Recent peak of |Id|, the current that heats the motor without making torque' });
     const heat = metrics.heat * 100;
-    items.push({ label: 'Heating', value: heat, unit: '%', digits: 1, warn: heat > 10, ok: heat <= 2,
-      title: 'Coil heating (I²R) over the last second, relative to running at the rated current' });
+    items.push({ label: 'Heat', value: heat, unit: '% of rated', digits: 0, warn: heat > 10, ok: heat <= 2,
+      title: 'Copper loss compared with running at the rated current, averaged over the last second' });
     return items;
   },
 

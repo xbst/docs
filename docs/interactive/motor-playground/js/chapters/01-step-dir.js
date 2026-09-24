@@ -80,7 +80,7 @@ const nudge = (d) => ({
 
 export default {
   id: 'step-dir', number: 1, title: 'STEP and DIR', short: 'STEP/DIR',
-  takeaway: 'Klipper talks to every stepper driver with two wires, STEP and DIR. The driver never talks back.',
+  takeaway: 'Klipper talks to every stepper driver over two wires, STEP and DIR, and the driver never talks back.',
   motorTypes: ['stepper'],
   timeScale: { default: 1, min: 0.002, max: 1 },
   traceWindow: NORMAL.window,
@@ -141,7 +141,7 @@ export default {
     { name: 'stepN', group: 'digital', pulses: true, label: 'STEP', color: 'phase-a' },
     { name: 'dir', group: 'digital', label: 'DIR', color: 'phase-b' },
     { name: 'posCmd', label: 'Commanded position', unit: 'mm', color: 'target', dashed: true },
-    { name: 'velCmd', label: 'Commanded speed', unit: 'mm/s', color: 'phase-c' },
+    { name: 'velCmd', label: 'Commanded speed', unit: 'mm/s', color: 'phase-c', dashed: true },
   ],
 
   readouts(snap, metrics, ctx) {

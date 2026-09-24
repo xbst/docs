@@ -50,7 +50,7 @@
  * about 80 and 560, depending on where in the stroke it lands, without
  * skipping a step.
  */
-import { formatValue } from '../format.js';
+import { formatValue, formatRms } from '../format.js';
 
 const SQRT2 = Math.SQRT2;
 /** Shuttle ends (mm). */
@@ -178,17 +178,17 @@ function setScope(ctx, s) {
 const DIAG = { name: 'diag', group: 'digital', label: 'DIAG', color: 'err' };
 const CURRENT_TRACES = [
   DIAG,
-  { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'phase-a', dashed: true },
+  { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'target', dashed: true },
   { name: 'iA', label: 'Phase A current', unit: 'A', color: 'phase-a' },
   { name: 'iAmp', label: 'Current amplitude', unit: 'A', color: 'phase-b' },
   { name: 'vAmp', label: 'Voltage amplitude', unit: 'V', color: 'phase-c' },
 ];
 const SG_TRACES = [
   DIAG,
-  { name: 'sg', label: 'StallGuard reading', scale: 'sg', color: 'phase-c', range: [0, 1023] },
+  { name: 'sg', label: 'StallGuard reading', scale: 'sg', color: 'phase-b', range: [0, 1023] },
   { name: 'sgThreshold', label: 'DIAG threshold (2 × SGTHRS)', scale: 'sg', color: 'err', dashed: true },
   { name: 'velCmd', label: 'Commanded speed', unit: 'mm/s', color: 'target', dashed: true },
-  { name: 'velAct', label: 'Actual speed', unit: 'mm/s', color: 'phase-a' },
+  { name: 'velAct', label: 'Actual speed', unit: 'mm/s', color: 'phase-c' },
 ];
 
 /* ---------------- readouts ---------------- */
@@ -273,8 +273,7 @@ export default {
         title: hybrid ? '' : 'Used in Hybrid mode',
         onChange: (v, c) => { st.threshold = v; c.world.set('hybridThresholdMmS', v); run(c, false); } },
       { type: 'slider', id: 'current', label: 'Run current', min: 0.5, max: 2.5, step: 0.05, value: DEFAULTS.rms,
-        caption: 'run_current', group: 'Driver',
-        format: (v) => `${fmt(v, 2)} A rms · ${fmt(v * SQRT2, 2)} A peak`,
+        caption: 'run_current', group: 'Driver', format: formatRms,
         onChange: (v, c) => { st.rms = v; c.world.set('runCurrent', v * SQRT2); } },
 
       { type: 'slider', id: 'speed', label: 'Speed', min: 20, max: 200, step: 5, value: DEFAULTS.speed, unit: 'mm/s',
@@ -386,12 +385,13 @@ export default {
     + 'correction takes tens of milliseconds: the current trails the command, dips when the motor speeds up, '
     + 'overshoots when it slows down, and at higher speeds the rotor can fall out of step.</p>'
     + '<p><strong>SpreadCycle</strong> measures the current every PWM cycle and corrects it at once, like the '
-    + 'chopper in chapter 3. It holds the target even at speed, and the constant chopping is the hiss you '
+    + 'chopper in chapter 3. It holds the target at speed, and the constant chopping is the hiss you '
     + 'hear. Klipper switches between the two at <code>stealthchop_threshold</code>.</p>'
     + '<p><strong>StallGuard</strong> estimates the load from how the current lines up with the back-EMF; a '
     + 'stalled motor looks like a very heavy load. Below twice <code>driver_SGTHRS</code>, the DIAG pin goes '
     + 'high and Klipper uses it as the endstop. It needs a minimum speed and a threshold tuned at your homing '
-    + 'speed: too sensitive triggers early, too dull slams into the stop.</p>'
+    + 'speed: too sensitive triggers early, too dull slams into the stop. With FOC, chapter 9 detects the stop '
+    + 'without guessing.</p>'
     + '<p><em>A behavior model of these features, not the chip\'s circuit.</em></p>',
 
   tryThis: [
@@ -400,7 +400,8 @@ export default {
     'Set the homing speed to 5 mm/s and home again.',
   ],
 
-  deeper: () => '<p>Here the StallGuard reading is 1023 × (1 − |sin δ| × (1 + 0.3 v / 100 mm/s)), with δ the '
+  deeper: () => '<p>A real StealthChop also scales its voltage with speed, so its current swings less than in this '
+    + 'model. Here the StallGuard reading is 1023 × (1 − |sin δ| × (1 + 0.3 v / 100 mm/s)), with δ the '
     + 'load angle between the current and the rotor: no load reads near 1023, a stall about 80. A TMC2209 '
     + 'infers its load from the back-EMF and only in StealthChop, so Klipper switches the driver to StealthChop '
     + 'for the homing move (the Driver readout shows it). DIAG also blips when StealthChop reverses, because the '

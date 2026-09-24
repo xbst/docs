@@ -29,7 +29,7 @@
  * 155 and 316 at 24 and 48 V, the 1.5 mH motor 456 and 876. A steady jog
  * holds up to about 460 mm/s at 24 V and 820 at 48 V.
  */
-import { formatValue } from '../format.js';
+import { formatValue, formatRms } from '../format.js';
 import { MOTOR_PRESETS, torqueSpeedCurve } from '../sim/presets.js';
 
 const SQRT2 = Math.SQRT2;
@@ -105,7 +105,7 @@ function chartResults(presetKey) {
 function tableHtml() {
   const cols = PRESETS.map((p) => p.value).filter((k) => st.table[k] && Object.keys(st.table[k]).length);
   if (!cols.length) {
-    return 'Press Sweep to find the speed where the current falls below 70 % of its target. '
+    return 'Press Sweep to find the speed where the current falls below 70% of its target. '
       + 'Sweep another voltage or motor to add it to the table.';
   }
   const rows = VOLTAGES.filter((V) => cols.some((k) => st.table[k][V]));
@@ -123,7 +123,7 @@ function tableHtml() {
     const ratio = base[k] && r.sag !== base[k] ? ` <span class="x">×${(r.sag / base[k]).toFixed(1)}</span>` : '';
     return `<td>${fmt(r.sag, 0)}${ratio}</td>`;
   };
-  let h = 'Speed in mm/s where the current falls below 70 % of its target.<table><tr><th>Bus</th>';
+  let h = 'Speed in mm/s where the current falls below 70% of its target.<table><tr><th>Bus</th>';
   for (const k of cols) h += `<th>${PRESET_NAME[k]}</th>`;
   h += '</tr>';
   for (const V of rows) {
@@ -185,7 +185,7 @@ function afterSweep(ctx) {
 
 export default {
   id: 'voltage', number: 5, title: 'Why 48 V', short: '48 V',
-  takeaway: 'Current makes torque, but voltage decides how fast current can change. Higher voltage keeps torque alive at speed.',
+  takeaway: 'Current makes torque, but voltage decides how fast current can change, so a higher voltage keeps torque alive at speed.',
   motorTypes: ['stepper'],
   timeScale: { default: 0.05, min: 0.005, max: 0.5 },
   traceWindow: windowFor(DEFAULTS.speed),
@@ -221,8 +221,7 @@ export default {
           c.app.refreshControls();       // the Sweep button names the voltage
         } },
       { type: 'slider', id: 'current', label: 'Run current', min: 0.5, max: 2.5, step: 0.05, value: DEFAULTS.rms,
-        caption: 'run_current', group: 'Supply and motor',
-        format: (v) => `${fmt(v, 2)} A rms · ${fmt(v * SQRT2, 2)} A peak`,
+        caption: 'run_current', group: 'Supply and motor', format: formatRms,
         onChange: (v, c) => {
           const cut = abortSweep(c);
           st.rms = v;
@@ -242,7 +241,7 @@ export default {
       { type: 'slider', id: 'speed', label: 'Speed', min: 0, max: 1500, step: 10, value: DEFAULTS.speed, unit: 'mm/s',
         group: 'Motion',
         onChange: (v, c) => { abortSweep(c); st.speed = v; drive(c); } },
-      { type: 'slider', id: 'load', label: 'Load (drag)', min: 0, max: 0.3, step: 0.01, value: DEFAULTS.drag, unit: 'N·m',
+      { type: 'slider', id: 'load', label: 'Drag', min: 0, max: 0.3, step: 0.01, value: DEFAULTS.drag, unit: 'N·m',
         group: 'Motion',
         onChange: (v, c) => { st.drag = v; c.world.command('setLoad', { drag: v }); } },
       { type: 'button', id: 'sweep', label: `Sweep at ${st.V} V`, kind: 'primary', group: 'Sweep',
@@ -252,7 +251,7 @@ export default {
   },
 
   traces: [
-    { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'phase-a', dashed: true },
+    { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'target', dashed: true },
     { name: 'iA', label: 'Phase A current', unit: 'A', color: 'phase-a' },
     { name: 'bemfA', label: 'Back-EMF, phase A', unit: 'V', color: 'axis-q' },
     { name: 'uMag', label: 'Voltage used', unit: 'V', color: 'phase-c' },
@@ -285,7 +284,7 @@ export default {
     ];
     if (st.stalled) {
       items.push({ label: 'Motor', value: 'stalled', warn: true,
-        title: 'The rotor lost the field. Lower the speed, raise the voltage or lower the load.' });
+        title: 'The rotor lost the field. Lower the speed, raise the voltage or lower the drag.' });
     }
     const t = st.table[snap.motorPreset];
     const r = t && t[V];
@@ -327,7 +326,7 @@ export default {
         if (!st.table[st.preset]) st.table[st.preset] = {};
         st.table[st.preset][V] = { sag, slip: slip != null ? slip : null, max: st.sweepMax };
         afterSweep(ctx);
-        if (sag != null) return `Sweep at ${V} V: the current held 70 % up to ${fmt(sag, 0)} mm/s`;
+        if (sag != null) return `Sweep at ${V} V: the current held 70% up to ${fmt(sag, 0)} mm/s`;
         return slip != null && slip < st.sweepMax ? `Sweep at ${V} V: the motor stalled at ${fmt(slip, 0)} mm/s`
           : `Sweep at ${V} V: the current held up to ${fmt(st.sweepMax, 0)} mm/s`;
       }
@@ -347,8 +346,8 @@ export default {
 
   text: () => '<p>Torque comes from current, and the driver can only push current with the voltage it has. '
     + 'Two things eat that voltage as the motor speeds up.</p>'
-    + '<p><strong>Inductance.</strong> The coil resists changes in current: di/dt = (V − e − R·i)/L. At speed '
-    + 'each microstep is shorter, and the current no longer reaches its target in time.</p>'
+    + '<p><strong>Inductance.</strong> The coil resists changes in current: di/dt = (V − e − R·i)/L, the ramp '
+    + 'from chapter 3. At speed each microstep is shorter, and the current no longer reaches its target in time.</p>'
     + '<p><strong>Back-EMF.</strong> A spinning motor is also a generator. Its voltage e grows with speed and '
     + 'pushes against the supply. When it nears the bus voltage, nothing is left to push current, and torque '
     + 'collapses.</p>'
@@ -366,6 +365,6 @@ export default {
     + '(V − λω<sub>e</sub>)/√(R² + (ω<sub>e</sub>L)²): the current the phase voltage V can push against the '
     + 'back-EMF λω<sub>e</sub> through the coil. ω<sub>e</sub> is the electrical speed, 50 times the shaft speed '
     + 'on a 1.8° stepper. At speed a chopper holds each bridge on for most of the cycle, so V is the fundamental '
-    + 'of a square wave, 4/π times the bus voltage. The sweep records where the current falls below 70 % of its '
+    + 'of a square wave, 4/π times the bus voltage. The sweep records where the current falls below 70% of its '
     + 'target.</p>',
 };

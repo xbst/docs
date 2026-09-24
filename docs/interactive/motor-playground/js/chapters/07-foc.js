@@ -11,8 +11,10 @@
  * stage strip.
  *
  * Measured (24 V, velocity mode, 20–300 mm/s): Id stays within 0.01 A of zero, Iq =
- * (load + 0.02 N·m friction)/Kt within 1%, the load angle is 90°. Heat at 0.2 N·m: 7% of
- * rated (stepper FOC), 37% (BLDC FOC), 87% (open-loop stepper at 3.54 A). Limits: the BLDC
+ * (load + 0.02 N·m friction)/Kt within 1%, the load angle is 90°. The heat readouts are
+ * (I / I_rated)² of the smoothed current amplitude (the world's heat is a 1 s average, about a
+ * minute of real time at this time scale); at 0.2 N·m about 8% of rated (stepper FOC), 43%
+ * (BLDC FOC) and 100% (open-loop stepper at 3.54 A). Limits: the BLDC
  * makes at most Kt·5.6 A = 0.34 N·m, so its load slider stops at 0.3 N·m and its bump is
  * 0.15 N·m. The comparison stepper holds 0.78 N·m at 3.54 A up to about 250 mm/s (less
  * beyond, back-EMF), so on the stepper the load stops at 0.4 N·m, the bump is 0.25 N·m and
@@ -21,7 +23,7 @@
  * backward without end (about 19 m/s here), so a stepLost on the comparison motor restarts
  * both motors.
  */
-import { formatValue } from '../format.js';
+import { MOTOR_PRESETS } from '../sim/presets.js';
 
 const DEFAULTS = { speed: 40, load: 0.2, hold: false, compare: false, transforms: false };
 const MAX_LOAD = { stepper: 0.4, bldc: 0.3 };
@@ -140,7 +142,7 @@ export default {
       { name: 'id', label: 'Flux current Id', unit: 'A', color: 'axis-d' },
       { name: 'torque', label: 'Torque', unit: 'N·m', color: 'text', range: [-tMax, tMax] },
       { name: 'loadTorque', label: 'Load', unit: 'N·m', color: 'text', dashed: true, range: [-tMax, tMax] },
-      { name: 'uMag', label: 'Voltage', unit: 'V', color: 'muted' },
+      { name: 'uMag', label: 'Voltage used', unit: 'V', color: 'muted' },
       { name: 'uLimit', label: 'Voltage limit', unit: 'V', color: 'muted', dashed: true },
     ];
     if (st.compare) t.push({ name: 'iAmp', motor: 1, label: 'Open-loop stepper current', unit: 'A', color: 'target' });
@@ -162,24 +164,27 @@ export default {
     if (m1) sm.amp1 += a * (num(m1.iAmp, 0) - sm.amp1);
   },
 
-  readouts(snap) {
-    const m = snap.motors[0];
+  readouts(snap, metrics, ctx) {
     const m1 = st.compare ? snap.motors[1] : null;
+    // Heat from the present current, (I / I_rated)²: the world's 1 s average would take about a
+    // minute of real time to settle at this chapter's time scale.
+    const heat = (amp, preset) => 100 * (amp / preset.Irated) ** 2;
     const items = [
       { label: 'Id', value: sm.id, unit: 'A', digits: 2, title: 'Flux current: no torque, only heat. FOC holds it at zero' },
       { label: 'Iq', value: sm.iq, unit: 'A', digits: 2, title: 'Torque current: torque = Kt × Iq' },
       { label: 'Load angle', value: sm.amp > 0.05 ? sm.la : '–', unit: '°', digits: 0,
         title: 'Angle between the current vector and the rotor magnet' },
-      { label: 'Amplitude', value: sm.amp, unit: 'A', digits: 2, title: 'Phase current amplitude' },
+      { label: 'Current', value: sm.amp, unit: 'A peak', digits: 2, title: 'Phase current amplitude' },
       { label: 'Torque', value: sm.tq, unit: 'N·m', digits: 3 },
-      { label: 'Heat', value: 100 * num(m.heat, 0), unit: '% of rated', digits: 0,
-        title: 'Copper loss compared with running at the rated current, averaged over the last second' },
+      { label: 'Heat', value: heat(sm.amp, MOTOR_PRESETS[typeOf(ctx)]), unit: '% of rated', digits: 0,
+        title: 'Copper loss at this current, compared with running at the rated current' },
     ];
     if (m1) {
-      items.push({ label: 'Open loop', value: sm.amp1, unit: 'A', digits: 2,
+      const h1 = heat(sm.amp1, MOTOR_PRESETS.stepper);
+      items.push({ label: 'Open-loop current', value: sm.amp1, unit: 'A peak', digits: 2,
         title: 'The open-loop stepper\'s phase current amplitude: its run current, whatever the load' });
-      items.push({ label: 'Open-loop heat', value: 100 * num(m1.heat, 0), unit: '% of rated', digits: 0, warn: m1.heat > 0.8,
-        title: 'The open-loop stepper\'s copper loss compared with running at its rated current' });
+      items.push({ label: 'Open-loop heat', value: h1, unit: '% of rated', digits: 0, warn: h1 > 80,
+        title: 'The open-loop stepper\'s copper loss at this current, compared with running at its rated current' });
     }
     return items;
   },
@@ -198,10 +203,10 @@ export default {
   },
 
   text: () => '<p>Tens of thousands of times a second, the driver reads the rotor angle from the encoder and the '
-    + 'phase currents from its sensors, then rotates the currents into the rotor\'s frame (the Park transform). '
+    + 'phase currents, then rotates the currents into the rotor\'s frame (the Park transform). '
     + 'The part along the magnet is the flux current Id: it makes no torque, only heat. The part 90° ahead is the '
-    + 'torque current Iq. Two PI loops hold Iq at what the motion asks for and Id at zero, and the driver rotates '
-    + 'their output back (inverse Park) and switches the phases with PWM.</p>'
+    + 'torque current Iq. Two PI loops hold Iq at what the motion asks for and Id at zero (chapter 8 tunes them), '
+    + 'and the driver rotates their output back (inverse Park) and switches the phases with PWM.</p>'
     + '<p>So every amp makes torque: the current follows the load instead of a fixed setting, the torque stays '
     + 'smooth at any speed, and there are no steps to lose. A three-phase BLDC works the same way: switch the '
     + 'motor type.</p>'

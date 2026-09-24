@@ -5,6 +5,7 @@
  *
  * Item: { label, value, unit, warn, ok, led: 'on'|'off'|'trip', title, digits, bar }
  *   value: number (formatted to ~3 significant digits, or `digits` decimals) or string.
+ *   unit: text after the value; a leading "%" or "°" attaches to the number ("85% of target").
  *   warn / ok: tint the chip (warn wins). led: prepend an LED dot.
  *   bar: { value, max, mark, low, off } appends a small level bar (chunk 05, the StallGuard
  *     reading): filled to value/max, a tick at mark/max (e.g. the DIAG threshold), red while
@@ -100,8 +101,15 @@ export class Readouts {
       }
       if (c.hidden) { c.el.hidden = false; c.hidden = false; }
       setText(c.lbl, it.label || '');
-      setText(c.val, formatValue(it.value, it.digits));
-      setText(c.unit, it.unit || '');
+      // "%" and "°" attach to the number (US style: 85%, 66°; dropped when there is no number);
+      // the rest of the unit follows.
+      const unit = it.unit || '';
+      const sym = unit[0] === '%' || unit[0] === '°' ? unit[0] : '';
+      const numeric = typeof it.value === 'number' && Number.isFinite(it.value);
+      setText(c.val, formatValue(it.value, it.digits) + (numeric ? sym : ''));
+      const rest = sym ? unit.slice(1).trim() : unit;
+      setText(c.unit, rest);
+      if (c.unit.hidden !== !rest) c.unit.hidden = !rest;
       const cls = 'chip' + (it.warn ? ' warn' : it.ok ? ' ok' : '');
       if (c.cls !== cls) { c.el.className = cls; c.cls = cls; }
       const led = it.led || '';

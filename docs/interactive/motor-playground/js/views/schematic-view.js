@@ -421,8 +421,8 @@ export class SchematicView extends CanvasView {
     if (!m) return '';
     const ph = this.opts.phase | 0;
     const i = num(m.iPhase && m.iPhase[ph], 0), t = num(m.iStar && m.iStar[ph], 0);
-    return `H-bridge of one coil: ${this.str.state || 'idle'}. Coil current ${formatValue(i, 2)} A, `
-      + `target ${formatValue(t, 2)} A, supply ${formatValue(num(snap.supplyV, 24), 0)} V.`;
+    return `H-bridge of one coil (${this.str.state || 'idle'}). Coil current ${formatValue(i, 2)} A, `
+      + `target ${formatValue(t, 2)} A, bus voltage ${formatValue(num(snap.supplyV, 24), 0)} V.`;
   }
 }
 

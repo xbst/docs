@@ -71,6 +71,29 @@ export function formatDuration(s) {
 }
 
 /**
+ * A current set in A RMS, the unit of Klipper's `run_current` for TMC-style
+ * drivers, with its sine peak: 1.5 → "1.50 A RMS (2.12 A peak)". The sim's
+ * runCurrent is the peak (RMS × √2).
+ * @param {number} rms amps RMS
+ * @returns {string}
+ */
+export function formatRms(rms) {
+  return `${formatValue(rms, 2)} A RMS (${formatValue(rms * Math.SQRT2, 2)} A peak)`;
+}
+
+/**
+ * A current set as a peak, the unit FOC drivers use for their current
+ * limits, with its RMS equivalent: 2.5 → "2.50 A peak (1.77 A RMS)".
+ * @param {number} peak amps peak
+ * @param {boolean} [withRms=true] add the RMS value in parentheses
+ * @returns {string}
+ */
+export function formatPeak(peak, withRms = true) {
+  const s = `${formatValue(peak, 2)} A peak`;
+  return withRms ? `${s} (${formatValue(peak / Math.SQRT2, 2)} A RMS)` : s;
+}
+
+/**
  * Label for the toolbar time slider: 1 → "Real time",
  * 0.01 → "1 s on screen = 10 ms".
  * @param {number} timeScale sim seconds per real second

@@ -20,7 +20,7 @@
  * last 1 ms.
  */
 import { MOTOR_PRESETS } from '../sim/presets.js';
-import { formatValue } from '../format.js';
+import { formatValue, formatRms } from '../format.js';
 
 const ZOOMS = {
   us: { window: 0.0005, timeScale: 0.0005 },
@@ -83,7 +83,7 @@ function setZoom(ctx, zoom) {
 
 export default {
   id: 'chopper', number: 3, title: 'Inside a stepper driver', short: 'Chopper',
-  takeaway: 'A driver is a current regulator. It switches the supply on and off tens of thousands of times a second and measures what happens.',
+  takeaway: 'A driver is a current regulator: it switches the supply on and off tens of thousands of times a second and measures what happens.',
   motorTypes: ['stepper'],
   timeScale: { default: ZOOMS.us.timeScale, min: 0.0001, max: 0.05 },
   traceWindow: ZOOMS.us.window,
@@ -114,8 +114,7 @@ export default {
         options: INDUCTANCE.map(([key, name]) => ({ value: key, label: `${name} ${mH(key)} mH` })),
         onChange: (v, c) => { st.preset = v; c.app.reconfigure(); rotate(c); c.app.refreshText(); } },
       { type: 'slider', id: 'current', label: 'Run current', min: 0.35, max: 2.5, step: 0.05, value: st.rms,
-        caption: 'run_current', group: 'Supply and motor',
-        format: (v) => `${v.toFixed(2)} A RMS (${peakOf(v).toFixed(2)} A peak)`,
+        caption: 'run_current', group: 'Supply and motor', format: formatRms,
         onChange: (v, c) => { st.rms = v; c.world.set('runCurrent', peakOf(v)); c.app.refreshText(); } },
       { type: 'slider', id: 'chop', label: 'Chopper frequency', min: 20, max: 60, step: 1, value: st.chopKHz,
         unit: 'kHz', group: 'Chopper', onChange: (v, c) => { st.chopKHz = v; c.world.set('chopper.freqHz', v * 1000); } },
@@ -164,13 +163,13 @@ export default {
   text() {
     return '<p>A stepper driver has no analog output. Each coil sits in an <strong>H-bridge</strong>: four switches '
       + 'that connect it to the supply one way, the other way, or short it.</p>'
-      + '<p>With the bridge on, the current ramps up at about V/L, the supply voltage over the coil’s inductance. '
+      + '<p>With the bridge on, the current ramps up at about V/L, the bus voltage over the coil\'s inductance. '
       + 'A <strong>sense resistor</strong> measures it, and a comparator tells the chopper when it passes the '
       + 'target; the bridge then lets the current decay until the next cycle starts. That happens tens of '
       + 'thousands of times a second.</p>'
       + '<p>The target comes from the sine table (chapter 2), so the run current sets the size of that sine. '
-      + 'Klipper’s <code>run_current</code> is the RMS value; the peak is 1.41 times higher.</p>'
-      + '<p>A higher supply voltage ramps the current faster, so the driver keeps up at speed (chapter 5). The '
+      + 'Klipper\'s <code>run_current</code> is the RMS value; the peak is 1.41 times higher.</p>'
+      + '<p>A higher bus voltage ramps the current faster, so the driver keeps up at speed (chapter 5). The '
       + 'sawtooth riding on the target is chopper ripple, part of the hiss you hear from a driver.</p>';
   },
 
@@ -186,7 +185,7 @@ export default {
     const ramp = (V - pr.R * I) / pr.L / 1000;
     return '<p>The coil obeys di/dt = (V − e − R·i)/L, with e the back-EMF of the turning rotor (0 at standstill). '
       + `With the bridge on, ${formatValue(V, 0)} V into ${formatValue(pr.L * 1000, 1)} mH at `
-      + `${formatValue(I, 2)} A gives about ${formatValue(ramp)} A per millisecond.</p>`
+      + `${formatValue(I, 2)} A peak gives about ${formatValue(ramp)} A per millisecond.</p>`
       + '<p>Each cycle the current climbs during the drive phase and falls during the decay phases, so the '
       + 'sawtooth grows with V/(L·f): more voltage, less inductance or a lower chopper frequency make it bigger. '
       + 'The torque comes from the average current; the ripple only adds a little heat and noise.</p>';

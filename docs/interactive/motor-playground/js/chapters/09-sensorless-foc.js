@@ -17,7 +17,7 @@
  * 0.06 N·m/A, so friction alone needs about 1.2 A and the peak is 1.47 A).
  * Measured by chunk 07, see STATUS.md row 07.
  */
-import { formatValue } from '../format.js';
+import { formatValue, formatPeak } from '../format.js';
 
 /** Where "Home" starts the approach from (mm). */
 const START_X = 40;
@@ -80,10 +80,10 @@ export default {
   controls(ctx) {
     const keys = ctx.product.keys || {};
     const notes = ctx.product.notes || {};
-    const runCurrent = ctx.world.scenario.runCurrent;
+    const runCurrent = (ctx.world.scenario || ctx.world.sc || {}).runCurrent;   // FakeWorld (?sim=fake): `sc`
     return [
       { type: 'slider', id: 'homingCurrent', label: 'Homing current limit', group: 'Homing', min: 0.2, max: 3.5, step: 0.05,
-        value: S.current, unit: 'A', caption: keys.homingCurrent,
+        value: S.current, format: (v) => formatPeak(v, false), caption: keys.homingCurrent,
         onChange: (v, c) => { S.current = v; c.world.set('foc.homingCurrent', v); c.app.setHighlight('limit'); } },
       { type: 'slider', id: 'homingSpeed', label: 'Homing speed', group: 'Homing', min: 10, max: 100, step: 5, value: S.speed,
         unit: 'mm/s', onChange: (v, c) => { S.speed = v; c.world.set('foc.homingSpeedMmS', v); } },
@@ -95,7 +95,7 @@ export default {
         title: 'Move out to 40 mm if needed, then approach the stop, detect it and retract' },
       { type: 'button', id: 'homeAgain', label: 'Home again', group: 'Run', onClick: (c) => c.world.command('home'),
         title: 'A second pass from where the carriage is now' },
-      { type: 'note', group: 'Run', html: `Run current for normal moves: <code>${formatValue(runCurrent, 2)} A</code>`
+      { type: 'note', group: 'Run', html: `Run current for normal moves: <code>${formatPeak(runCurrent, false)}</code>`
         + (keys.runCurrent ? ` (<code>${keys.runCurrent}</code>)` : '') + '. Homing swaps in the limit above.' },
       { type: 'note', group: 'Run', html: 'The controller reads the status output as an endstop'
         + (keys.diagPin ? ` (<code>${keys.diagPin}</code>)` : '') + '.' + (notes.homing ? ' ' + notes.homing : '') },
@@ -108,11 +108,11 @@ export default {
       { name: 'flagIqTarget', group: 'digital', label: 'Limit flag' + (keys.flag ? ` (${keys.flag})` : ''), short: 'FLAG', color: 'warn' },
       { name: 'status', group: 'digital', label: 'Status output', short: keys.statusPin || 'STATUS', color: 'err' },
       { name: 'iqStar', label: 'Iq demand', unit: 'A', color: 'axis-q', dashed: true },
-      { name: 'iq', label: 'Iq (measured)', unit: 'A', color: 'axis-q' },
+      { name: 'iq', label: 'Torque current Iq', unit: 'A', color: 'axis-q' },
       { name: 'iLimit', label: 'Current limit', unit: 'A', color: 'target', dashed: true },
       { name: 'velCmd', label: 'Commanded speed', unit: 'mm/s', color: 'target', dashed: true },
       { name: 'velAct', label: 'Actual speed', unit: 'mm/s', color: 'phase-c' },
-      { name: 'posAct', label: 'Position', unit: 'mm', color: 'phase-a' },
+      { name: 'posAct', label: 'Carriage position', unit: 'mm', color: 'phase-a' },
     ];
   },
 
@@ -148,7 +148,7 @@ export default {
     // Motor torque as force on the belt: T / (rd / 2π), rd in mm per turn.
     const forceN = Math.abs(m.torque) * 2 * Math.PI / ((snap.rd || 40) / 1000);
     return [
-      { label: 'Position', value: snap.gantry.x, unit: 'mm', digits: 2 },
+      { label: 'Carriage', value: snap.gantry.x, unit: 'mm', digits: 2 },
       { label: 'Iq demand', value: Math.abs(m.iqStar), unit: 'A', digits: 2, warn: flag,
         title: `The velocity loop's request, against the ${formatValue(m.iLimit, 2)} A limit` },
       { label: 'Free-motion peak', value: h.freeIqPeak, unit: 'A', digits: 2,
@@ -168,18 +168,19 @@ export default {
     + 'run current. Moving freely, the velocity loop asks only for what friction and acceleration need, well below that limit.</p>'
     + '<p>At the hard stop the carriage cannot follow the commanded speed. The speed error grows at once and the loop demands '
     + 'more current. The moment the demand exceeds the limit, a <strong>limit flag</strong> is set and the driver\'s '
-    + '<strong>status output</strong> goes high. The controller reads that pin as an endstop and stops the move.</p>'
+    + '<strong>status output</strong> goes high. The controller reads that pin as an endstop.</p>'
     + '<p>Set the limit just above the free-motion peak. Too low, and a bit of drag or a fast ramp trips it before the stop '
     + '(a false trigger). Too high, and the motor pushes hard into the stop before the flag fires.</p>'
-    + '<p>The flag stays latched while the carriage is pressed against the stop, so the axis must retract before the next '
-    + 'homing: with no retract, the second pass sees no rising edge.</p>'
+    + '<p>The status output stays latched while the carriage is pressed against the stop, so the axis must retract before '
+    + 'the next homing: with no retract, the second pass sees no rising edge.</p>'
     + '<p>Unlike chapter 4, nothing here is guessed from back-EMF: it is a comparison of two currents, and it works at any speed.</p>',
   tryThis: (ctx) => {
     const i = DEFAULT_CURRENT[ctx.motorType] || 0.5;
     return [
       `Home at ${formatValue(i, 2)} A and watch the Iq demand jump to the limit at contact.`,
       'Lower the limit until homing trips before the stop, then put it back and raise the drag until it trips again.',
-      'Raise the limit to 3 A and watch the press-in grow. Then set the retract to 0, press Home, and press Home again.',
+      'Raise the limit to 3 A and watch the press-in and the press force grow. Then set the retract to 0, press Home, '
+        + 'and press Home again.',
     ];
   },
   deeper: () => '<p>The stop here is a stiff spring (belt compliance), so the press-in shows the force: at the limit current the '

@@ -6,23 +6,33 @@
  * loop (current mode) and FOC with the optimal gains; the swap, like "Reprint", rebuilds the
  * world and starts the square again.
  *
+ * Current: open loop slides the run current in A RMS like Klipper's `run_current` (the world
+ * gets the peak, × √2); closed loop slides the current limit as a peak, the unit FOC drivers
+ * use. The chapter keeps one current, as a peak, and snaps it to the other slider's grid when
+ * the loop changes, so both loops start from the same current.
+ *
  * Bump: a 0.6 N·m, 20 ms shove, always sideways to the motion (the world's directed CoreXY
  * bump, `dir`). Sideways, so the closed loop's dip shows as a path deviation and not only as
- * lag along the path. Measured at the defaults (2.5 A, 150 mm/s, 5000 mm/s²): open loop loses
- * 15–25 mm every time (the rotor is flung out of step and re-locks cycles later), FOC dips
- * about 1.5 mm and is back on the path within about 40 ms. From 3 A up the stepper holds the
- * bump; at 0.8 A and 20 000 mm/s² open loop skips with no bump at all while FOC keeps up.
- * 250 ms after a bump the chapter reads the trace rings, finds the largest sideways excursion,
- * holds the gantry's magnifier on it (a dip up to 6 mm; a slip is plain in the frame) and
- * announces how far the toolhead was pushed and when it was back.
+ * lag along the path. Measured at the defaults (1.75 A RMS = 2.47 A peak, 150 mm/s,
+ * 5000 mm/s²): open loop loses 15–25 mm every time (the rotor is flung out of step and
+ * re-locks cycles later), FOC dips about 1.5 mm and is back on the path within about 40 ms.
+ * From 3 A peak up the stepper holds the bump; at 0.55 A RMS and 20 000 mm/s² open loop skips
+ * with no bump at all while FOC (0.8 A peak) keeps up. 250 ms after a bump the chapter reads
+ * the trace rings, finds the largest sideways excursion, holds the gantry's magnifier on it (a
+ * dip up to 6 mm; a slip is plain in the frame) and announces how far the toolhead was pushed
+ * and when it was back.
  */
-import { formatValue } from '../format.js';
+import { formatValue, formatRms, formatPeak } from '../format.js';
+import { TUNING } from '../sim/drivers/foc.js';
 
 const LEN = 350;
 // Up and left of the middle, so the magnifier in the bottom-right corner stays clear of it.
 const SQUARE = { start: [100, 150], points: [[200, 150], [200, 250], [100, 250], [100, 150]], laps: 1 };
 const BUMP = { torque: 0.6, durationS: 0.02 };
-const DEFAULTS = { loop: 'openloop', current: 2.5, speed: 150, accel: 5000, drag: 0 };
+/** Current sliders: open loop in A RMS, closed loop in A peak. */
+const RMS = { min: 0.35, max: 2.5, step: 0.05 };
+const PEAK = { min: 0.5, max: 3.5, step: 0.1 };
+const DEFAULTS = { loop: 'openloop', current: 1.75 * Math.SQRT2, speed: 150, accel: 5000, drag: 0 };
 /** Sim time after a bump before its excursion is measured (s). */
 const BUMP_LOOK_S = 0.25;
 /** Largest excursion (mm) still shown as a dip in the magnifier. */
@@ -35,6 +45,8 @@ let pending = null;          // { t, dirX, dirY } of the bump being measured
 let lost = { seen: 0, at: 0, told: 0 };
 
 const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+/** v on a slider's grid (rounded to its step, clamped to its range). */
+const onGrid = (v, s) => Math.min(s.max, Math.max(s.min, +(Math.round(v / s.step) * s.step).toFixed(2)));
 
 /** Toolhead shift (mm) from the two belts' lost distances (belt A = x + y, B = x − y). */
 function shiftMm(snap) {
@@ -101,7 +113,7 @@ function measure(world, p) {
 
 export default {
   id: 'closed-loop', number: 6, title: 'Open loop vs closed loop', short: 'Closed loop',
-  takeaway: 'An open-loop driver hopes the rotor followed. A closed-loop driver knows, and fixes it.',
+  takeaway: 'An open-loop driver hopes the rotor followed; a closed-loop driver knows, and fixes it.',
   motorTypes: ['stepper'],
   timeScale: { default: 0.5, min: 0.05, max: 1 },
   traceWindow: 2.0,
@@ -131,12 +143,13 @@ export default {
   controls(ctx) {
     const foc = st.loop === 'foc';
     const keys = (ctx.product && ctx.product.keys) || {};
-    const amps = (v) => `${formatValue(v, 1)} A (${formatValue(v / Math.SQRT2, 2)} rms)`;
     return [
       { type: 'segmented', id: 'loop', label: 'Loop', value: st.loop,
         options: [{ value: 'openloop', label: 'Open loop' }, { value: 'foc', label: 'Closed loop (FOC)' }],
         onChange: (v, c) => {
           st.loop = v;
+          // The same current on the new slider's grid (RMS in open loop, peak in closed loop).
+          st.current = v === 'foc' ? onGrid(st.current, PEAK) : onGrid(st.current / Math.SQRT2, RMS) * Math.SQRT2;
           restart(c);
           c.app.refreshControls();
           c.app.refreshTraces();
@@ -145,12 +158,15 @@ export default {
       { type: 'button', id: 'bump', label: 'Bump', kind: 'primary', ariaLabel: 'Bump the toolhead sideways',
         title: 'A short sideways shove on the toolhead, like the nozzle catching a blob', onClick: bump },
       { type: 'button', id: 'reprint', label: 'Reprint', ariaLabel: 'Start the square again', onClick: (c) => restart(c) },
-      { type: 'slider', id: 'current', label: foc ? 'Current limit' : 'Run current', group: 'Driver',
-        min: 0.5, max: 3.5, step: 0.1, value: st.current, format: amps,
-        caption: foc ? keys.runCurrent : 'run_current',
-        title: foc ? 'The most the driver may use; it uses only what the load needs'
-          : 'Peak phase current, always on. Klipper\'s run_current is the rms value',
-        onChange: (v, c) => { st.current = v; c.world.set('runCurrent', v); } },
+      foc
+        ? { type: 'slider', id: 'currentLimit', label: 'Current limit', group: 'Driver', ...PEAK,
+          value: st.current, format: formatPeak, caption: keys.runCurrent,
+          title: 'The most the driver may use; it uses only what the load needs',
+          onChange: (v, c) => { st.current = v; c.world.set('runCurrent', v); } }
+        : { type: 'slider', id: 'runCurrent', label: 'Run current', group: 'Driver', ...RMS,
+          value: +(st.current / Math.SQRT2).toFixed(2), format: formatRms, caption: 'run_current',
+          title: 'The driver pushes this current all the time, whatever the load',
+          onChange: (v, c) => { st.current = v * Math.SQRT2; c.world.set('runCurrent', st.current); } },
       { type: 'slider', id: 'speed', label: 'Speed', group: 'Motion', min: 50, max: 300, step: 10, value: st.speed,
         unit: 'mm/s', onChange: (v, c) => { st.speed = v; c.world.set('planner.maxVelocity', v); } },
       { type: 'slider', id: 'accel', label: 'Acceleration', group: 'Motion', min: 1000, max: 20000, step: 500,
@@ -165,8 +181,8 @@ export default {
     const t = [
       { name: 'posCmd', motor: 0, label: 'Commanded X', unit: 'mm', color: 'target', dashed: true },
       { name: 'posAct', motor: 0, label: 'Actual X', unit: 'mm', color: 'phase-a' },
-      { name: 'posErr', motor: 0, label: 'Error X', unit: 'mm', scale: 'err', color: 'axis-q' },
-      { name: 'posErr', motor: 1, label: 'Error Y', unit: 'mm', scale: 'err', color: 'axis-d' },
+      { name: 'posErr', motor: 0, label: 'Position error X', unit: 'mm', scale: 'err', color: 'err' },
+      { name: 'posErr', motor: 1, label: 'Position error Y', unit: 'mm', scale: 'err', color: 'axis-d' },
       { name: 'iAmp', motor: 0, label: 'Current, motor A', unit: 'A', color: 'phase-b' },
       { name: 'torque', motor: 0, label: 'Torque, motor A', unit: 'N·m', color: 'phase-c' },
     ];
@@ -188,12 +204,12 @@ export default {
     const amp = Math.max(ampOf(ctx.world, snap, 0), m1 ? ampOf(ctx.world, snap, 1) : 0);
     const heat = Math.max(num(m0.heat, 0), m1 ? num(m1.heat, 0) : 0);
     const items = [
-      { label: 'Error', value: err, unit: 'mm', digits: 2, warn: err > 3,
+      { label: 'Position error', value: err, unit: 'mm', digits: 2, warn: err > 3,
         title: 'Distance between the toolhead and where Klipper commanded it right now' },
       { label: 'Lost', value: shift, unit: 'mm', digits: 1, warn: shift >= 0.05, ok: foc,
         title: foc ? 'A closed loop cannot lose steps: it corrects from the encoder'
           : 'How far the print has shifted because the rotors slipped' },
-      { label: 'Current', value: amp, unit: 'A', digits: 2,
+      { label: 'Current', value: amp, unit: 'A peak', digits: 2,
         title: 'Phase current amplitude, the larger of the two motors' },
       { label: 'Heat', value: 100 * heat, unit: '% of rated', digits: 0, warn: heat > 0.8,
         title: 'Copper loss compared with running at the rated current, averaged over the last second' },
@@ -265,8 +281,8 @@ export default {
   text: () => '<p>An open-loop driver moves the field and hopes the rotor follows. It does, as long as the move '
     + 'needs less torque than the run current can make. A bump, a blob or too much acceleration for the current '
     + 'pulls the rotor out of step: it slips by whole electrical cycles (four full steps, 0.8&nbsp;mm of belt each), '
-    + 'often many at once. The driver can\'t see it, Klipper can\'t either, and every later layer prints shifted. '
-    + 'The fixes are blunt: more current, less acceleration.</p>'
+    + 'often many at once. The driver can\'t see it and never talks back (chapter 1), so Klipper can\'t either, '
+    + 'and every later layer prints shifted. The fixes are blunt: more current, less acceleration.</p>'
     + '<p>A closed-loop driver reads an encoder on the motor shaft thousands of times a second. It compares where '
     + 'the rotor is with where Klipper asked it to be and corrects the difference, so a bump becomes a dip that '
     + 'heals. It also draws only the current the load needs, so the motors run cooler. Chapter 7 shows how it '
@@ -274,17 +290,18 @@ export default {
 
   tryThis: [
     'In open loop, press <b>Bump</b>: the square shifts and stays shifted.',
-    'Switch to <b>Closed loop</b> and press <b>Bump</b>: the magnifier shows the dip and how it heals. '
-      + 'Compare the <b>Current</b> and <b>Heat</b> readouts with open loop.',
-    'Set the current to 0.8&nbsp;A and the acceleration to 20&nbsp;000&nbsp;mm/s² in both modes: open loop skips '
-      + 'on its own, closed loop keeps up. Then add drag.',
+    'Switch to <b>Closed loop</b> and press <b>Bump</b>: the magnifier shows the dip healing. Compare '
+      + '<b>Current</b> and <b>Heat</b> with open loop, with and without drag.',
+    'Lower the run current to 0.55&nbsp;A RMS and raise the acceleration to 20,000&nbsp;mm/s²: open loop skips '
+      + 'on its own. Switch to closed loop: it keeps up.',
   ],
 
-  deeper: () => '<p>Why whole cycles? The rotor locks to the field in one position per electrical cycle, 50 per '
-    + 'turn on a 1.8° motor. A slipped rotor falls into another one, a multiple of 0.8&nbsp;mm away, and at speed '
-    + 'it can slide many before it catches up.</p>'
-    + '<p>Why does the closed loop trail the command while moving? Its position loop turns the error into a speed '
-    + 'demand, so it needs a small error to ask for speed: about 0.9&nbsp;mm at 150&nbsp;mm/s here. The lag is '
-    + 'the same on every layer, so nothing shifts; many drives add feed-forward to shrink it. The encoder here '
-    + 'reads 4000 counts per turn, 0.01&nbsp;mm of belt each.</p>',
+  deeper: () => '<p>Why whole cycles? The rotor locks to the field once per electrical cycle, 50 times per turn on '
+    + 'a 1.8° motor, so a slipped rotor lands a multiple of 40&nbsp;mm / 50 = 0.8&nbsp;mm of belt away; at speed '
+    + 'it can slide many cycles before it catches the field.</p>'
+    + '<p>Why does the closed loop trail the command while moving? Its position loop asks for a speed of '
+    + 'P × error, so moving at 150&nbsp;mm/s takes an error of 150 / P = 150 / (2π × '
+    + `${TUNING.fx}&nbsp;Hz) ≈ ${formatValue(150 / (2 * Math.PI * TUNING.fx), 2)}&nbsp;mm here. The lag is the `
+    + 'same on every layer, so nothing shifts; many drives add feed-forward to shrink it. The encoder reads 4000 '
+    + 'counts per turn: 40&nbsp;mm / 4000 = 0.01&nbsp;mm of belt each.</p>',
 };

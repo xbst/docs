@@ -194,6 +194,11 @@ a{color:inherit}
 .p-text p+p,.p-deep-body p+p{margin-top:.6em}
 .p-text strong,.p-deep-body strong{color:var(--text);font-weight:500}
 .p-text code,.p-deep-body code,.p-try code{font:400 .92em "Roboto Mono",monospace;color:var(--text)}
+/* small tables in the chapter text (chapter 8's symptom → knob table) */
+.p-text table{border-collapse:collapse;font-size:.95em;margin-top:.6em}
+.p-text th,.p-text td{text-align:left;vertical-align:top;padding:1px 10px 1px 0}
+.p-text th{font-weight:500;color:var(--text);padding-bottom:2px}
+.p-text th:last-child,.p-text td:last-child{padding-right:0}
 .p-h{font-size:.69rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--desc-color)}
 .p-try{display:flex;flex-direction:column;gap:6px}
 .p-try ul{list-style:none;display:flex;flex-direction:column;gap:5px}
@@ -270,7 +275,7 @@ a{color:inherit}
 /* level bar inside a chip (readouts.js item.bar; chapter 4's StallGuard reading) */
 .chip .bar{position:relative;flex:none;width:56px;height:6px;border-radius:3px;background:var(--divider);
   box-shadow:inset 0 0 0 1px var(--tip-border)}
-.chip .bar .f{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--phase-c)}
+.chip .bar .f{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--phase-b)}
 .chip .bar .m{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;border-radius:1px;background:var(--text)}
 .chip .bar.low .f{background:var(--err)}
 .chip .bar.off .f{display:none}

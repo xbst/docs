@@ -14,7 +14,7 @@
  * frequency √(Kt·I·p/Jt)/2π. "Single step" uses command('singleStep') and stops the jog first.
  * The accessors below fall back for FakeWorld (`?sim=fake`: no presets, mechanics or scenario getter).
  */
-import { formatValue } from '../format.js';
+import { formatValue, formatRms } from '../format.js';
 import { MOTOR_PRESETS } from '../sim/presets.js';
 
 const SPEED = 10;
@@ -79,7 +79,7 @@ function jog(ctx) {
 
 export default {
   id: 'microstepping', number: 2, title: 'Microstepping', short: 'Microstepping',
-  takeaway: 'Microsteps make motion smoother and quieter by sharing the field between two coils, but they don’t buy accuracy under load.',
+  takeaway: 'Microsteps make motion smoother and quieter by sharing the field between two coils, but they don\'t buy accuracy under load.',
   motorTypes: ['stepper'],
   timeScale: { default: 0.05, min: 0.005, max: 1 },
   traceWindow: 0.1,
@@ -120,8 +120,7 @@ export default {
       { type: 'toggle', id: 'interp', label: 'Interpolate to 256 microsteps', value: st.interp, caption: 'interpolate',
         group: 'Driver', onChange: (v, c) => { st.interp = v; c.world.set('interpolate', v); } },
       { type: 'slider', id: 'current', label: 'Run current', min: 0.35, max: 2.5, step: 0.05, value: st.rms,
-        caption: 'run_current', group: 'Driver',
-        format: (v) => `${v.toFixed(2)} A RMS (${(v * Math.SQRT2).toFixed(2)} A peak)`,
+        caption: 'run_current', group: 'Driver', format: formatRms,
         onChange: (v, c) => { st.rms = v; c.world.set('runCurrent', v * Math.SQRT2); } },
       { type: 'segmented', id: 'motion', label: 'Motion', value: st.run ? 'move' : 'stop', group: 'Motion',
         options: [{ value: 'move', label: 'Move' }, { value: 'stop', label: 'Stop' }],
@@ -183,7 +182,7 @@ export default {
   text() {
     return '<p>Inside the motor, two coils (A and B) pull on the rotor. A <strong>full step</strong> switches the '
       + 'currents so the field jumps 90°, a quarter of the electrical cycle. The rotor snaps after it, overshoots '
-      + 'and rings at the stepper’s resonance, typically 100–300 Hz: the classic stepper buzz.</p>'
+      + 'and rings at the stepper\'s resonance, typically 100–300 Hz: the classic stepper buzz.</p>'
       + '<p><strong>Microstepping</strong> sets the two currents to the cosine and sine of the field angle, so the '
       + 'field turns in small angles instead of jumps. Smaller jumps, less vibration, quieter motion.</p>'
       + '<p>But the pull toward the next microstep is small, and it grows only with the distance from it. Friction '
@@ -207,7 +206,7 @@ export default {
     return '<p>The field advances 90°/n per microstep (n = microsteps). Four full steps make one electrical cycle, '
       + `and a 1.8° motor has ${pr.p} electrical cycles per turn.</p>`
       + '<p>The pull toward a microstep one step ahead is T<sub>hold</sub> × sin(90°/n): 9.8% of the holding torque '
-      + 'at n = 16, but 0.6% at n = 256, less than the motor’s own friction.</p>'
+      + 'at n = 16, but 0.6% at n = 256, less than the motor\'s own friction.</p>'
       + `<p>The rotor rings at f = √(Kt·I·p/J) / 2π: about ${Math.round(f)} Hz for this motor and carriage at `
       + `${formatValue(pr.Irated / Math.SQRT2)} A RMS. Less current or more mass lowers it.</p>`;
   },
