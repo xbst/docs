@@ -54,7 +54,7 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
       <th colspan="2" style="font-size: 24px"></th>
     </tr>
     <tr>
-      <td colspan="2">OwlFC-Mini is a 2-lane filament changer controller designed for NightOwl filament changers, with onboard TMC2209 drivers and USB/CAN through a single cable.</td>
+      <td colspan="2">OwlFC-Mini is a 2-lane filament changer controller designed for NightOwl filament changers.</td>
       <td colspan="2"></td>
       </tr>
     <tr>
