@@ -122,12 +122,12 @@ To use USB for the Klipper connection when deployed, set the USB/CAN Mode Switch
 
 ## Software Setup
 
-OwlFC-Mini is supported by the following filament changer software packages. Follow their documentation to install the software and configure your NightOwl, including the Klipper config for the OwlFC-Mini itself:
+OwlFC-Mini support is being added to:
 
 - [AFC (AFC Klipper Add-On)](https://github.com/AFCProject/AFC-Klipper-Add-On)
 - [Happy Hare](https://github.com/moggieuk/Happy-Hare)
 
-!!! info "OwlFC-Mini support is being added to AFC and Happy Hare. If you can't find OwlFC-Mini or NightOwl configs in your installed version yet, update the software or check back soon."
+!!! info "Docs will be updated soon with more details as soon as support is added."
 
 ## Printed Parts
 
