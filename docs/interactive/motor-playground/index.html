@@ -4,6 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Motor Control Playground</title>
+<!--
+  Motor Control Playground: an interactive lesson on driving stepper and BLDC
+  motors, from STEP/DIR to field-oriented control, in nine chapters. One
+  normalized physics model (js/sim) drives every view, the scope and the
+  readouts. ES modules, no build step, no external scripts; fonts from Google
+  Fonts. Chapters live in js/chapters, views in js/views.
+
+  URL parameters:
+    chapter=<id|number>  first chapter (default 1): step-dir, microstepping,
+                         chopper, driver-modes, voltage, closed-loop, foc,
+                         pi-loops, sensorless-foc
+    nav=0                solo mode for embeds: no chapter tabs or prev/next,
+                         plus an "Open the full playground" link
+    product=<key>        config-key captions from js/products.js; absent or
+                         unknown = none (the widget's own text never names a
+                         product)
+    motor=stepper|bldc   initial motor type, where the chapter allows it
+    theme=dark|light     force a palette (default: follow the docs page, then
+                         the OS)
+    paused=1             start paused (prefers-reduced-motion does too)
+    sim=fake             synthetic FakeWorld instead of the simulation (tests)
+    debug=1              frame timing overlay
+
+  Embedding (pinout_embed Markdown extension; the widget posts its height to
+  the page with {pinconnectHeight: N} and follows the page's theme):
+    ![Interactive motor control playground](../interactive/motor-playground/index.html?product=ouroboros){ type=application/pinout style="height:80vh;min-height:640px;width:100%" }
+  One chapter inside a collapsed admonition (the embed indented four spaces;
+  the widget idles while the admonition is closed):
+    ??? info "Interactive: see what each PI loop does"
+        ![Interactive PI loops](../interactive/motor-playground/index.html?chapter=pi-loops&nav=0&product=ouroboros){ type=application/pinout style="height:80vh;min-height:640px;width:100%" }
+-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&family=Roboto:wght@400;500;600&display=swap" rel="stylesheet">
