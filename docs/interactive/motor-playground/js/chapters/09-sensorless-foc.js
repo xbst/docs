@@ -53,7 +53,7 @@ function homeFromStart(c) {
   S.homeWhenIdle = true;
 }
 
-const RESULT_TEXT = { ok: 'stopped at the stop', 'false-trigger': 'false trigger', 'no-edge': 'no edge' };
+const RESULT_TEXT = { ok: 'detected at the stop', 'false-trigger': 'false trigger', 'no-edge': 'no edge' };
 
 export default {
   id: 'sensorless-foc', number: 9, title: 'Sensorless homing with FOC', short: 'Sensorless',
@@ -144,7 +144,7 @@ export default {
     const keys = ctx.product.keys || {};
     const flag = !!(m.flags && m.flags.iqTargetLimit);
     const status = !!m.status;
-    const result = h.active ? (h.pass > 1 ? `homing, pass ${h.pass}` : 'homing') : (RESULT_TEXT[h.result] || '–');
+    const result = h.active ? (h.pass > 1 ? `running, pass ${h.pass}` : 'running') : (RESULT_TEXT[h.result] || 'not run yet');
     // Motor torque as force on the belt: T / (rd / 2π), rd in mm per turn.
     const forceN = Math.abs(m.torque) * 2 * Math.PI / ((snap.rd || 40) / 1000);
     return [
@@ -156,7 +156,8 @@ export default {
       { label: 'Press-in', value: h.pressInMm, unit: 'mm', digits: 2, warn: h.pressInMm > PRESS_WARN_MM,
         title: 'How far the carriage pushed into the (compliant) stop this pass' },
       { label: 'Press force', value: forceN, unit: 'N', digits: 0, title: 'Motor torque as belt force, Kt·Iq·2π/rd' },
-      { label: 'Result', value: result, warn: h.result === 'false-trigger' || h.result === 'no-edge', ok: !h.active && h.result === 'ok' },
+      { label: 'Homing', value: result, warn: !h.active && (h.result === 'false-trigger' || h.result === 'no-edge'),
+        ok: !h.active && h.result === 'ok' },
       { label: keys.flag || 'Limit flag', value: flag ? 'on' : 'off', led: flag ? 'trip' : 'off',
         title: 'Set while the velocity loop asks for more current than the limit allows' },
       { label: keys.statusPin || 'Status output', value: status ? 'high' : 'low', led: status ? 'trip' : 'off',

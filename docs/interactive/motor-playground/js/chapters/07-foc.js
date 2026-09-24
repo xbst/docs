@@ -175,7 +175,7 @@ export default {
       { label: 'Load angle', value: sm.amp > 0.05 ? sm.la : '–', unit: '°', digits: 0,
         title: 'Angle between the current vector and the rotor magnet' },
       { label: 'Current', value: sm.amp, unit: 'A peak', digits: 2, title: 'Phase current amplitude' },
-      { label: 'Torque', value: sm.tq, unit: 'N·m', digits: 3 },
+      { label: 'Torque', value: sm.tq, unit: 'N·m', digits: 2 },
       { label: 'Heat', value: heat(sm.amp, MOTOR_PRESETS[typeOf(ctx)]), unit: '% of rated', digits: 0,
         title: 'Copper loss at this current, compared with running at the rated current' },
     ];
