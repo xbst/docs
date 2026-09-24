@@ -63,6 +63,8 @@ export class Motor {
     /** @type {number} [A] */ this.iAmp = 0;
     /** @type {number} [V] */ this.vAlpha = 0;
     /** @type {number} [V] */ this.vBeta = 0;
+    /** @type {number} step inputs for stepInputs(): rotor electrical angle [rad] and speed [rad/s], step [s] */
+    this.inThetaE = 0; this.inOmegaE = 0; this.stepDt = 4e-5;
     const n = this.preset.phases === 3 ? 3 : 2;
     /** @type {Float64Array} phase currents [A] */ this.iPhase = new Float64Array(n);
     /** @type {Float64Array} phase voltages [V] */ this.vPhase = new Float64Array(n);
@@ -104,9 +106,20 @@ export class Motor {
    * @param {number} dt step [s]
    */
   step(vAlpha, vBeta, thetaE, omegaE, dt) {
+    this.vAlpha = vAlpha; this.vBeta = vBeta;
+    this.inThetaE = thetaE; this.inOmegaE = omegaE; this.stepDt = dt;
+    this.stepInputs();
+  }
+
+  /**
+   * step() on inputs already in `vAlpha`, `vBeta`, `inThetaE`, `inOmegaE` and `stepDt`: the
+   * world's per-step path, without double arguments (boxed when a call is not inlined).
+   */
+  stepInputs() {
+    const vAlpha = this.vAlpha, vBeta = this.vBeta, omegaE = this.inOmegaE, dt = this.stepDt;
     const pr = this.preset;
     const R = pr.R, L = pr.L, lam = pr.lambda;
-    const th = wrapAngle(thetaE);
+    const th = wrapAngle(this.inThetaE);
     const c = Math.cos(th), s = Math.sin(th);
     this.cosE = c; this.sinE = s;
 
@@ -123,11 +136,20 @@ export class Motor {
     ia += dt * (vAlpha - R * ia - ea) / L;
     ib += dt * (vBeta - R * ib - eb) / L;
     this.iAlpha = ia; this.iBeta = ib;
-    this.vAlpha = vAlpha; this.vBeta = vBeta;
     this.iAmp = Math.sqrt(ia * ia + ib * ib);
 
-    invClarkeInto(ia, ib, this.iPhase);
-    invClarkeInto(vAlpha, vBeta, this.vPhase);
-    invClarkeInto(ea, eb, this.bemf);
+    // Inverse Clarke (invClarkeInto) written out for the three outputs: no double arguments.
+    const ip = this.iPhase, vp = this.vPhase, be = this.bemf;
+    ip[0] = ia; vp[0] = vAlpha; be[0] = ea;
+    if (ip.length === 3) {
+      ip[1] = -0.5 * ia + HALF_SQRT3 * ib;
+      ip[2] = -0.5 * ia - HALF_SQRT3 * ib;
+      vp[1] = -0.5 * vAlpha + HALF_SQRT3 * vBeta;
+      vp[2] = -0.5 * vAlpha - HALF_SQRT3 * vBeta;
+      be[1] = -0.5 * ea + HALF_SQRT3 * eb;
+      be[2] = -0.5 * ea - HALF_SQRT3 * eb;
+    } else {
+      ip[1] = ib; vp[1] = vBeta; be[1] = eb;
+    }
   }
 }

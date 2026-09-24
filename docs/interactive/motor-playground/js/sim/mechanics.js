@@ -81,6 +81,7 @@ export class Mechanics {
     /** @type {number} bit i = motor i */ this.bumpMask = 0;
     /** @type {Float64Array} per-motor factor on the pulse (1 = the plain same-sign bump) */
     this.bumpScale = new Float64Array(n).fill(1);
+    /** @type {number} step length for stepAtDt [s] (step(torques, dt) sets it too) */ this.stepDt = 4e-5;
     /** @type {number} [mm] */ this.x = 0;
     /** @type {number} [mm] */ this.y = 0;
     /** @type {number} [mm/s] */ this.vx = 0;
@@ -207,6 +208,17 @@ export class Mechanics {
    * @param {number} dt step [s]
    */
   step(torqueIn, dt) {
+    this.stepDt = dt;
+    this.stepAtDt(torqueIn);
+  }
+
+  /**
+   * step() with the step length already in `stepDt` (the world sets it at configure): the
+   * world's per-step path, without a double argument, which is boxed when a call is not inlined.
+   * @param {Float64Array|number[]} torqueIn electromagnetic torque per motor [N·m]
+   */
+  stepAtDt(torqueIn) {
+    const dt = this.stepDt;
     const n = this.nMotors;
     const th = this.theta, om = this.omega, Jt = this.Jt, tLoad = this.tLoad, tC = this.tContact;
     for (let i = 0; i < n; i++) tC[i] = 0;

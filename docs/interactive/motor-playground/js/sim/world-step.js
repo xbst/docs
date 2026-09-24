@@ -172,7 +172,8 @@ function driveMotor(w, i, ctrl) {
   if (ol !== null) {
     ol.consumePulses(pulses);
     w._omegaCmdOL[i] = sgen.rate * w._stepAngle[i] * sgen.dir;
-    ol.step(w.motors[i], omegaCmd);
+    ol.inOmegaCmd = omegaCmd;             // ol.step(motor, omegaCmd) without a boxed double argument
+    ol.stepInputs(w.motors[i]);
     w._va[i] = ol.vAlpha;
     w._vb[i] = ol.vBeta;
     return;
@@ -186,10 +187,7 @@ function driveMotor(w, i, ctrl) {
   } else {
     foc.iqStarCmd = w._iqTarget;
   }
-  if (ctrl) {
-    const enc = w.encoders[i];
-    foc.step(enc.thetaMeas, enc.omegaEst, w.motors[i].iPhase, w.rng, enc.count);
-  }
+  if (ctrl) foc.stepEncoder(w.encoders[i], w.motors[i].iPhase, w.rng);
   w._va[i] = foc.uAlpha;
   w._vb[i] = foc.uBeta;
 }
@@ -203,7 +201,13 @@ function stepMotor(w, i) {
   const mech = w.mechanics;
   const p = w._p[i];
   const motor = w.motors[i];
-  motor.step(w._va[i], w._vb[i], p * mech.theta[i], p * mech.omega[i], w._dt);
+  // motor.step(va, vb, θe, ωe, dt) through fields: double arguments are boxed when a call is not inlined.
+  motor.vAlpha = w._va[i];
+  motor.vBeta = w._vb[i];
+  motor.inThetaE = p * mech.theta[i];
+  motor.inOmegaE = p * mech.omega[i];
+  motor.stepDt = w._dt;
+  motor.stepInputs();
   w._torques[i] = motor.torque;
 }
 
@@ -240,7 +244,9 @@ export function stepWorld(w) {
   }
   for (let i = 0; i < n; i++) driveMotor(w, i, ctrl);
   for (let i = 0; i < n; i++) stepMotor(w, i);
-  w.mechanics.step(w._torques, w._dt);
+  const mech = w.mechanics;
+  mech.stepDt = w._dt;          // a field write, not a double argument (boxed when not inlined)
+  mech.stepAtDt(w._torques);
   for (let i = 0; i < n; i++) sense(w, i);
 
   w._t += w._dt;
@@ -259,14 +265,16 @@ export function stepWorld(w) {
 }
 
 /**
- * Snapshot fields of an open-loop motor.
+ * Snapshot fields of an open-loop motor. (fillOpenLoop and fillFoc recompute the rotor's
+ * electrical angle, p·θ, rather than take it as an argument: a double argument is boxed
+ * when the call is not inlined.)
  * @param {object} w World
  * @param {number} i motor index
  * @param {object} m snapshot.motors[i]
- * @param {number} thE rotor electrical angle (rad)
  * @returns {number} lost electrical cycles
  */
-function fillOpenLoop(w, i, m, thE) {
+function fillOpenLoop(w, i, m) {
+  const thE = w._p[i] * w.mechanics.theta[i];
   const ol = w.openloop[i];
   const motor = w.motors[i];
   const c = motor.cosE;
@@ -332,10 +340,10 @@ function fillOpenLoop(w, i, m, thE) {
  * @param {object} w World
  * @param {number} i motor index
  * @param {object} m snapshot.motors[i]
- * @param {number} thE rotor electrical angle (rad)
  * @returns {number} lost electrical cycles (0)
  */
-function fillFoc(w, i, m, thE) {
+function fillFoc(w, i, m) {
+  const thE = w._p[i] * w.mechanics.theta[i];
   const foc = w.foc[i];
   const motor = w.motors[i];
   const c = motor.cosE;
@@ -477,7 +485,7 @@ function fillMotor(w, i) {
   m.omegaStar = w.cmdOmega[i];
   m.omegaFilt = mech.omega[i];
 
-  const lost = w.openloop[i] !== null ? fillOpenLoop(w, i, m, thE) : fillFoc(w, i, m, thE);
+  const lost = w.openloop[i] !== null ? fillOpenLoop(w, i, m) : fillFoc(w, i, m);
   const mmPerCycle = w.rd / p;
   // stepLost at most once per STEP_LOST_HOLDOFF_S per motor. w._prevLost is the lost count at
   // the last event, so a change inside the holdoff accumulates into the next event's `mm`.

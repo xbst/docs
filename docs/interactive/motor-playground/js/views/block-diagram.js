@@ -65,7 +65,8 @@ export class BlockDiagram {
     this.h = 0;
     this.fs = 1;
     this.theme = null;
-    this.built = '';
+    this.built = false;
+    this.product = null;
     this.hl = undefined;
     this.fmtAt = -Infinity;
     this.ariaAt = -Infinity;
@@ -81,13 +82,13 @@ export class BlockDiagram {
   resize(cssW, cssH) {
     this.w = cssW;
     this.h = cssH;
-    this.built = '';      // build() sets the viewBox
+    this.built = false;   // build() sets the viewBox
   }
 
   setOptions(opts) {
     if (!opts) return;
     Object.assign(this.opts, opts);
-    this.built = '';
+    this.built = false;
   }
 
   destroy() {
@@ -105,13 +106,14 @@ export class BlockDiagram {
       : (ctx.chapterId === 'sensorless-foc' ? 'limit' : 'foc');
     const fs = th.fontScale || 1;
     const product = ctx.product || null;
-    const key = `${this.w}|${this.h}|${fs}|${this.opts.compact}|${chain}|${product ? product.key : ''}`;
-    if (key !== this.built) {
+    // resize() and setOptions() clear `built`; the font scale, chain and product are compared
+    // here (no per-frame key string: it allocated every frame).
+    if (!this.built || fs !== this.fs || chain !== this.chainName || product !== this.product) {
       this.fs = fs;
       this.chainName = chain;
       this.product = product;
       this.build();
-      this.built = key;
+      this.built = true;
       this.theme = null;
       this.hl = undefined;
       this.fmtAt = -Infinity;

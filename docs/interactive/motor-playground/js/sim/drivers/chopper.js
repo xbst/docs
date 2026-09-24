@@ -85,6 +85,9 @@ export class Chopper {
     this.nSum = 0;
     /** True once the on-phase tripped in the current cycle. */
     this.tripped = false;
+    /** Inputs of stepInputs(): phase current target and measured current (A). */
+    this.inStar = 0;
+    this.inMeas = 0;
   }
 
   /**
@@ -126,6 +129,18 @@ export class Chopper {
    * @returns {number} phase voltage for this sub-step: +Vbus, 0 or −Vbus
    */
   step(iStar, iMeas) {
+    this.inStar = iStar;
+    this.inMeas = iMeas;
+    this.stepInputs();
+    return this.v;
+  }
+
+  /**
+   * step() on inputs already in `inStar` and `inMeas`; the voltage is left in `v`. The driver's
+   * per-sub-step path: double arguments are boxed when a call is not inlined.
+   */
+  stepInputs() {
+    const iStar = this.inStar, iMeas = this.inMeas;
     const dt = this.dt;
     // Cycle boundary (half a sub-step tolerance so float drift never skips a boundary).
     if (this.fresh || this.tCycle + 0.5 * dt >= this.period) {
@@ -181,7 +196,6 @@ export class Chopper {
     this.state = s;
     this.v = s * this.Vbus;
     this.tCycle += dt;
-    return this.v;
   }
 }
 

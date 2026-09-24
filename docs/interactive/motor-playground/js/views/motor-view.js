@@ -53,7 +53,7 @@ export class MotorView extends CanvasView {
     this.trailHead = 0;
     this.trailLen = 0;
     this.lay = {
-      key: '', compact: false, phases: 2, cx: 0, cy: 0, R: 0, Ry: 0, Rin: 0, Rr: 0,
+      isFoc: false, compact: false, phases: 2, cx: 0, cy: 0, R: 0, Ry: 0, Rin: 0, Rr: 0,
       legend: false, legendY: 0, note: false, noteY: 0, dial: false, dx: 0, dy: 0, dr: 0,
       panel: 0, px: 0, py: 0, pw: 0, ph: 0,
     };
@@ -76,10 +76,11 @@ export class MotorView extends CanvasView {
   /** @private layout for the current size, options, phase count and driver */
   layout(nPh, isFoc) {
     const L = this.lay, o = this.opts, w = this.w, h = this.h;
-    const key = `${w}|${h}|${this.fs}|${nPh}|${isFoc}|${o.compact}|${o.showTransforms}|${o.dial}|${o.legend}|${o.note}`;
-    if (!this.layoutDirty && key === L.key) return;
+    // Size, options and font scale set layoutDirty (CanvasView); the motor comes from the snapshot.
+    // (No per-frame key string: it allocated every frame.)
+    if (!this.layoutDirty && nPh === L.phases && isFoc === L.isFoc) return;
     this.layoutDirty = false;
-    L.key = key;
+    L.isFoc = isFoc;
     L.phases = nPh;
     const compact = !!o.compact || w < 220 || h < 180;
     L.compact = compact;

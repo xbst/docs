@@ -170,6 +170,9 @@ export class Metrics {
     this.hasPrev = false;
     this.prvSX = 0; this.prvSY = 0; this.prvEX = 0; this.prvEY = 0;
     this.cornerErr = 0;
+    // Toolhead point of the current step (update → _trackMotion, _trackCorner).
+    this.ax = 0;
+    this.ay = 0;
   }
 
   /**
@@ -314,12 +317,13 @@ export class Metrics {
     }
 
     // Actual toolhead point in the planner's plane (axis/free: commanded y stands in for y).
+    // Handed to the trackers as fields: double arguments are boxed when a call is not inlined.
     const corexy = sc.mechanics === 'corexy';
-    const ax = s.gantry.x;
-    const ay = corexy ? s.gantry.y : pl.y;
+    this.ax = s.gantry.x;
+    this.ay = corexy ? s.gantry.y : pl.y;
 
-    this._trackMotion(pl, sc, ax, ay);
-    this._trackCorner(pl, ax, ay);
+    this._trackMotion(pl, sc);
+    this._trackCorner(pl);
 
     this.n++;
     if (this.n >= this.periodSteps) {
@@ -328,8 +332,9 @@ export class Metrics {
     }
   }
 
-  /** Overshoot / settle tracking. Allocation free. */
-  _trackMotion(pl, sc, ax, ay) {
+  /** Overshoot / settle tracking at the toolhead point (this.ax, this.ay). Allocation free. */
+  _trackMotion(pl, sc) {
+    const ax = this.ax, ay = this.ay;
     const mode = pl.mode;
     const phase = pl.phase;
     const speed = pl.speed;
@@ -395,8 +400,9 @@ export class Metrics {
     this.prevSpeed = speed;
   }
 
-  /** Corner (path deviation) tracking. Allocation free. */
-  _trackCorner(pl, ax, ay) {
+  /** Corner (path deviation) tracking at the toolhead point (this.ax, this.ay). Allocation free. */
+  _trackCorner(pl) {
+    const ax = this.ax, ay = this.ay;
     const sx = pl.segStartX, sy = pl.segStartY, ex = pl.segEndX, ey = pl.segEndY;
     if (!this.hasCur || sx !== this.curSX || sy !== this.curSY || ex !== this.curEX || ey !== this.curEY) {
       if (this.hasCur) {

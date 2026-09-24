@@ -34,7 +34,7 @@ export class VectorView extends CanvasView {
    */
   constructor(host, opts) {
     super(host, opts, { motor: 0, compare: 'auto', voltage: true, range: 'limit' });
-    this.lay = { key: '', cx: 0, cy: 0, R: 0, vx: 0, vy: 0, vr: 0, voltage: false, top: 0, small: false };
+    this.lay = { cx: 0, cy: 0, R: 0, vx: 0, vy: 0, vr: 0, voltage: false, top: 0, small: false };
     this.str = { iq: '', id: '', lim: '', u: '', cmp: '', cmpq: '' };
     this.scaleA = 1;
   }
@@ -42,10 +42,9 @@ export class VectorView extends CanvasView {
   /** @private */
   layout() {
     const L = this.lay, w = this.w, h = this.h;
-    const key = `${w}|${h}|${this.fs}|${this.opts.voltage}`;
-    if (!this.layoutDirty && key === L.key) return;
+    // Size, options and font scale set layoutDirty (CanvasView).
+    if (!this.layoutDirty) return;
     this.layoutDirty = false;
-    L.key = key;
     L.small = w < 230 || h < 200;
     const line = this.fpx(12) + 5;
     L.top = 6 + line * (L.small ? 1 : 2);

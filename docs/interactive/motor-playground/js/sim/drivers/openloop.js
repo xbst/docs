@@ -127,6 +127,8 @@ export class OpenLoopDriver {
     this.pwmState = new Int8Array(2);
     /** Angle of the actual current vector, atan2(iβ, iα) (rad). */
     this.currentAngle = 0;
+    /** Commanded speed for stepInputs() (mechanical rad/s). */
+    this.inOmegaCmd = 0;
 
     /** Current-amplitude low-pass. */
     this.ampLpf = new Lowpass1(1 / 40e-6);
@@ -292,6 +294,17 @@ export class OpenLoopDriver {
    *   switching; pass the commanded speed, not the step-rate estimate
    */
   step(motor, omegaCmdRadS) {
+    this.inOmegaCmd = omegaCmdRadS;
+    this.stepInputs(motor);
+  }
+
+  /**
+   * step() with the commanded speed already in `inOmegaCmd`: the world's per-step path, without
+   * a double argument (boxed when a call is not inlined).
+   * @param {object} motor see step()
+   */
+  stepInputs(motor) {
+    const omegaCmdRadS = this.inOmegaCmd;
     const dt = this.dt;
     const Vbus = this.Vbus;
     const I = this.runCurrent;
@@ -364,11 +377,15 @@ export class OpenLoopDriver {
         this.vPhase[1] = va * s;
       }
     } else if (switching) {
+      // chopX.step(iStar, iMeas) through fields: double arguments are boxed when a call is not inlined.
       const ip = motor.iPhase;
-      this.vPhase[0] = this.chopA.step(this.iStar[0], ip[0]);
-      this.vPhase[1] = this.chopB.step(this.iStar[1], ip[1]);
-      this.pwmState[0] = this.chopA.state;
-      this.pwmState[1] = this.chopB.state;
+      const ca = this.chopA, cb = this.chopB;
+      ca.inStar = this.iStar[0]; ca.inMeas = ip[0]; ca.stepInputs();
+      cb.inStar = this.iStar[1]; cb.inMeas = ip[1]; cb.stepInputs();
+      this.vPhase[0] = ca.v;
+      this.vPhase[1] = cb.v;
+      this.pwmState[0] = ca.state;
+      this.pwmState[1] = cb.state;
     } else {
       this.controlCount++;
       if (this.controlCount >= this.controlEvery) {

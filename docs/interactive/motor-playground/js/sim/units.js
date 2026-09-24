@@ -104,7 +104,9 @@ export function radSToMmS(radS, rd) {
 
 /**
  * Seeded pseudo-random generator (mulberry32) with a Box–Muller gaussian.
- * Deterministic for a given seed; next() and gaussian() never allocate.
+ * Deterministic for a given seed; next(), gaussian() and fillGaussian() create no objects
+ * (gaussian()'s double result is boxed where the call is not inlined; hot paths use
+ * fillGaussian()).
  */
 export class Rng {
   /**
@@ -158,5 +160,28 @@ export class Rng {
     this.spare = r * Math.sin(a);
     this.hasSpare = true;
     return r * Math.cos(a);
+  }
+
+  /**
+   * Writes n standard normal samples into out[0..n−1]: the same sequence as n gaussian()
+   * calls, without returning a double (a return value is boxed when the call is not inlined).
+   * @param {Float64Array} out
+   * @param {number} n
+   */
+  fillGaussian(out, n) {
+    for (let k = 0; k < n; k++) {
+      if (this.hasSpare) {
+        this.hasSpare = false;
+        out[k] = this.spare;
+        continue;
+      }
+      const u1 = 1 - this.next();
+      const u2 = this.next();
+      const r = Math.sqrt(-2 * Math.log(u1));
+      const a = TWO_PI * u2;
+      this.spare = r * Math.sin(a);
+      this.hasSpare = true;
+      out[k] = r * Math.cos(a);
+    }
   }
 }

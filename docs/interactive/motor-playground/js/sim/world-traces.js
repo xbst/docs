@@ -203,80 +203,81 @@ export function pushTraces(w) {
   for (let j = 0; j < nb; j++) {
     const i = mot[j];
     const m = motors[i];
-    let v = 0;
-    switch (codes[j]) {
-      case T_IA: v = m.iPhase[0]; break;
-      case T_IB: v = m.iPhase[1]; break;
-      case T_IC: v = m.iPhase[2]; break;
-      case T_IASTAR: v = m.iStar[0]; break;
-      case T_IBSTAR: v = m.iStar[1]; break;
-      case T_ICSTAR: v = m.iStar[2]; break;
-      case T_VA: v = m.vPhase[0]; break;
-      case T_VB: v = m.vPhase[1]; break;
-      case T_VC: v = m.vPhase[2]; break;
-      case T_BEMFA: v = m.bemf[0]; break;
-      case T_IAMP: v = m.iAmp; break;
-      case T_VAMP: v = m.vAmp; break;
-      case T_ID: v = m.id; break;
-      case T_IQ: v = m.iq; break;
-      case T_IDSTAR: v = m.idStar; break;
-      case T_IQSTAR: v = m.iqStar; break;
-      case T_UD: v = m.ud; break;
-      case T_UQ: v = m.uq; break;
-      case T_UMAG: v = m.uMag; break;
-      case T_ULIMIT: v = m.uLimit; break;
-      case T_TORQUE: v = m.torque; break;
-      case T_LOADTORQUE: v = m.loadTorque; break;
-      case T_LOADANGLE: v = m.loadAngle; break;
-      case T_ENCA: v = m.encoder.a; break;
-      case T_ENCB: v = m.encoder.b; break;
-      case T_ENCCOUNT: v = m.encoder.count; break;
-      case T_NOISE: v = w.noise[i]; break;
-      case T_HEAT: v = m.heat; break;
-      case T_XCMD: v = g.xCmd; break;
-      case T_XACT: v = g.x; break;
-      case T_XERR: v = g.xCmd - g.x; break;
-      case T_VXCMD: v = w.vxCmd; break;
-      case T_VXACT: v = mech.vx; break;
-      case T_YCMD: v = g.yCmd; break;
-      case T_YACT: v = g.y; break;
-      case T_YERR: v = g.yCmd - g.y; break;
-      case T_VYCMD: v = w.vyCmd; break;
-      case T_VYACT: v = mech.vy; break;
-      case T_BELTPOS: v = m.thetaM * k; break;
-      case T_POSCMD: v = w.cmdTheta[i] * k; break;
-      case T_POSACT: v = m.thetaM * k; break;
-      case T_POSERR: v = (w.cmdTheta[i] - m.thetaM) * k; break;
-      case T_VELCMD: v = w.cmdOmega[i] * k; break;
-      case T_VELACT: v = m.omegaM * k; break;
-      case T_SG: v = m.sg === null ? NaN : m.sg; break;
-      case T_SGTHR: {
-        const sgd = w.stallguards[i];
-        v = sgd !== null ? sgd.threshold : NaN;
-        break;
-      }
-      case T_DIAG: v = m.diag ? 1 : 0; break;
-      case T_PWMA: v = m.pwmState[0]; break;
-      case T_PWMB: v = m.pwmState[1]; break;
-      case T_STATUS: v = m.status ? 1 : 0; break;
-      case T_FLAGIQ: v = m.flags.iqTargetLimit ? 1 : 0; break;
-      case T_FLAGUQ: v = m.flags.uqOutputLimit ? 1 : 0; break;
-      case T_ILIMIT: v = m.iLimit; break;
-      case T_STEP:
-        v = 0;
-        if (w.stepEdges > 0) v = w.stepLast === 1 ? 0 : 1;
-        w.stepLast = v;
-        w.stepEdges = 0;
-        break;
-      case T_DIR: v = snap.step.dir > 0 ? 1 : 0; break;
-      case T_STEPN: v = w.stepPulses; w.stepPulses = 0; break;
-      default: v = NaN;
-    }
-    // Inline RingBuffer.push: a call would box the two doubles when it is not inlined.
+    // Inline RingBuffer.push, and every case writes its value straight into the ring: a shared
+    // `v` would merge tagged and float values into one variable and box every double (chunk 09).
     const rb = bufs[j];
     const h = rb.head;
+    const out = rb.v;
+    switch (codes[j]) {
+      case T_IA: out[h] = m.iPhase[0]; break;
+      case T_IB: out[h] = m.iPhase[1]; break;
+      case T_IC: out[h] = m.iPhase[2]; break;
+      case T_IASTAR: out[h] = m.iStar[0]; break;
+      case T_IBSTAR: out[h] = m.iStar[1]; break;
+      case T_ICSTAR: out[h] = m.iStar[2]; break;
+      case T_VA: out[h] = m.vPhase[0]; break;
+      case T_VB: out[h] = m.vPhase[1]; break;
+      case T_VC: out[h] = m.vPhase[2]; break;
+      case T_BEMFA: out[h] = m.bemf[0]; break;
+      case T_IAMP: out[h] = m.iAmp; break;
+      case T_VAMP: out[h] = m.vAmp; break;
+      case T_ID: out[h] = m.id; break;
+      case T_IQ: out[h] = m.iq; break;
+      case T_IDSTAR: out[h] = m.idStar; break;
+      case T_IQSTAR: out[h] = m.iqStar; break;
+      case T_UD: out[h] = m.ud; break;
+      case T_UQ: out[h] = m.uq; break;
+      case T_UMAG: out[h] = m.uMag; break;
+      case T_ULIMIT: out[h] = m.uLimit; break;
+      case T_TORQUE: out[h] = m.torque; break;
+      case T_LOADTORQUE: out[h] = m.loadTorque; break;
+      case T_LOADANGLE: out[h] = m.loadAngle; break;
+      case T_ENCA: out[h] = m.encoder.a; break;
+      case T_ENCB: out[h] = m.encoder.b; break;
+      case T_ENCCOUNT: out[h] = m.encoder.count; break;
+      case T_NOISE: out[h] = w.noise[i]; break;
+      case T_HEAT: out[h] = m.heat; break;
+      case T_XCMD: out[h] = g.xCmd; break;
+      case T_XACT: out[h] = g.x; break;
+      case T_XERR: out[h] = g.xCmd - g.x; break;
+      case T_VXCMD: out[h] = w.vxCmd; break;
+      case T_VXACT: out[h] = mech.vx; break;
+      case T_YCMD: out[h] = g.yCmd; break;
+      case T_YACT: out[h] = g.y; break;
+      case T_YERR: out[h] = g.yCmd - g.y; break;
+      case T_VYCMD: out[h] = w.vyCmd; break;
+      case T_VYACT: out[h] = mech.vy; break;
+      case T_BELTPOS: out[h] = m.thetaM * k; break;
+      case T_POSCMD: out[h] = w.cmdTheta[i] * k; break;
+      case T_POSACT: out[h] = m.thetaM * k; break;
+      case T_POSERR: out[h] = (w.cmdTheta[i] - m.thetaM) * k; break;
+      case T_VELCMD: out[h] = w.cmdOmega[i] * k; break;
+      case T_VELACT: out[h] = m.omegaM * k; break;
+      case T_SG: out[h] = m.sg === null ? NaN : m.sg; break;
+      case T_SGTHR: {
+        const sgd = w.stallguards[i];
+        out[h] = sgd !== null ? sgd.threshold : NaN;
+        break;
+      }
+      case T_DIAG: out[h] = m.diag ? 1 : 0; break;
+      case T_PWMA: out[h] = m.pwmState[0]; break;
+      case T_PWMB: out[h] = m.pwmState[1]; break;
+      case T_STATUS: out[h] = m.status ? 1 : 0; break;
+      case T_FLAGIQ: out[h] = m.flags.iqTargetLimit ? 1 : 0; break;
+      case T_FLAGUQ: out[h] = m.flags.uqOutputLimit ? 1 : 0; break;
+      case T_ILIMIT: out[h] = m.iLimit; break;
+      case T_STEP: {
+        const s = w.stepEdges > 0 ? (w.stepLast === 1 ? 0 : 1) : 0;
+        out[h] = s;
+        w.stepLast = s;
+        w.stepEdges = 0;
+        break;
+      }
+      case T_DIR: out[h] = snap.step.dir > 0 ? 1 : 0; break;
+      case T_STEPN: out[h] = w.stepPulses; w.stepPulses = 0; break;
+      default: out[h] = NaN;
+    }
     rb.t[h] = t;
-    rb.v[h] = v;
     rb.head = h + 1 === rb.cap ? 0 : h + 1;
     if (rb.len < rb.cap) rb.len++;
   }

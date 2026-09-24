@@ -309,6 +309,12 @@ export class FocController {
     this._ab = { alpha: 0, beta: 0 };
     this._dq = { d: 0, q: 0 };
     this._uab = { alpha: 0, beta: 0 };
+    // Sense noise of one period, and the step inputs as fields: step() and stepEncoder() hand
+    // them to _run() without double arguments, which are boxed when a call is not inlined.
+    this._noise = new Float64Array(3);
+    this._inTheta = 0;
+    this._inOmega = 0;
+    this._inCount = NaN;
   }
 
   /**
@@ -466,11 +472,40 @@ export class FocController {
    * @param {number} thetaMeasM measured mechanical angle (rad, unwrapped)
    * @param {number} omegaEstRadS encoder speed estimate (mech rad/s, unfiltered)
    * @param {ArrayLike<number>} iPhase actual phase currents (A), length = phases
-   * @param {{gaussian: function(): number}|null} rng seeded generator for the sense noise (null = no noise)
+   * @param {{fillGaussian: function(Float64Array, number): void}|null} rng seeded generator for the
+   *   sense noise (units.js Rng; null = no noise)
    * @param {number} [count=NaN] encoder count (cells of 2pi/encoderCpr); when finite and
    *   `encoderCpr > 0` the position error is `(floor(thetaStar*cpr/2pi) - count)*2pi/cpr`
    */
   step(thetaMeasM, omegaEstRadS, iPhase, rng, count = NaN) {
+    this._inTheta = thetaMeasM;
+    this._inOmega = omegaEstRadS;
+    this._inCount = count;
+    this._run(iPhase, rng);
+  }
+
+  /**
+   * step() with the angle, speed estimate and count read from an encoder (`thetaMeas`,
+   * `omegaEst`, `count`): the world's per-step path, with no double arguments to box.
+   * @param {{thetaMeas: number, omegaEst: number, count: number}} enc
+   * @param {ArrayLike<number>} iPhase actual phase currents (A)
+   * @param {{fillGaussian: function(Float64Array, number): void}|null} rng
+   */
+  stepEncoder(enc, iPhase, rng) {
+    this._inTheta = enc.thetaMeas;
+    this._inOmega = enc.omegaEst;
+    this._inCount = enc.count;
+    this._run(iPhase, rng);
+  }
+
+  /**
+   * The control period of step()/stepEncoder() on the inputs they stored.
+   * @private
+   */
+  _run(iPhase, rng) {
+    const thetaMeasM = this._inTheta;
+    const omegaEstRadS = this._inOmega;
+    const count = this._inCount;
     const g = this.gains;
     const f = this.flags;
     const invFs = this.invFs;
@@ -491,8 +526,11 @@ export class FocController {
     const sigma = this.sigma;
     const meas = this.iPhaseMeas;
     const n = this.nPhases;
+    const noisy = !!rng && sigma > 0;
+    const nzs = this._noise;
+    if (noisy) rng.fillGaussian(nzs, n);    // the same draws, in the same order, as n gaussian() calls
     for (let k = 0; k < n; k++) {
-      const nz = (rng && sigma > 0) ? sigma * rng.gaussian() : 0;
+      const nz = noisy ? sigma * nzs[k] : 0;
       meas[k] = iPhase[k] + nz;
       if (k === 0) this.noiseA = nz;
     }
