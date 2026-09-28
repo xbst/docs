@@ -161,10 +161,13 @@ export class Scope {
 
   /**
    * Replace the trace set (chapter change, or a chapter calling app.refreshTraces()).
+   * Traces hidden from the legend stay hidden when the new set has one with the same
+   * key and label, unless keepHidden is false (a chapter change starts all visible).
    * @param {Array<Object>} descs trace descriptors
+   * @param {{keepHidden?: boolean}} [opts]
    */
-  setTraces(descs) {
-    const prevHidden = new Set(this.traces.filter((t) => !t.visible).map((t) => t.key + '|' + t.label));
+  setTraces(descs, { keepHidden = true } = {}) {
+    const prevHidden = keepHidden ? new Set(this.traces.filter((t) => !t.visible).map((t) => t.key + '|' + t.label)) : null;
     this.traces = [];
     this.groups = [];
     const byKey = new Map();
@@ -198,7 +201,7 @@ export class Scope {
         grp.members.push(tr);
         tr.group = grp;
       }
-      if (prevHidden.has(tr.key + '|' + tr.label)) tr.visible = false;
+      if (prevHidden && prevHidden.has(tr.key + '|' + tr.label)) tr.visible = false;
       this.traces.push(tr);
     }
     // The largest minSpan a member gives replaces the unit default, even a smaller one.

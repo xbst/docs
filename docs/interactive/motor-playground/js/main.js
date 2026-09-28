@@ -96,7 +96,7 @@ const app = {
   reconfigure() { configureWorld(); scope.invalidate(); requestFrame(); },
   /** Re-render text(ctx), tryThis and deeper(ctx). */
   refreshText() { renderText(); schedulePost(); },
-  /** Re-read the chapter's traces (an array, or a function of ctx). */
+  /** Re-read the chapter's traces (an array, or a function of ctx); legend-hidden ones stay hidden. */
   refreshTraces() { scope.setTraces(resolveTraces()); },
   /** Scope window in sim seconds; the world re-derives its trace decimation. */
   setTraceWindow(seconds) {
@@ -382,7 +382,7 @@ function enterChapter(index) {
   el.pDeep.open = false;
   el.panel.scrollTop = 0;
   hook('onEnter', ctx);
-  scope.setTraces(resolveTraces());
+  scope.setTraces(resolveTraces(), { keepHidden: false });
   renderPanel();
   renderControls(false);
   syncTimeSlider();
