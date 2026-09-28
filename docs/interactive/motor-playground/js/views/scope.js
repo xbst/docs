@@ -113,6 +113,7 @@ export class Scope {
     this.paused = false;
     this.lastFmt = -Infinity;
     this.divStr = ''; this.winStr = ''; this.winShort = ''; this.pausedStr = 'paused';
+    this.divW = 0; this.winW = 0; this.winShortW = 0; this.capDirty = true;   // caption widths, measured on change
     this.fontLabel = ''; this.fontMono = '';
     // scratch state, reused every frame
     this.tagIdx = new Int16Array(MAX_TRACES);
@@ -149,6 +150,7 @@ export class Scope {
     this.fontLabel = `500 ${Math.round(12 * s)}px ${theme.fontUi}`;
     this.fontMono = `${Math.round(12 * s)}px ${theme.fontMono}`;
     for (let k = 0; k < this.traces.length; k++) this.colorTrace(this.traces[k]);
+    this.capDirty = true;
     this.dirty = true;
   }
 
@@ -276,6 +278,7 @@ export class Scope {
     this.winShort = formatDuration(this.window) + ' of motor time';
     this.winStr = this.winShort
       + (Math.abs(this.timeScale - 1) > 1e-9 ? ' (' + formatDuration(onScreen) + ' on screen)' : '');
+    this.capDirty = true;
     this.updateLabel();
     this.dirty = true;
   }
@@ -460,15 +463,26 @@ export class Scope {
       g.fillText(tr.tagStr, tx + 4, y + 0.5, tw - 7);
     }
 
-    // time axis captions
+    // time axis captions: the window length always, the time per division only where both fit
     g.font = this.fontMono;
+    if (this.capDirty) {
+      this.capDirty = false;
+      this.divW = g.measureText(this.divStr).width;
+      this.winW = g.measureText(this.winStr).width;
+      this.winShortW = g.measureText(this.winShort).width;
+    }
     g.fillStyle = th.muted;
     g.textBaseline = 'alphabetic';
-    const ty = H - 6;
-    g.textAlign = 'left';
-    g.fillText(this.divStr, x0, ty);
+    const ty = H - 6, capGap = Math.round(12 * s);
+    let winCap = this.winStr, winW = this.winW;
+    if (pw < 440 * s || this.divW + capGap + winW > pw) { winCap = this.winShort; winW = this.winShortW; }
+    const showDiv = this.divW + capGap + winW <= pw;
+    if (showDiv) {
+      g.textAlign = 'left';
+      g.fillText(this.divStr, x0, ty);
+    }
     g.textAlign = 'right';
-    g.fillText(pw < 440 * s ? this.winShort : this.winStr, x1, ty, pw * 0.7);
+    g.fillText(winCap, x1, ty, showDiv ? pw - this.divW - capGap : x1 - 6);
     if (this.paused) {
       g.textAlign = 'right';
       g.fillText(this.pausedStr, W - 6, ty);
