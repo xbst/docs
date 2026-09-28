@@ -54,7 +54,9 @@ export class SchematicView extends CanvasView {
     this.lastNow = 0;
     this.overW = 0;         // css px widths of the 'over target' and 'measured' labels (layout)
     this.measuredW = 0;
-    this.chevColor = '';    // th.field, darkened where it is under 3:1 on the glow (onTheme)
+    // th.field, darkened where it is under 3:1 on the glow (onTheme): the chevrons, the 'on' levers
+    // and the coil-current arrow
+    this.fieldColor = '';
     this.str = {
       vbus: '', i: '', tgt: '', state: '', rl: '', bemf: '',
       driveP: '', driveN: '', fastP: '', fastN: '', slow: '',
@@ -63,7 +65,7 @@ export class SchematicView extends CanvasView {
 
   /** @param {Object} th theme */
   onTheme(th) {
-    this.chevColor = strokeOn(th, th.field, blend(th.field, GLOW, th.tipBg));
+    this.fieldColor = strokeOn(th, th.field, blend(th.field, GLOW, th.tipBg));
   }
 
   /** @private */
@@ -169,8 +171,9 @@ export class SchematicView extends CanvasView {
     g.fillStyle = th.text;
     haloText(g, this.str.i, this.X((XL + XR) / 2), cy - this.fpx(12) * 0.8, th.tipBg);
     if (Math.abs(i) > 0.02 * Irated) {
-      g.strokeStyle = th.field;
-      g.fillStyle = th.field;
+      const c = this.fieldColor || th.field;
+      g.strokeStyle = c;
+      g.fillStyle = c;
       g.lineWidth = 2;
       const x0 = this.X(150), x1 = this.X(250);
       if (i > 0) arrow(g, x0, cy + 4, x1, cy + 4, 8); else arrow(g, x1, cy + 4, x0, cy + 4, 8);
@@ -214,7 +217,7 @@ export class SchematicView extends CanvasView {
     g.moveTo(X, this.Y(yb)); g.lineTo(X, this.Y(y2));
     g.stroke();
     // lever
-    g.strokeStyle = on ? th.field : th.muted;
+    g.strokeStyle = on ? this.fieldColor || th.field : th.muted;
     g.lineWidth = Math.max(2, 3 * sc);
     g.lineCap = 'round';
     g.beginPath();
@@ -297,7 +300,7 @@ export class SchematicView extends CanvasView {
     for (let k = 2; k < pts.length; k += 2) total += Math.hypot(pts[k] - pts[k - 2], pts[k + 1] - pts[k - 1]);
     const off = ((this.flow % CHEV_SPACING) + CHEV_SPACING) % CHEV_SPACING;
     const size = Math.max(3.5, 5 * sc);
-    g.strokeStyle = this.chevColor || th.field;
+    g.strokeStyle = this.fieldColor || th.field;
     g.lineWidth = Math.max(1.8, 2.4 * sc);
     g.lineCap = 'round';
     g.lineJoin = 'round';
