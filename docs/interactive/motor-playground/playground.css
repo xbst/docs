@@ -159,7 +159,11 @@ a{color:inherit}
 .btn.icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;
   stroke-linecap:round;stroke-linejoin:round}
 .btn.primary{background:var(--hs-active);border-color:var(--hs-stroke)}
-.btn:disabled,.btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+/* aria-disabled buttons keep keyboard focus (main.js): fade their contents and border, not the
+   element, whose opacity would fade the focus ring below 3:1 too */
+.btn[aria-disabled="true"]{color:color-mix(in srgb,var(--text) 45%,transparent);
+  border-color:color-mix(in srgb,var(--tip-border) 45%,transparent);cursor:not-allowed}
 @media(hover:hover){
   .tabs button:hover,.btn:not(:disabled):not([aria-disabled="true"]):hover,.seg button:not([aria-disabled="true"]):hover,
   .pills button:not(:disabled):hover{background:var(--hs-hover)}
@@ -173,7 +177,7 @@ a{color:inherit}
   font:500 .78rem Roboto,sans-serif;transition:background .15s}
 .seg button+button{border-left:1px solid var(--tip-border)}
 .seg button[aria-pressed="true"]{background:var(--hs-active);color:var(--text)}
-.seg button[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
+.seg button[aria-disabled="true"]{color:color-mix(in srgb,var(--desc-color) 45%,transparent);cursor:not-allowed}
 .seg button:focus-visible{outline-offset:-2px}
 .time input{width:120px;accent-color:var(--pulse)}
 .time-h{font:500 .72rem "Roboto Mono",monospace;color:var(--desc-color);min-width:11.5em}
