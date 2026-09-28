@@ -20,9 +20,13 @@
  *
  * Values are preserved by id across re-renders (refreshControls, motor-type
  * change) unless the chapter passes a different `value` than it did last time.
- * With `{reapply:true}` (used after a motor-type change reconfigures the world)
- * every preserved value that differs from the chapter's value is sent through
- * its onChange again, so the world matches what the controls show.
+ * A preserved value is fitted to the new spec: a slider's is clamped to its
+ * [min, max], and a select's or segmented control's falls back to `value` when
+ * the options no longer offer it. With `{reapply:true}` (used after a
+ * motor-type change reconfigures the world) every preserved value that differs
+ * from the chapter's value is sent through its onChange again, so the world
+ * matches what the controls show; without it, only a value the fitting changed
+ * is sent through onChange.
  */
 import { formatValue } from './format.js';
 
@@ -49,6 +53,23 @@ function roundTo(v, step) {
 
 const normOptions = (opts) => (opts || []).map((o) => (o !== null && typeof o === 'object')
   ? o : { value: o, label: String(o) });
+
+/**
+ * A preserved value made to fit a re-rendered control: a slider's is clamped
+ * to the spec's [min, max] (linear units, log sliders too); a select's or
+ * segmented control's falls back to the spec's value when no option offers it.
+ */
+function fitValue(spec, v) {
+  if (spec.type === 'slider') {
+    const min = +spec.min, max = +spec.max;
+    return typeof v === 'number' && max >= min ? Math.min(max, Math.max(min, v)) : v;
+  }
+  if (spec.type === 'select' || spec.type === 'segmented') {
+    const offered = (spec.options || []).some((o) => same((o !== null && typeof o === 'object') ? o.value : o, v));
+    return offered ? v : spec.value;
+  }
+  return v;
+}
 
 /** Renders and tracks the controls of the current chapter. */
 export class Controls {
@@ -108,9 +129,15 @@ export class Controls {
       let value = spec.value;
       if (spec.id != null && HAS_VALUE[spec.type]) {
         const mem = this.memory.get(spec.id);
-        if (mem && same(mem.spec, spec.value)) value = mem.value;
+        let fitted = false;
+        if (mem && same(mem.spec, spec.value)) {
+          value = fitValue(spec, mem.value);
+          fitted = !same(value, mem.value);
+        }
         this.memory.set(spec.id, { spec: spec.value, value });
-        if (reapply && mem && !same(value, spec.value) && spec.onChange) pending.push([spec, value]);
+        // After a motor-type change the world runs the chapter's values: replay every other one.
+        // Otherwise it runs the preserved values: replay only one the fitting changed.
+        if (mem && spec.onChange && (reapply ? !same(value, spec.value) : fitted)) pending.push([spec, value]);
       }
       const item = BUILD[spec.type](spec, value, this);
       if (spec.title) item.el.title = spec.title;
