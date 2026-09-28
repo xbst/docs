@@ -177,6 +177,8 @@ a{color:inherit}
 .time-h{font:500 .72rem "Roboto Mono",monospace;color:var(--desc-color);min-width:11.5em}
 .badge{font-size:.69rem;font-weight:500;color:var(--text);border:1px solid var(--warn);
   background:color-mix(in srgb,var(--warn) 14%,transparent);border-radius:10px;padding:1px 8px;white-space:nowrap}
+/* the "slowed to keep up" badge shows while main.js sets .is-slowed on the time group */
+.time:not(.is-slowed) .badge{display:none}
 .tb-sp{flex:1 1 0;min-width:0}
 .solo .tb-nav{display:none}
 .tabs-collapsed .tabs{display:none}
@@ -344,6 +346,12 @@ html.is-fs .vh.strip{flex-basis:104px}
   .tb-nav{flex-wrap:nowrap}
   .time input{width:96px}
   .time-h{min-width:0}
+  /* the badge takes the time-scale label's place in one grid cell sized for both, so the
+     wrapping toolbar never gains a row (and the page never jumps) when it shows */
+  .tb-grp.time{display:grid;grid-template-columns:auto auto auto;align-items:center;column-gap:6px}
+  .time>.time-h,.time>.badge{grid-row:1;grid-column:3;justify-self:start}
+  .time:not(.is-slowed) .badge{display:inline-block;visibility:hidden}
+  .time.is-slowed .time-h{visibility:hidden}
   .p-head{padding:2px 2px 0}
   .stage{flex:none}
   .views{flex-direction:column}

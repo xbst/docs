@@ -665,7 +665,8 @@ function draw(now) {
   }
   drainEvents(snap);
   const slowed = now < slowedUntil;
-  if (slowed !== slowedShown) { slowedShown = slowed; el.slowed.hidden = !slowed; }
+  // a class on the time group, not `hidden`: the mobile toolbar keeps the badge's room reserved
+  if (slowed !== slowedShown) { slowedShown = slowed; el.slowed.parentNode.classList.toggle('is-slowed', slowed); }
 }
 
 /* idle: hidden page, scrolled out of view, or zero width (inside a closed <details>) */
