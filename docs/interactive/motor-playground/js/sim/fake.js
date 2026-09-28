@@ -387,7 +387,8 @@ export class FakeWorld {
     } else if (h.retractTo === null && this.t - h.contactT > 0.06) {
       const press = 0.05 + 0.08 * (this.sc.foc.homingCurrent || 0.5);
       this.metrics.pressInMm = press;
-      this.pushEvent('homingDone', { motor: 0, x: 0, pressInMm: press });
+      // The World's fields (pass, result, xMm) next to the fake's own: chapters read result and xMm.
+      this.pushEvent('homingDone', { motor: 0, x: 0, pass: h.pass, result: 'ok', xMm: 0, pressInMm: press });
       h.result = 'ok';
       h.retractTo = this.sc.foc.retractMm || 0;
       if (!h.retractTo) this.mode = 'idle';
@@ -560,8 +561,8 @@ export class FakeWorld {
   /**
    * @private driver mode in effect for motor m, as the real World's `motors[i].mode`: FOC
    * velocity or torque, else position; open loop voltage or current (any other mode is
-   * current), hybrid current at a commanded motor speed ≥ hybridThresholdMmS (no hysteresis
-   * in the fake)
+   * current), hybrid current at a commanded motor speed ≥ hybridThresholdMmS (60 mm/s when
+   * that is not a finite number, like the World's; no hysteresis in the fake)
    * @param {number} m motor index
    * @returns {string}
    */
@@ -572,7 +573,7 @@ export class FakeWorld {
     if (dm !== 'hybrid') return 'current';
     const v = this.nMotors === 2 ? (m === 0 ? this.vx + this.vy : this.vx - this.vy) : this.vx;
     const thr = this.sc.hybridThresholdMmS;
-    return Math.abs(v) >= (typeof thr === 'number' ? thr : 60) ? 'current' : 'voltage';
+    return Math.abs(v) >= (Number.isFinite(thr) ? thr : 60) ? 'current' : 'voltage';
   }
 
   /** @private fill the snapshot from the current state */
