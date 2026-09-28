@@ -12,7 +12,7 @@
  * (only the rows this model reproduces; the others are listed under "Deeper"
  * as things you would also see on hardware), pick a fitting test move, size
  * the gantry loupe to the symptom, and name the symptom in the panel text
- * after a few seconds of sim time or when the reader presses "Reveal". The
+ * after 3.5 s of sim time or when the reader presses "Reveal". The
  * multipliers were measured on the stepper preset (chunk 07, STATUS.md
  * "Preset multipliers"); the BLDC preset shows the same symptoms, mostly
  * stronger, and where it differs (torque I too high, filters too high) the
@@ -277,7 +277,7 @@ function symptomHtml(ctx) {
   if (!p) return '';
   if (!S.revealed) {
     return `<p><strong>Preset "${p.label}":</strong> watch the gantry loupe, the scope and the readouts. `
-      + 'What changed? The symptom is named here after a few seconds, or press Reveal.</p>';
+      + `What changed? The symptom is named here after ${REVEAL_S} s of motor time, or press Reveal.</p>`;
   }
   const s = typeof p.symptom === 'function' ? p.symptom(ctx) : p.symptom;
   const head = S.preset === 'custom' ? `Started from "${p.label}"` : (p.id === 'optimal' ? 'Reference' : p.label);
@@ -322,7 +322,8 @@ export default {
   traceWindow: 2.0,
   stage: { primary: 'gantry', secondary: 'blocks', split: 0.55 },
   viewOptions: { gantry: { loupe: true, loupeMm: LOUPE_DEFAULT }, blocks: { filters: { torque: 1, flux: 1, velocity: 1 } } },
-  hint: 'Every slider lights its loop in the block diagram. A preset names its symptom in the text after a few seconds, or press Reveal.',
+  hint: `Every slider lights its loop in the block diagram. A preset names its symptom in the text after ${REVEAL_S} s `
+    + 'of motor time, or press Reveal.',
 
   scenario(motorType) {
     return {
