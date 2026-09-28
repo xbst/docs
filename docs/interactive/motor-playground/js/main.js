@@ -661,6 +661,10 @@ function draw(now) {
 /* idle: hidden page, scrolled out of view, or zero width (inside a closed <details>) */
 document.addEventListener('visibilitychange', () => {
   pageVisible = !document.hidden;
+  // A hidden page runs no frames, so the one queued before hiding runs only on return:
+  // restart the frame clock so it steps nothing instead of a stale 0.1 s.
+  lastNow = 0;
+  stepDebt = 0;
   requestFrame();
 });
 new IntersectionObserver((entries) => {
