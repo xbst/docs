@@ -15,7 +15,9 @@
  * after a few seconds of sim time or when the reader presses "Reveal". The
  * multipliers were measured on the stepper preset (chunk 07, STATUS.md
  * "Preset multipliers"); the BLDC preset shows the same symptoms, mostly
- * stronger.
+ * stronger. Moving a slider switches the select to "Custom". A motor-type
+ * change keeps the preset, or the Custom state and the preset it started
+ * from: the framework replays the select, then every slider off its default.
  *
  * Test moves loop on their own: a path restarts one second after it ends
  * (the stop metrics need 0.3 s, the rest-oscillation metric a few 100 ms
@@ -121,6 +123,8 @@ const fmtMult = (v) => (v > 0 ? '×' + formatValue(v) : 'off');
 
 /** Chapter state for one visit (reset in onLeave and onEnter). */
 const S = {};
+/** S.lastPreset as onLeave found it: a Custom state keeps it across a motor-type change (restoreCustom). */
+let keptPreset = PRESETS[0];
 function resetState() {
   S.gains = unitGains();
   S.filters = unitFilters();
@@ -203,7 +207,20 @@ function markCustom(c) {
   c.app.refreshText();
 }
 
+/**
+ * The preset select sends "Custom" (which the reader cannot pick) only when the
+ * framework replays it after a motor-type change: the Custom state comes back,
+ * still started from the preset it had before the switch.
+ */
+function restoreCustom(c) {
+  S.lastPreset = keptPreset;
+  markCustom(c);
+}
+
+// Both return early on an unchanged value: after a motor-type change the framework replays
+// the sliders a replayed preset has already set, and those are not slider moves.
 function setGain(c, g, v) {
+  if (v === S.gains[g.id]) return;
   S.gains[g.id] = v;
   c.world.set('foc.gains.' + g.id, v);
   c.app.setHighlight(g.loop);
@@ -211,6 +228,7 @@ function setGain(c, g, v) {
 }
 
 function setFilter(c, f, v) {
+  if (v === S.filters[f.id]) return;
   S.filters[f.id] = v;
   c.world.set('foc.filters.' + f.id, v);
   c.app.setViewOptions('blocks', { filters: Object.assign({}, S.filters) });
@@ -318,7 +336,10 @@ export default {
     startMove(ctx);
   },
 
-  onLeave() { resetState(); },
+  onLeave() {
+    keptPreset = S.lastPreset;
+    resetState();
+  },
 
   controls(ctx) {
     const keys = ctx.product.keys || {};
@@ -340,7 +361,7 @@ export default {
     return [
       { type: 'select', id: 'preset', label: 'Preset', group: 'Presets', value: S.preset,
         options: PRESETS.map((p) => ({ value: p.id, label: p.label })).concat([{ value: 'custom', label: 'Custom (sliders moved)', disabled: true }]),
-        onChange: (v, c) => applyPreset(c, v) },
+        onChange: (v, c) => (v === 'custom' ? restoreCustom(c) : applyPreset(c, v)) },
       { type: 'button', id: 'reveal', label: 'Reveal the symptom', group: 'Presets', onClick: (c) => reveal(c) },
       { type: 'select', id: 'move', label: 'Test move', group: 'Test move', value: S.move, options: MOVES,
         onChange: (v, c) => setMove(c, v) },
