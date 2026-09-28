@@ -173,9 +173,9 @@ function posError(snap) {
 
 /**
  * Starts (or restarts) the selected test move: the gantry stops where it is,
- * settles with the current gains, then a path starts from rest. (A path
- * started while the previous one still runs keeps the old corner error in the
- * metrics and the old tracking error in the following-error readout.)
+ * settles with the current gains, then a path starts from rest. (The metrics
+ * restart their corner error on any runPath, but the following-error readout
+ * and the loupe trail should not carry the old run into the new one.)
  */
 function startMove(c) {
   const w = c.world;

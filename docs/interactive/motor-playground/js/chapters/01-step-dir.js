@@ -9,8 +9,9 @@
  * command (`world.stepgens[0].pulses`), so a command against the motion also counts the braking
  * pulses and the way back, and its total "of N" includes them.
  *
- * Speed and acceleration are the planner limits and apply from the next move (a new limit
- * mid-move would change the cruise speed in one step). "Pulse zoom" narrows the scope to 10 ms
+ * Speed and acceleration are the planner limits and apply from the next move (the planner would
+ * ramp to a limit changed mid-move, but the pulse count "of N" is planned once, at the command).
+ * "Pulse zoom" narrows the scope to 10 ms
  * and slows time (1 s on screen = 10 ms) so single pulses, the DIR edge and the ramp show; the
  * STEP lane draws the `stepN` trace (pulses per sample) as thin pulses, so it stays true above
  * 12.5 kHz. The accessors below fall back for FakeWorld (`?sim=fake`), which has no presets,
