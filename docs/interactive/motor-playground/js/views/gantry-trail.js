@@ -30,6 +30,9 @@ export class PathTrail {
     this.cHead = 0;
     this.cLen = 0;
     this.lastT = -Infinity;
+    // Snapshot time of the last update: a smaller one means a new world. (Ring times can be
+    // Float32, rounded above the snapshot time, so lastT cannot tell.)
+    this.snapT = -Infinity;
     this.map = null;
     this.rings = [null, null, null, null];
     // last coarse point
@@ -55,12 +58,13 @@ export class PathTrail {
 
   /**
    * Take in the samples since the last call (or since clear()). A snapshot time before the
-   * last sample read means a new world: its rings are read from the start.
+   * last call's means a new world: its rings are read from the start.
    * @param {Object} snap world.snapshot (t, gantry)
    * @param {Map<string, Object>|null} traces world.traces (render ctx)
    */
   update(snap, traces) {
-    if (snap.t < this.lastT) this.reset();
+    if (snap.t < this.snapT) this.reset();
+    this.snapT = snap.t;
     if (traces && traces !== this.map) {
       this.map = traces;
       for (let k = 0; k < 4; k++) this.rings[k] = traces.get(KEYS[k]) || null;
