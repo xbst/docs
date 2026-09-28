@@ -36,6 +36,7 @@ const SOLID = [];
 const DASH = [6, 4];
 const DASH_FINE = [3, 3];
 const PHASE_NAMES = ['A', 'B', 'C'];
+const SIDE_HOLD_MS = 400;            // wall time δ must stay on the other side before the rotor letters move
 
 export class MotorView extends CanvasView {
   /** Preferred height / width (main.js: stage height and mobile host height). */
@@ -64,6 +65,7 @@ export class MotorView extends CanvasView {
     this.ghostLabel = '';
     this.stages = null;
     this.nSide = -1;       // rotor letters behind (−1) or ahead (+1) of the pole centers, away from the load-angle label
+    this.sideAt = -Infinity;   // wall time (ms) of the last labeled frame that agreed with nSide
   }
 
   onTheme() {
@@ -132,8 +134,9 @@ export class MotorView extends CanvasView {
   /**
    * @param {Object} snap
    * @param {Object} ctx
+   * @param {number} now wall time in ms (performance.now)
    */
-  draw(snap, ctx) {
+  draw(snap, ctx, now) {
     const idx = snap.motors[this.opts.motor] ? this.opts.motor : 0;
     const m = snap.motors[idx];
     if (!m) return;
@@ -167,8 +170,14 @@ export class MotorView extends CanvasView {
     const arcShown = iMag > 0.04 * Irated;
     const labelShown = arcShown && !L.compact && Math.abs(delta) > 3 / DEG;
     // The rotor letters go on the side away from that label and the current vector; the side is
-    // kept while no label shows, so the letters do not jump at standstill.
-    if (labelShown) this.nSide = delta > 0 ? -1 : 1;
+    // kept while no label shows, so the letters do not jump at standstill. They move only once δ
+    // has stayed on the other side for SIDE_HOLD_MS, so a ringing rotor does not strobe them (a
+    // fresh view takes its side on the first labeled frame).
+    if (labelShown) {
+      const want = delta > 0 ? -1 : 1;
+      if (want === this.nSide) this.sideAt = now;
+      else if (now - this.sideAt >= SIDE_HOLD_MS) { this.nSide = want; this.sideAt = now; }
+    }
 
     if (this.opts.fieldTrail) this.drawTrail(th, snap, iA / Irated, iB / Irated);
     this.drawRotor(th, thetaE, this.nSide);
