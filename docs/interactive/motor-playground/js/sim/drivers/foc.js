@@ -24,6 +24,12 @@
 // the opposite sign). That keeps an integrator with Ki = 0 (the default position
 // loop) at exactly 0 and avoids a steady-state offset after a saturated move.
 //
+// Gain changes: each integrator stores its whole I term (Ki*integral of the error),
+// so a new nonzero I gain keeps it and the output does not jump. An I gain set to
+// 0 clears its integrator in `configure`: nothing could discharge it any more, and
+// a position I set back to 0 while it held the cruise speed (about 0.9 mm of error
+// at 150 mm/s) would keep the axis off target at rest for good.
+//
 // Position error in whole encoder cells: when `encoderCpr > 0` and `step` gets
 // the encoder count, the error is `(floor(thetaStar*cpr/2pi) - count) * 2pi/cpr`,
 // i.e. zero while the rotor sits in the target's cell. A real drive only knows
@@ -321,7 +327,8 @@ export class FocController {
    * Set parameters. Allocation is allowed here. Calling it again keeps the
    * controller state (integrators, filter states, targets, homing), so the world
    * can push new parameters without a reset; a new phase count or sample rate
-   * rebuilds the affected buffers/filters.
+   * rebuilds the affected buffers/filters, and an integrator whose I gain is now 0
+   * is cleared (see "Gain changes" in the file header).
    *
    * @param {object} cfg
    * @param {object} cfg.preset motor preset from getMotorPreset
@@ -403,6 +410,11 @@ export class FocController {
     g.Kiq = opt.Kiq * m.torqueI;
     g.Kpd = opt.Kpd * m.fluxP;
     g.Kid = opt.Kid * m.fluxI;
+    // An I gain of 0 can no longer move its integrator: drop the stored term (file header).
+    if (g.Kix === 0) this.integX = 0;
+    if (g.Kiv === 0) this.integV = 0;
+    if (g.Kiq === 0) this.integQ = 0;
+    if (g.Kid === 0) this.integD = 0;
 
     // Filter cutoffs (the Biquad clamps to 0.45*fs; report the effective value).
     this.torqueFilter.setCutoff(opt.fTorque * fm.torque);
