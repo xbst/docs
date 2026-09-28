@@ -109,6 +109,7 @@ export class Scope {
     this.theme = null;
     this.w = 0; this.h = 0; this.dpr = 1;
     this.hoverX = -1;
+    this.presenceKnown = false;      // a render has looked up the traces since setTraces
     this.dirty = true;
     this.paused = false;
     this.lastFmt = -Infinity;
@@ -211,6 +212,7 @@ export class Scope {
     for (const grp of this.groups) if (!(grp.minSpan > 0)) grp.minSpan = MIN_SPAN[grp.unit] || 0;
     this.buildLegend();
     for (let k = 0; k < this.traces.length; k++) this.colorTrace(this.traces[k]);
+    this.presenceKnown = false;
     this.updateLabel();
     this.dirty = true;
   }
@@ -283,9 +285,13 @@ export class Scope {
     this.dirty = true;
   }
 
-  /** @private */
+  /** @private names the traces the legend shows, the ones the world provides (all until a render has looked) */
   updateLabel() {
-    const names = this.traces.map((t) => t.label + (t.unit ? ` (${t.unit})` : '')).join(', ');
+    let names = '';
+    for (const t of this.traces) {
+      if (this.presenceKnown && !t.present) continue;
+      names += (names ? ', ' : '') + t.label + (t.unit ? ` (${t.unit})` : '');
+    }
     this.canvas.setAttribute('aria-label',
       `Oscilloscope showing ${formatDuration(this.window)} of motor time` + (names ? `: ${names}.` : '.'));
   }
@@ -304,13 +310,13 @@ export class Scope {
     const snap = world ? world.snapshot : null;
     const traces = this.traces;
 
-    let nDig = 0, tNew = -Infinity;
+    let nDig = 0, tNew = -Infinity, flipped = !this.presenceKnown;
     for (let k = 0; k < traces.length; k++) {
       const tr = traces[k];
       const ring = map ? map.get(tr.key) : undefined;
       tr.ring = ring || null;
       const present = !!ring;
-      if (present !== tr.present) { tr.present = present; tr.legendEl.hidden = !present; }
+      if (present !== tr.present) { tr.present = present; tr.legendEl.hidden = !present; flipped = true; }
       if (!present) continue;
       if (ring.len > 0) {
         let p = ring.head - 1;
@@ -319,6 +325,7 @@ export class Scope {
       }
       if (tr.visible && tr.digital) nDig++;
     }
+    if (flipped) { this.presenceKnown = true; this.updateLabel(); }   // only after a trace or world change
     const tR = snap && Number.isFinite(snap.t) ? snap.t : (tNew > -Infinity ? tNew : 0);
     const win = this.window, tL = tR - win;
 
