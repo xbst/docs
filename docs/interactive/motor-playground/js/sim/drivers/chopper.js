@@ -1,8 +1,9 @@
 // Switching-fidelity power stage models for one phase of an H-bridge driver.
 //
 // Chopper:    fixed-frequency current chopper, SpreadCycle-like (on, fast decay, slow decay),
-//             with the trip level raised by the measured peak-to-mean ripple so the mean current
-//             lands on the target (hysteresis decrement) instead of sitting below it. A current
+//             with the trip level raised by the measured peak-to-mean ripple (hystA/2 until the
+//             first tripped cycle measures it) so the mean current lands on the target at any
+//             ripple (hysteresis decrement) instead of sitting below or above it. A current
 //             that climbs back over the trip level during slow decay (back-EMF against a falling
 //             target) starts another fast decay within the same cycle.
 // BipolarPwm: center-aligned bipolar voltage PWM, StealthChop-like.
@@ -19,8 +20,9 @@ const PH_SLOW = 2;
  * Fixed-frequency hysteresis current chopper for one phase (SpreadCycle-like).
  *
  * Every cycle starts "on" (`v = sgn·Vbus`, `sgn = sign(iStar)` with 0 treated as +1) until
- * `sgn·iMeas ≥ sgn·iStar + max(hystA/2, offLast)`; then fast decay (`v = −sgn·Vbus`) for
- * `fastFrac/freqHz`; then slow decay (`v = 0`) until the cycle ends. If the trip never happens
+ * `sgn·iMeas ≥ sgn·iStar + offLast` (`+ hystA/2` while offLast is not measured yet); then fast
+ * decay (`v = −sgn·Vbus`) for `fastFrac/freqHz`; then slow decay (`v = 0`) until the cycle
+ * ends. If the trip never happens
  * the on-state lasts the whole cycle. A fast decay that would outlast the cycle is cut short by
  * the next cycle. While in slow decay, if `sgn·iMeas` rises back to the trip level (the back-EMF
  * pushes the current up at 0 V while the target falls), another fast decay of `fastFrac/freqHz`
@@ -31,7 +33,8 @@ const PH_SLOW = 2;
  * of a cycle in which the trip happened, `ppLast` (EMA over about 4 cycles of `max − min`) and
  * `offLast` (same EMA of `max − mean`) are updated. Putting the trip `offLast` above the target
  * puts the cycle mean on the target while the ripple stays what the physics gives (fast plus
- * slow decay). `offLast` rather than `ppLast/2` is used because the waveform is not symmetric:
+ * slow decay), also when that ripple is smaller than `hystA` (low current, high L, high
+ * frequency). `offLast` rather than `ppLast/2` is used because the waveform is not symmetric:
  * the steep fast decay sits right after the peak, so the mean lies below the p-p midpoint
  * (by 1.6% at 48 V / 1.5 mH / 20 kHz / 3.54 A). Cycles without a trip (current still ramping)
  * do not update the estimates; both are cleared on reset() and when the target changes sign.
@@ -45,7 +48,7 @@ export class Chopper {
   constructor() {
     /** Chopper frequency (Hz). */
     this.freqHz = 40000;
-    /** Minimum hysteresis band (A); the on-phase ends at target + max(hystA/2, offLast). */
+    /** Initial trip band (A): the on-phase ends at target + hystA/2 until offLast is measured. */
     this.hystA = 0.04;
     /** Fast-decay duration as a fraction of the cycle. */
     this.fastFrac = 0.12;
@@ -77,7 +80,10 @@ export class Chopper {
     this.iMax = 0;
     /** Min of sgn·iMeas in the current cycle (A). */
     this.iMin = 0;
-    /** Peak-to-mean ripple estimate (A): EMA of the per-cycle max − mean of sgn·iMeas. */
+    /**
+     * Peak-to-mean ripple estimate (A): EMA of the per-cycle max − mean of sgn·iMeas, the trip
+     * offset above the target; 0 = none yet (the trip then uses hystA/2).
+     */
     this.offLast = 0;
     /** Sum of sgn·iMeas samples in the current cycle (A). */
     this.iSum = 0;
@@ -178,8 +184,9 @@ export class Chopper {
     if (y < this.iMin) this.iMin = y;
     this.iSum += y;
     this.nSum++;
-    const half = 0.5 * this.hystA;
-    const off = this.offLast > half ? this.offLast : half;
+    // Trip offset: the measured peak-to-mean ripple, also when it is below hystA/2 (a floor there
+    // would lift the whole sawtooth above the target); hystA/2 until it has been measured.
+    const off = this.offLast > 0 ? this.offLast : 0.5 * this.hystA;
     // Trip from the on-state, or re-enter fast decay from slow decay when the current climbs
     // back over the trip level.
     if ((this.phase === PH_ON || this.phase === PH_SLOW) && y >= sgn * iStar + off) {
