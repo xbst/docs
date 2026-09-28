@@ -29,7 +29,7 @@ import { Controls } from './controls.js';
 import { getProduct } from './products.js';
 import { readTokens, onThemeChange } from './theme.js';
 import { formatValue, timeScaleLabel } from './format.js';
-import { createHeightPoster, onFullscreenChange, toggleFullscreen } from './embed.js';
+import { EMBEDDED, createHeightPoster, fullscreenAvailable, onFullscreenChange, toggleFullscreen } from './embed.js';
 
 const params = new URLSearchParams(location.search);
 const SOLO = params.get('nav') === '0';
@@ -258,6 +258,9 @@ function buildToolbar() {
     if (v) setTimeScaleValue(v);
   });
   el.fs.addEventListener('click', () => toggleFullscreen(standaloneUrl));
+  // The new-tab fallback only makes sense inside an iframe: a standalone page that cannot
+  // go fullscreen (iPhone Safari) would open a copy of itself.
+  el.fs.hidden = !EMBEDDED && !fullscreenAvailable();
   if (SOLO) {
     el.app.classList.add('solo');
     el.openfull.hidden = false;

@@ -1,8 +1,8 @@
 /**
- * Embedding helpers (SPEC 4.10): fullscreen with a new-tab fallback, and
- * auto-height posting to the pinout_embed listener on the docs page, which
- * resizes the iframe when the widget posts {pinconnectHeight: N}. What N is
- * depends on the layout, so main.js passes in the measuring function.
+ * Embedding helpers (SPEC 4.10): fullscreen with a new-tab fallback inside an
+ * iframe, and auto-height posting to the pinout_embed listener on the docs
+ * page, which resizes the iframe when the widget posts {pinconnectHeight: N}.
+ * What N is depends on the layout, so main.js passes in the measuring function.
  */
 
 /** True when the widget runs inside an iframe. */
@@ -19,8 +19,10 @@ export function fullscreenAvailable() {
 }
 
 /**
- * Toggle fullscreen on documentElement. Where fullscreen is not available, or
- * the request is refused, open `fallbackUrl()` in a new tab instead.
+ * Toggle fullscreen on documentElement. Inside an iframe, where fullscreen is
+ * not available or the request is refused, open `fallbackUrl()` in a new tab
+ * instead. A standalone page has nowhere better to go, so it does nothing
+ * (main.js hides the button there when fullscreen is not available).
  * @param {() => string} fallbackUrl absolute URL of the standalone widget
  */
 export function toggleFullscreen(fallbackUrl) {
@@ -29,7 +31,7 @@ export function toggleFullscreen(fallbackUrl) {
     if (exit) exit.call(document);
     return;
   }
-  const open = () => window.open(fallbackUrl(), '_blank', 'noopener');
+  const open = () => { if (EMBEDDED) window.open(fallbackUrl(), '_blank', 'noopener'); };
   const root = document.documentElement;
   const request = root.requestFullscreen || root.webkitRequestFullscreen;
   if (!fullscreenAvailable() || !request) { open(); return; }
