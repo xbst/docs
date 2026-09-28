@@ -305,6 +305,14 @@ html.is-fs .app{height:100%;min-height:0}
 /* taller than the embedded scope, but short viewports (a 1280×800 laptop) keep room for the views */
 html.is-fs .scope-plot{height:clamp(180px,calc(30vh - 40px),400px)}
 html.is-fs .vh.strip{flex-basis:104px}
+/* short viewports (a phone in landscape): keep the embedded stage floor (STAGE_MIN in main.js)
+   and the embedded scope height, and let the page scroll instead of collapsing the views */
+@media(max-height:560px){
+  html.is-fs body{overflow-y:auto}
+  html.is-fs .app{height:auto;min-height:100%}
+  html.is-fs .main{flex:1 0 280px}
+  html.is-fs .scope-plot{height:162px}
+}
 
 /* ---------------- mobile (<= 720 px): one column, natural height ---------------- */
 @media(max-width:720px){
