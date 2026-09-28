@@ -652,11 +652,12 @@ export class World {
     for (let i = 0; i < n; i++) { mech.theta[i] = this._saveTheta[i]; mech.omega[i] = this._saveOmega[i]; }
     mech.setLoads(sc.loads.drag, sc.loads.torque);
     this.planner.configure(this._plannerCfg());
-    // A maxVelocity lowered under the planner's speed: the planner slows down at accel, and the
-    // FOC position-loop limit (_omegaLimit) stays at that speed until the control tick sees the
-    // planner at or under it (then _releaseOmegaHold).
+    // A maxVelocity lowered under the speed of a move or path: the planner slows down at accel,
+    // and the FOC position-loop limit (_omegaLimit) stays at its speed until the control tick
+    // sees it at or under the new limit (then _releaseOmegaHold). Jogs ignore maxVelocity.
     const vMax = num(sc.planner.maxVelocity, 150);
-    this._omegaHoldMmS = this.planner.speed > vMax ? vMax : -1;
+    const pl = this.planner;
+    this._omegaHoldMmS = (pl.mode === 'move' || pl.mode === 'path') && pl.speed > vMax ? vMax : -1;
     // Driver modes (the compare motor keeps its own).
     this.driverModes[0] = sc.driverMode;
     if (this.kinematics === 'corexy' && n > 1) this.driverModes[1] = sc.driverMode;
@@ -752,17 +753,18 @@ export class World {
 
   /**
    * FOC position-loop speed limit (mech rad/s): omegaLimitFactor·maxVelocity as belt speed,
-   * ×√2 on CoreXY (a 45° move at maxVelocity drives one belt at √2·maxVelocity). While the
-   * planner still runs faster than a lowered maxVelocity (it slows down at accel), its speed
-   * stands in for maxVelocity; _derive then holds the limit until the control tick sees the
-   * planner at or under maxVelocity and _releaseOmegaHold pushes the lower one.
+   * ×√2 on CoreXY (a 45° move at maxVelocity drives one belt at √2·maxVelocity). While _derive
+   * holds the limit (a move or path still faster than a lowered maxVelocity, slowing down to it
+   * at accel), the planner's speed stands in for maxVelocity until the control tick sees it at
+   * or under maxVelocity and _releaseOmegaHold pushes the lower one. Without a hold the
+   * limit is the maxVelocity one, even while a jog or a homing pass runs faster.
    * @returns {number}
    */
   _omegaLimit() {
     const sc = this._sc;
     const belt = this.kinematics === 'corexy' ? Math.SQRT2 : 1;
     const vMax = num(sc.planner.maxVelocity, 150);
-    const sp = this.planner.speed;
+    const sp = this._omegaHoldMmS >= 0 ? this.planner.speed : 0;
     return belt * num(sc.foc.omegaLimitFactor, 1.2) * (sp > vMax ? sp : vMax) / this._mmPerRad;
   }
 
