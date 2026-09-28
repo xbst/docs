@@ -9,7 +9,9 @@
  * traces get a value tag in their color at the right edge; the HTML legend
  * under the plot shows each scale and hides/shows a trace on click. A hover
  * cursor with values appears for mouse and pen pointers; its box stays inside
- * the canvas (more columns, or a tighter pitch, when the rows do not fit).
+ * the canvas (a tighter pitch, or more columns, when the rows do not fit) and
+ * beside the cursor where there is room (split around it if need be); the
+ * cursor line is drawn over the box, so it always shows.
  *
  * Trace descriptor:
  *   { name, motor = 0, label, short, unit, group: 'analog' | 'digital',
@@ -728,16 +730,12 @@ export class Scope {
     g.lineTo(x, this.yPrev);
   }
 
-  /** @private hover cursor and value box, kept inside the canvas (builds strings only while hovering) */
+  /**
+   * @private hover cursor and value box, kept inside the canvas and beside the cursor where it fits
+   * (builds strings only while hovering)
+   */
   drawHover(th, tL, tR, x0, pps, top, aBot) {
     const g = this.g, s = th.fontScale || 1;
-    const hx = Math.round(this.hoverX) + 0.5;
-    g.strokeStyle = th.lineColor;
-    g.lineWidth = 1;
-    g.setLineDash(HOVER_DASH);
-    g.beginPath(); g.moveTo(hx, top); g.lineTo(hx, aBot); g.stroke();
-    g.setLineDash(SOLID);
-
     const t = tL + (this.hoverX - x0) / pps;
     const rows = [];
     g.font = this.fontMono;
@@ -753,31 +751,50 @@ export class Scope {
       rows.push(tr.color, lab, val);
     }
     const head = 't = ' + formatDuration(t - tR);
-    // Fit the box to the canvas: rows that do not fit under the header go to more columns, or to a
-    // tighter pitch when the columns would not fit the width; past that the last line counts the rest.
+    // Fit the box to the canvas: one column at the normal pitch, else one column at a tighter pitch
+    // (13·s at the least), else more columns; where those would not fit the width, one 13·s column
+    // whose last line counts the rows left out.
     const pad = 7, dot = 12, gap = 16, n = rows.length / 3;
     const by = top + 2, room = this.h - 2 - by - pad * 2;
-    const colW = dot + wl + 12 + wv;
-    let lh = Math.round(15 * s);
-    let cols = Math.ceil(n / Math.max(1, Math.floor(room / lh) - 1)) || 1;
-    if (cols > 1 && cols * (colW + gap) - gap + pad * 2 > this.w - 4) {
-      cols = 1;
-      lh = Math.max(Math.round(13 * s), Math.floor(room / (n + 1)));
+    const colW = dot + wl + 12 + wv, headW = g.measureText(head).width;
+    const lh15 = Math.round(15 * s), lh13 = Math.round(13 * s);
+    let lh = lh15, cols = 1;
+    if ((n + 1) * lh15 > room) {
+      if ((n + 1) * lh13 <= room) lh = Math.floor(room / (n + 1));
+      else {
+        cols = Math.ceil(n / Math.max(1, Math.floor(room / lh15) - 1));
+        if (cols > 1 && cols * (colW + gap) - gap + pad * 2 > this.w - 4) { cols = 1; lh = lh13; }
+      }
     }
     let per = Math.ceil(n / cols), shown = n;
     const fit = Math.floor(room / lh) - 1;
     if (per > fit) { per = Math.max(1, fit); shown = per * cols - 1; }
-    const inner = Math.max(cols * (colW + gap) - gap, g.measureText(head).width);
+    const inner = Math.max(cols * (colW + gap) - gap, headW);
     const cw = cols > 1 ? colW : inner;
     const bw = inner + pad * 2;
     const bh = pad * 2 + lh * (1 + per);
-    let bx = this.hoverX + 12;
+    // Right of the cursor, else left of it, else (several columns) column 0 with the header left of it
+    // and the other columns right of it; a box that fits none of these is clamped to the left edge.
+    let bx = this.hoverX + 12, bxR = 0, wL = bw, wR = 0;
     if (bx + bw > this.w - 2) bx = this.hoverX - 12 - bw;
-    if (bx < 2) bx = 2;
+    if (bx < 2) {
+      bx = 2;
+      const l = Math.max(colW, headW) + pad * 2, r = (cols - 1) * (colW + gap) - gap + pad * 2;
+      if (cols > 1 && this.hoverX - 8 - l >= 2 && this.hoverX + 8 + r <= this.w - 2) {
+        wL = l; wR = r; bx = this.hoverX - 8 - l; bxR = this.hoverX + 8;
+      }
+    }
     g.fillStyle = th.tipBg;
     g.strokeStyle = th.tipBorder;
+    g.lineWidth = 1;
     g.beginPath();
-    if (g.roundRect) g.roundRect(bx, by, bw, bh, 6); else g.rect(bx, by, bw, bh);
+    if (g.roundRect) {
+      g.roundRect(bx, by, wL, bh, 6);
+      if (bxR) g.roundRect(bxR, by, wR, bh, 6);
+    } else {
+      g.rect(bx, by, wL, bh);
+      if (bxR) g.rect(bxR, by, wR, bh);
+    }
     g.fill();
     g.stroke();
     g.textBaseline = 'middle';
@@ -786,7 +803,8 @@ export class Scope {
     const y0 = by + pad + lh / 2;
     g.fillText(head, bx + pad, y0);
     for (let i = 0; i < shown; i++) {                 // column by column
-      const c = Math.floor(i / per), x = bx + pad + c * (colW + gap), y = y0 + lh * (1 + i - c * per);
+      const c = Math.floor(i / per), y = y0 + lh * (1 + i - c * per);
+      const x = bxR && c > 0 ? bxR + pad + (c - 1) * (colW + gap) : bx + pad + c * (colW + gap);
       g.fillStyle = rows[3 * i];
       g.beginPath(); g.arc(x + 4, y, 3.5, 0, Math.PI * 2); g.fill();
       g.fillStyle = th.text;
@@ -800,6 +818,13 @@ export class Scope {
       g.textAlign = 'left';
       g.fillText('+' + (n - shown) + ' more', bx + pad + dot, y0 + lh * per);
     }
+
+    // the cursor line last, so a box that could not sit beside it does not hide it
+    const hx = Math.round(this.hoverX) + 0.5;
+    g.strokeStyle = th.lineColor;
+    g.setLineDash(HOVER_DASH);
+    g.beginPath(); g.moveTo(hx, top); g.lineTo(hx, aBot); g.stroke();
+    g.setLineDash(SOLID);
   }
 
   destroy() {
