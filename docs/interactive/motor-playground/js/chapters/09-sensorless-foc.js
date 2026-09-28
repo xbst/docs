@@ -12,7 +12,7 @@
  * still pressed against the stop, the status output is still high and the
  * pass ends with no edge, the failure the retract distance prevents. Pressed
  * during Home's move-out, it brakes and homes once from where the carriage
- * stops (not a second pass queued behind the pending one).
+ * comes to rest (not a second pass queued behind the pending one).
  *
  * Default homing currents: 0.5 A on the stepper (free-motion demand peak
  * 0.39 A at 40 mm/s with 0.05 N·m of drag), 1.75 A on the BLDC (Kt is
@@ -31,6 +31,8 @@ const DRAG_MAX = { stepper: 0.3, bldc: 0.2 };
 const AUTO_HOME_AT_S = 0.4;
 /** Press-in the readout flags as hard (mm). */
 const PRESS_WARN_MM = 0.5;
+/** Carriage speed below which a pending homing may start (mm/s; at 2 the BLDC at 1.55 A still false-triggered). */
+const REST_MM_S = 1;
 
 const S = {};
 function resetState(type) {
@@ -57,14 +59,17 @@ function homeFromStart(c) {
 
 /**
  * "Home again": one pass from where the carriage is. During Home's move-out it brakes instead and
- * leaves the pending homing to onFrame, so each click homes once, and never from a carriage still
- * accelerating away (that reversal trips the limit: a false trigger).
+ * leaves the pending homing to onFrame, which starts it once the carriage has come to rest, so each
+ * click homes once (a pass started while the carriage still moves away can trip the limit as it
+ * reverses: a false trigger).
  */
 function homeAgain(c) {
   const w = c.world;
   const s = w.snapshot;
-  if (S.homeWhenIdle && s.planner.mode !== 'idle' && !s.homing.active) {
-    w.command('stop');   // S.homeWhenIdle stays set: onFrame homes once the carriage is at rest
+  if (S.homeWhenIdle && !s.homing.active) {
+    // S.homeWhenIdle stays set: onFrame homes once the carriage is at rest, also when the planner
+    // has just finished the move-out and the carriage is still settling.
+    if (s.planner.mode !== 'idle') w.command('stop');
     return;
   }
   S.homeWhenIdle = false;
@@ -112,7 +117,7 @@ export default {
       { type: 'button', id: 'home', label: 'Home', kind: 'primary', group: 'Run', onClick: (c) => homeFromStart(c),
         title: 'Move out to 40 mm if needed, then approach the stop, detect it and retract' },
       { type: 'button', id: 'homeAgain', label: 'Home again', group: 'Run', onClick: (c) => homeAgain(c),
-        title: 'A second pass from where the carriage is now' },
+        title: 'A second pass from where the carriage is now, or from where it stops if Home is still moving it out' },
       { type: 'note', group: 'Run', html: `Run current for normal moves: <code>${formatPeak(runCurrent, false)}</code>`
         + (keys.runCurrent ? ` (<code>${keys.runCurrent}</code>)` : '') + '. Homing swaps in the limit above.' },
       { type: 'note', group: 'Run', html: 'The controller reads the status output as an endstop'
@@ -150,7 +155,11 @@ export default {
       S.autoHomeAt = -1;
       homeFromStart(ctx);
     }
-    if (S.homeWhenIdle && snap.planner.mode === 'idle' && !snap.homing.active) {
+    // A pending homing waits for the carriage itself to rest, not only the planner: the planner
+    // idles while the carriage, lagging its command, still moves outward, and a pass started
+    // then can false-trigger.
+    if (S.homeWhenIdle && snap.planner.mode === 'idle' && !snap.homing.active
+        && Math.abs(snap.motors[0].omegaM) * (snap.rd || 40) / (2 * Math.PI) < REST_MM_S) {
       S.homeWhenIdle = false;
       ctx.world.command('home');
     }
