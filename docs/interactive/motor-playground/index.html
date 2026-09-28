@@ -82,6 +82,9 @@
   }catch(err){}
 })();
 </script>
+<!-- Outside an iframe the page paints SPEC 4.9's solid background (html.is-standalone) from the
+     first frame, before the deferred modules run; main.js sets the class again in init(). -->
+<script>if(window.parent===window)document.documentElement.classList.add('is-standalone')</script>
 <script type="module" src="js/main.js"></script>
 </head>
 <body>

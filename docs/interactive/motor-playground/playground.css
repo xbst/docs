@@ -122,7 +122,7 @@
 html,body{height:100%;background:var(--bg);color:var(--text);
   font-family:Roboto,system-ui,sans-serif;-webkit-text-size-adjust:100%}
 body{overflow-x:hidden;overflow-y:auto}
-/* main.js sets .is-standalone outside an iframe: no docs page shows through there */
+/* set outside an iframe by index.html's head (and main.js): no docs page shows through there */
 html.is-standalone{background:var(--page-bg)}
 [hidden]{display:none!important}
 button,select,input{font:inherit;color:inherit}
@@ -326,7 +326,7 @@ a{color:inherit}
 
 @media(pointer:coarse){.tb select,.ctl select{font-size:16px}}
 
-/* ---------------- standalone page (class set by main.js outside an iframe) ---------------- */
+/* ---------------- standalone page (class set in index.html outside an iframe) ---------------- */
 /* a short window scrolls instead of squeezing the views: the stage row keeps the embedded
    floor (STAGE_MIN in main.js) as in fullscreen; an embed posts its height instead */
 html.is-standalone:not(.is-fs) .app{height:auto;min-height:100%}
