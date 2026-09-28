@@ -11,7 +11,8 @@
  * "name#motor" (CoreXY: posCmd#0/#1 = toolhead x/y, beltPos#i per motor),
  * traces absent where they make no sense (no sg/diag for FOC, no status/flags/
  * iLimit for open loop, no phase C on a stepper, pwmA/B/C only when switching),
- * `snapshot.events === world.events`, metrics mutated in place.
+ * `snapshot.events === world.events`, metrics mutated in place, loadAngle = atan2(iq, id)
+ * in rad.
  */
 
 const TWO_PI = Math.PI * 2;
@@ -452,7 +453,7 @@ export class FakeWorld {
     e.I = I;
     e.torque = M.Kt * iq;
     e.loadTorque = sc.loads.torque + sc.loads.drag * Math.sign(omegaM);
-    e.loadAngle = Math.atan2(iq, id) * 180 / Math.PI;
+    e.loadAngle = Math.atan2(iq, id);   // rad in ±π, like the real World (not degrees)
     e.bemfA = -lambda * omegaE * s;
     e.vAmp = Math.min(sc.supplyV, M.R * I + lambda * Math.abs(omegaE));
     return e;
