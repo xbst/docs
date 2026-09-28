@@ -22,12 +22,11 @@ const PH_SLOW = 2;
  * Every cycle starts "on" (`v = sgn·Vbus`, `sgn = sign(iStar)` with 0 treated as +1) until
  * `sgn·iMeas ≥ sgn·iStar + offLast` (`+ hystA/2` while offLast is not measured yet); then fast
  * decay (`v = −sgn·Vbus`) for `fastFrac/freqHz`; then slow decay (`v = 0`) until the cycle
- * ends. If the trip never happens
- * the on-state lasts the whole cycle. A fast decay that would outlast the cycle is cut short by
- * the next cycle. While in slow decay, if `sgn·iMeas` rises back to the trip level (the back-EMF
- * pushes the current up at 0 V while the target falls), another fast decay of `fastFrac/freqHz`
- * starts, as often as needed until the cycle ends. At standstill the current only falls during
- * slow decay, so the sequence stays on, fast, slow.
+ * ends. If the trip never happens the on-state lasts the whole cycle. A fast decay that would
+ * outlast the cycle is cut short by the next cycle. While in slow decay, if `sgn·iMeas` rises
+ * back to the trip level (the back-EMF pushes the current up at 0 V while the target falls),
+ * another fast decay of `fastFrac/freqHz` starts, as often as needed until the cycle ends. At
+ * standstill the current only falls during slow decay, so the sequence stays on, fast, slow.
  *
  * Mean centering: over each cycle the max, min and mean of `sgn·iMeas` are tracked; at the end
  * of a cycle in which the trip happened, `ppLast` (EMA over about 4 cycles of `max − min`) and
@@ -41,8 +40,8 @@ const PH_SLOW = 2;
  *
  * Fields: `state` is the applied voltage polarity for this sub-step (`v/Vbus`: +1, 0 or −1;
  * with a positive target that is +1 on, −1 fast decay, 0 slow decay), `tCycle` the time into
- * the current cycle (s), `v` the last output voltage (V), `ppLast` the p-p ripple estimate (A), `offLast` the
- * trip offset above the target (A).
+ * the current cycle (s), `v` the last output voltage (V), `ppLast` the p-p ripple estimate (A),
+ * `offLast` the trip offset above the target (A).
  */
 export class Chopper {
   constructor() {
