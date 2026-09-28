@@ -148,7 +148,7 @@ a{color:inherit}
 .btn.primary{background:var(--hs-active);border-color:var(--hs-stroke)}
 .btn:disabled,.btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
 @media(hover:hover){
-  .tabs button:hover,.btn:not(:disabled):hover,.seg button:not([aria-disabled="true"]):hover,
+  .tabs button:hover,.btn:not(:disabled):not([aria-disabled="true"]):hover,.seg button:not([aria-disabled="true"]):hover,
   .pills button:not(:disabled):hover{background:var(--hs-hover)}
   .tabs button[aria-current="step"]:hover{background:var(--hs-active)}
 }

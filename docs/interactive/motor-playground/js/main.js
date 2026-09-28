@@ -275,8 +275,10 @@ function updateToolbar() {
   }
   el.tabsel.value = String(chIndex);
   const prev = CHAPTERS[chIndex - 1], next = CHAPTERS[chIndex + 1];
-  el.prev.disabled = !prev;
-  el.next.disabled = !next;
+  // aria-disabled, not disabled, like the motor buttons: the arrow just pressed to reach
+  // either end keeps keyboard focus (gotoIndex ignores a press past the end).
+  el.prev.setAttribute('aria-disabled', String(!prev));
+  el.next.setAttribute('aria-disabled', String(!next));
   el.prev.setAttribute('aria-label', prev ? `Previous chapter: ${prev.title}` : 'Previous chapter');
   el.next.setAttribute('aria-label', next ? `Next chapter: ${next.title}` : 'Next chapter');
   el.prev.title = prev ? `${prev.number}. ${prev.title}` : '';
