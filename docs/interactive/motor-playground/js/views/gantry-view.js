@@ -265,7 +265,13 @@ export class GantryView extends CanvasView {
     for (let v = 0; v <= Lmm + 1e-6; v += C.labelEvery) g.fillText(String(v), X(v), fy1 + 3);
     g.textAlign = 'right';
     g.textBaseline = 'middle';
-    for (let v = C.labelEvery; v <= Lmm + 1e-6; v += C.labelEvery) g.fillText(String(v), fx0 - 3, Y(v));
+    // None under rear motor B, whose face covers the frame's top-left corner (the top label at 50
+    // and 25 mm steps); the bottom axis still reads to the end.
+    const yMin = fy0 + C.M / 2 + this.fpx(12) * 0.5 + 2;
+    for (let v = C.labelEvery; v <= Lmm + 1e-6; v += C.labelEvery) {
+      const ly = Y(v);
+      if (ly >= yMin) g.fillText(String(v), fx0 - 3, ly);
+    }
 
     // lit stop edges
     g.strokeStyle = th.warn;
