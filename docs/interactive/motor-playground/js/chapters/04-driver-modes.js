@@ -130,6 +130,10 @@ function run(ctx, force) {
     st.homing = false;
     st.pending = false;
     if (st.result && st.result.kind === 'running') st.result = null;
+    if (st.slowHint) {             // onFrame no longer sees this homing end: drop its hint here
+      st.slowHint = '';
+      ctx.app.setHint(null);
+    }
   }
   const lost = lostMm(w);
   if (Math.abs(lost) >= LOST_MM) {
