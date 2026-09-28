@@ -249,13 +249,16 @@ export default {
 
   onFrame(ctx, snap) {
     const t = num(snap.t, 0);
-    // A slip is over once no step was lost for 150 ms: announce the new shift once.
+    // A slip is over once no step was lost for 150 ms: announce the new shift once. A slip that
+    // undoes an earlier one leaves no shift (the belts lose whole 0.8 mm cycles, so a nonzero
+    // shift is at least 0.57 mm; 0.05 mm is the Lost readout's warn threshold): say so instead.
     if (st.loop !== 'foc') {
       const s = shiftMm(snap);
       if (Math.abs(s - lost.seen) > 0.01) { lost.seen = s; lost.at = t; }
       if (t - lost.at > 0.15 && Math.abs(lost.seen - lost.told) >= 0.4) {
         lost.told = lost.seen;
-        ctx.app.announce(`Steps lost: the print is now shifted ${formatValue(lost.seen, 1)} mm`);
+        ctx.app.announce(lost.seen < 0.05 ? 'Steps lost again: the print is back in place'
+          : `Steps lost: the print is now shifted ${formatValue(lost.seen, 1)} mm`);
       }
     }
     if (!pending || t < pending.t + BUMP_LOOK_S) return;
