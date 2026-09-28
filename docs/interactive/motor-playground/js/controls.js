@@ -11,7 +11,9 @@
  *   slider:    { type:'slider', id, label, min, max, step, value, unit, log:false,
  *                format:(v)=>string, live:true, onChange:(v, ctx)=>void }
  *              `log:true` maps the track on log10 (min > 0); `step` then only
- *              rounds the value. `live:false` fires onChange on release only.
+ *              rounds the value, and the arrow keys skip track positions that
+ *              round to the value already shown. `live:false` fires onChange on
+ *              release only.
  *   segmented: { type:'segmented', id, label, options:[{value, label, disabled, title}], value, onChange }
  *   toggle:    { type:'toggle', id, label, value, onChange }
  *   button:    { type:'button', id, label, kind:'primary'|'normal', onClick:(ctx)=>void }
@@ -31,6 +33,8 @@
 import { formatValue } from './format.js';
 
 const PREFIX = 'ctl-';
+/** Track direction of the arrow keys on a range input. */
+const ARROW_DIR = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 };
 
 const same = (a, b) => a === b || (typeof a === 'number' && typeof b === 'number' && Math.abs(a - b) <= 1e-12 * Math.max(1, Math.abs(a)));
 
@@ -255,6 +259,24 @@ const BUILD = {
       if (spec.live !== false) C.fire(spec.onChange, v);
     });
     if (spec.live === false) input.addEventListener('change', () => C.fire(spec.onChange, current));
+    if (log && spec.step > 0) {
+      // Near the low end neighboring track positions round to the same value: an arrow key
+      // moves on to the next position whose value differs (at an end, nothing moves).
+      input.addEventListener('keydown', (e) => {
+        const dir = ARROW_DIR[e.key];
+        if (!dir || e.altKey || e.ctrlKey || e.metaKey) return;
+        e.preventDefault();
+        const lo = +input.min, st = +input.step, last = Math.floor((+input.max - lo) / st + 1e-9);
+        for (let k = Math.round((+input.value - lo) / st) + dir; k >= 0 && k <= last; k += dir) {
+          const v = fromRaw(lo + k * st);
+          if (same(v, current)) continue;
+          set(v);
+          C.store(spec.id, v);
+          C.fire(spec.onChange, v);     // a key press is its own release, so also with live:false
+          return;
+        }
+      });
+    }
     w.append(head, input);
     addCaption(w, spec, input, id);
     return { el: w, set };
