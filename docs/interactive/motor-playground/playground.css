@@ -317,6 +317,12 @@ a{color:inherit}
 
 @media(pointer:coarse){.tb select,.ctl select{font-size:16px}}
 
+/* ---------------- standalone page (class set by main.js outside an iframe) ---------------- */
+/* a short window scrolls instead of squeezing the views: the stage row keeps the embedded
+   floor (STAGE_MIN in main.js) as in fullscreen; an embed posts its height instead */
+html.is-standalone:not(.is-fs) .app{height:auto;min-height:100%}
+html.is-standalone:not(.is-fs) .main{flex:1 0 280px}
+
 /* ---------------- fullscreen (class set by main.js on fullscreenchange) ---------------- */
 html.is-fs{font-size:115%;--font-scale:1.15}
 /* solid, or an embed shows the parent's black ::backdrop; :fullscreen paints it before the class */
