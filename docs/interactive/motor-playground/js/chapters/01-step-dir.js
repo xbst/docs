@@ -53,10 +53,12 @@ function geometry(world) {
  * command that extends the running motion in the same direction continues the same move for
  * the pulse counter (four quick +10 presses count as one 40 mm move). When the planner has to
  * brake first (a target behind the moving carriage, or one ahead too close to stop for), the
- * move's total adds the pulses to the braking point and back.
+ * move's total adds the pulses to the braking point and back. A command to where the carriage
+ * already rests (−10 at 0 mm) is not a move: nothing is sent or announced as done, and the
+ * counter keeps the last move.
  */
 function moveTo(ctx, x) {
-  const w = ctx.world, pl = w.snapshot.planner;
+  const w = ctx.world, pl = w.snapshot.planner, live = w.planner;
   const target = clamp(Math.round(x), 0, AXIS_MM);
   const heading = Math.sign(pl.vx);
   const continuing = st.moving && pl.mode !== 'idle' && heading !== 0 && heading === Math.sign(target - pl.x);
@@ -64,15 +66,23 @@ function moveTo(ctx, x) {
   w.set('planner.maxVelocity', st.speed);
   w.set('planner.accel', st.accel);
   w.command('moveTo', { xMm: target });
+  ctx.app.setControlValue('target', target);
+  ctx.app.setViewOptions('gantry', { targetMm: target });
+  const spm = geometry(w).spm, sent = sentOf(w), pulses = pulsesOf(w);
+  if (live && live.segmentCount === 0) {
+    // At rest on the target already (also after −10 then +10 while paused): the planner got an
+    // empty plan, whose pathDone stays silent. The total drops what was planned but not sent.
+    st.moving = false;
+    st.total = Math.abs(pulses - st.p0);
+    ctx.app.announce(`The carriage is already at ${target} mm`);
+    return;
+  }
   // Planned pulses: those this move already sent, then to the braking point when the plan
   // starts with a braking segment (it ends at segEndX), then to the target.
-  const P = w.planner, spm = geometry(w).spm, sent = sentOf(w), pulses = pulsesOf(w);
-  const turn = P && P.brake ? Math.round(P.segEndX * spm) : sent;
+  const turn = live && live.brake ? Math.round(live.segEndX * spm) : sent;
   if (!continuing) st.p0 = pulses;
   st.total = Math.abs(pulses - st.p0) + Math.abs(turn - sent) + Math.abs(Math.round(target * spm) - turn);
   st.moving = true;
-  ctx.app.setControlValue('target', target);
-  ctx.app.setViewOptions('gantry', { targetMm: target });
 }
 
 function setZoom(ctx, on) {
