@@ -744,7 +744,9 @@ export class Scope {
       if (!tr.present || !tr.visible || !tr.ring) continue;
       const v = this.valueAt(tr.ring, t);
       if (v !== v) continue;
-      const val = tr.digital ? formatValue(v, 0) : formatValue(v) + (tr.unit ? ' ' + tr.unit : '');
+      // analog values at the value tags' precision, which follows the scale (float residue reads 0)
+      const val = tr.digital ? formatValue(v, 0)
+        : formatCompact(v, Math.max(-tr.group.lo, tr.group.hi)) + (tr.unit ? ' ' + tr.unit : '');
       const lab = tr.digital ? tr.short : tr.label;
       wl = Math.max(wl, g.measureText(lab).width);
       wv = Math.max(wv, g.measureText(val).width);

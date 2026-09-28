@@ -69,14 +69,16 @@ export function formatCompact(v, ref) {
 /**
  * Human duration: 2 → "2 s", 0.01 → "10 ms", 0.0005 → "0.5 ms",
  * 2e-5 → "20 µs", −0.35 → "−350 ms". Up to three significant digits.
+ * Magnitudes under 0.5 ns (float residue) read "0 s", never exponent notation.
  * @param {number} s seconds
  * @returns {string}
  */
 export function formatDuration(s) {
   const a = Math.abs(s);
-  const sign = s < 0 && a >= 5e-10 ? MINUS : '';
+  if (a < 5e-10) return '0 s';
+  const sign = s < 0 ? MINUS : '';
   const num = (x) => sign + String(+x.toPrecision(3));
-  if (a >= 1 || a < 5e-10) return num(a) + ' s';
+  if (a >= 1) return num(a) + ' s';
   if (a >= 1e-4) return num(a * 1e3) + ' ms';
   return num(a * 1e6) + ' µs';
 }
