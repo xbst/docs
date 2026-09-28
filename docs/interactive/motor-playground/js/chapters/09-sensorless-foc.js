@@ -168,7 +168,7 @@ export default {
   },
 
   text: () => '<p>During homing the driver caps the torque current at a low <strong>current limit</strong> instead of the '
-    + 'run current. Moving freely, the velocity loop asks only for what friction and acceleration need, well below that limit.</p>'
+    + 'run current. Moving freely, the velocity loop asks only for what friction and acceleration need, below that limit.</p>'
     + '<p>At the hard stop the carriage cannot follow the commanded speed. The speed error grows at once and the loop demands '
     + 'more current. The moment the demand exceeds the limit, a <strong>limit flag</strong> is set and the driver\'s '
     + '<strong>status output</strong> goes high. The controller reads that pin as an endstop.</p>'
