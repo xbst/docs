@@ -273,7 +273,7 @@ a{color:inherit}
 @media(hover:hover){.lg:hover{background:var(--hs-hover)}}
 
 /* ---------------- readouts (views/readouts.js) ---------------- */
-.ro{display:flex;align-items:center;gap:8px;flex-shrink:0;min-height:26px;min-width:0}
+.ro{position:relative;display:flex;align-items:center;gap:8px;flex-shrink:0;min-height:26px;min-width:0}
 .chips{display:flex;gap:6px;flex-wrap:wrap;flex:1 1 auto;min-width:0}
 .chip{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;color:var(--desc-color);
   background:var(--tip-bg);border:1px solid var(--tip-border);border-radius:10px;padding:3px 10px;white-space:nowrap}
@@ -291,9 +291,14 @@ a{color:inherit}
 .chip .bar .m{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;border-radius:1px;background:var(--text)}
 .chip .bar.low .f{background:var(--err)}
 .chip .bar.off .f{display:none}
-.live{flex:none;font-size:.75rem;font-weight:500;color:var(--text);border:1px solid var(--hs-stroke);
-  background:var(--hs-active);border-radius:10px;padding:3px 10px;white-space:nowrap;
-  max-width:50%;overflow:hidden;text-overflow:ellipsis;transition:opacity .4s}
+/* The announcement pill floats over the scope card's bottom-right corner (the end of its
+   legend row), so the chip rows never reflow when a message comes and goes; it needs a solid
+   backdrop under the translucent tint. On mobile it stays in the strip beside the chip scroller. */
+.live{position:absolute;right:0;bottom:calc(100% + 4px);z-index:2;pointer-events:none;
+  font-size:.75rem;font-weight:500;color:var(--text);border:1px solid var(--hs-stroke);
+  background:linear-gradient(var(--hs-active),var(--hs-active)),var(--tip-bg);
+  box-shadow:0 2px 8px var(--tip-shadow);border-radius:10px;padding:3px 10px;white-space:nowrap;
+  max-width:min(70%,560px);overflow:hidden;text-overflow:ellipsis;transition:opacity .4s}
 .live.idle{opacity:0}
 
 /* ---------------- bottom hint bar ---------------- */
@@ -349,7 +354,7 @@ html.is-fs .vh.strip{flex-basis:104px}
   .p-deep{border-top:0;padding-top:0}
   .scope-plot{height:160px}
   .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
-  .live{max-width:45%}
+  .live{position:static;flex:none;max-width:45%;box-shadow:none}
   /* fullscreen keeps the one-column page scrolling (the desktop rules lock the viewport) */
   html.is-fs body{overflow-x:hidden;overflow-y:auto}
   html.is-fs .app{height:auto}
