@@ -36,7 +36,7 @@ export class VectorView extends CanvasView {
     super(host, opts, { motor: 0, compare: 'auto', voltage: true, range: 'limit' });
     this.lay = { cx: 0, cy: 0, R: 0, vx: 0, vy: 0, vr: 0, voltage: false, top: 0, small: false };
     this.str = { iq: '', id: '', lim: '', u: '', cmp: '', cmpq: '' };
-    this.scaleA = 1;
+    this.scaleA = 0;        // A at the circle; 0 = nothing drawn yet: the first frame snaps, later changes ease
   }
 
   /** @private */
