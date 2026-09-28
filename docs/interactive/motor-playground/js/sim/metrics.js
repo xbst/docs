@@ -1,7 +1,7 @@
 // Readout metrics for the motor playground (chunk-02 design section 14).
 //
 // `Metrics.update(world)` runs once per sim step. It reads only documented fields:
-//   world.snapshot  (motors[0..1], step, gantry, homing, sweep, supplyV, loads.bump when present)
+//   world.snapshot  (motors[0..1], step, gantry, homing, sweep, supplyV, loads.bump/torque when present)
 //   world.planner   (mode, phase, justFinished, atCorner, segStartX/Y, segEndX/Y, speed, x, y, vx, vy)
 //   world.scenario  (driver, mechanics, fidelity, runCurrent, planner.accel, planner.maxVelocity)
 //   world.openloop[0].chopA.ppLast (switching fidelity only: the phase-A chopper's per-cycle
@@ -28,8 +28,9 @@
 //                     loop (a current-regulated stepper hides its ringing in the current but shows it
 //                     in the rotor speed), so oscAmp is in A for FOC and in rad/s for open loop;
 //                     only for periods spent entirely at rest (planner speed and commanded velocity 0,
-//                     no bump pulse within the last 0.2 s: the loops' answer to a shove is not a rest
-//                     oscillation): f = crossings / (2 * period), amp = (max - min) / 2. Crossings
+//                     no bump pulse or load-torque change within the last 0.2 s: the loops' answer
+//                     to a shove or a load step is not a rest oscillation): f = crossings /
+//                     (2 * period), amp = (max - min) / 2. Crossings
 //                     are counted with a Schmitt trigger whose hysteresis is 25% of the previous
 //                     period's amplitude, so measurement noise riding on a real oscillation is not
 //                     counted.
@@ -61,7 +62,10 @@ const SETTLE_BAND_MM = 0.02;
 const OSC_HYST_FRAC = 0.25;
 /** Speeds below this (mm/s) count as "at rest". */
 const REST_EPS_MMS = 1e-9;
-/** After a bump pulse ends, steps stay "not at rest" this long (s), so the settling shows no oscillation. */
+/**
+ * After a bump pulse ends or the load torque changes, steps stay "not at rest" this long (s): the
+ * loops' settling after a shove or a load step is not a rest oscillation.
+ */
 const BUMP_REST_HOLDOFF_S = 0.2;
 /** Filter cutoffs (Hz). */
 const F_OSC = 50;
@@ -150,6 +154,9 @@ export class Metrics {
     // Steps left in the after-bump hold-off (not at rest while > 0), and its length in steps.
     this.bumpHold = 0;
     this.bumpHoldSteps = 5000;
+    // snapshot.loads.torque of the previous step; a change starts the hold-off too. It starts at
+    // 0: the loops start unloaded, so a load present at the first step is a load step for them.
+    this.prevLoadTorque = 0;
 
     // Motion tracking for overshoot / settle.
     this.prevMode = 'idle';
@@ -230,6 +237,7 @@ export class Metrics {
     this.oscState = 0;
     this.oscHyst = 0;
     this.bumpHold = 0;
+    this.prevLoadTorque = 0;
 
     this.prevMode = 'idle';
     this.prevPhase = 'idle';
@@ -305,10 +313,14 @@ export class Metrics {
     // Commanded toolhead speed: the world's command (covers setTarget, where the planner idles).
     const cvx = world.vxCmd;
     const cvy = world.vyCmd;
-    // A bump pulse and the hold-off after it are not rest either (worlds without loads have no bump).
+    // A bump pulse or a load-torque step, and the hold-off after either, are not rest either
+    // (worlds without loads have neither).
     const ld = s.loads;
-    if (ld && (ld.bump > 0 || ld.bump < 0)) this.bumpHold = this.bumpHoldSteps;
+    const lt = ld ? ld.torque : NaN;
+    const pt = this.prevLoadTorque;
+    if (ld && (ld.bump > 0 || ld.bump < 0 || lt > pt || lt < pt)) this.bumpHold = this.bumpHoldSteps;
     else if (this.bumpHold > 0) this.bumpHold--;
+    this.prevLoadTorque = lt;
     if (this.bumpHold > 0 || pl.speed > REST_EPS_MMS || cvx > REST_EPS_MMS || cvx < -REST_EPS_MMS
         || cvy > REST_EPS_MMS || cvy < -REST_EPS_MMS) this.oscAllRest = false;
     if (hpO < this.oscMin) this.oscMin = hpO;

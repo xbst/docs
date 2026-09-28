@@ -85,12 +85,12 @@
 // Metrics (metrics.js, published every 100 ms of sim time, motor 0): overshootPct/Mm (peak
 // past the final position after a stop, % of the deceleration distance), settleMs (until
 // |error| < 0.02 mm), cornerErrMm (max distance to the commanded polyline near corners),
-// oscFreqHz/oscAmp (at rest, no bump in the last 0.2 s: high-passed iq for FOC, in A, or rotor
-// speed omegaM for open loop, in rad/s), noiseIdx (RMS of world.noise[0] / Irated), rippleRms/Pp
-// (phase-A chopper ppLast in switching fidelity, rms = pp/(2√3); 0 in averaged fidelity and FOC),
-// iAmpPct (LPF200|i| vs target), phaseLagDeg (θcmd vs current angle), stepRate, lostStepsMm
-// (CoreXY: magnitude of the x/y loss from both belts), pressInMm, freeMotionIqPeak, rise (L·I/(Vbus − R·I)), sweep,
-// posErrMm, velErrMmS, heat.
+// oscFreqHz/oscAmp (at rest, no bump or load-torque change in the last 0.2 s: high-passed iq
+// for FOC, in A, or rotor speed omegaM for open loop, in rad/s), noiseIdx (RMS of world.noise[0]
+// / Irated), rippleRms/Pp (phase-A chopper ppLast in switching fidelity, rms = pp/(2√3); 0 in
+// averaged fidelity and FOC), iAmpPct (LPF200|i| vs target), phaseLagDeg (θcmd vs current
+// angle), stepRate, lostStepsMm (CoreXY: magnitude of the x/y loss from both belts), pressInMm,
+// freeMotionIqPeak, rise (L·I/(Vbus − R·I)), sweep, posErrMm, velErrMmS, heat.
 // ---------------------------------------------------------------------------------------------
 //
 // Hot path (step) does not allocate except for rare event objects and state-machine
