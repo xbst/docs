@@ -361,9 +361,11 @@ export default {
       value: S.filters[f.id], caption: keys[f.ctl], format: fmtMult, onChange: (v, c) => setFilter(c, f, v),
       title: 'Multiples of the well-tuned cutoff frequency',
     });
-    const note = '×1 is a well-tuned value for this simulated motor. On your hardware, start from the values your '
-      + 'driver\'s autotune gives you and move in the direction the symptoms point.'
-      + (ctx.product.notes && ctx.product.notes.pi ? ' ' + ctx.product.notes.pi : '');
+    // A product's own tuning advice (notes.pi) takes the place of the generic hardware sentence.
+    const pn = ctx.product.notes && ctx.product.notes.pi;
+    const note = '×1 is a well-tuned value for this simulated motor. '
+      + (pn || 'On your hardware, start from the values your driver\'s autotune gives you and move in the '
+        + 'direction the symptoms point.');
     return [
       { type: 'select', id: 'preset', label: 'Preset', group: 'Presets', value: S.preset,
         options: PRESETS.map((p) => ({ value: p.id, label: p.label })).concat([{ value: 'custom', label: 'Custom (sliders moved)', disabled: true }]),
