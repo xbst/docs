@@ -15,9 +15,11 @@
  * after a few seconds of sim time or when the reader presses "Reveal". The
  * multipliers were measured on the stepper preset (chunk 07, STATUS.md
  * "Preset multipliers"); the BLDC preset shows the same symptoms, mostly
- * stronger. Moving a slider switches the select to "Custom". A motor-type
- * change keeps the preset, or the Custom state and the preset it started
- * from: the framework replays the select, then every slider off its default.
+ * stronger, and where it differs (torque I too high, filters too high) the
+ * symptom sentence depends on the motor type. Moving a slider switches the
+ * select to "Custom". A motor-type change keeps the preset, or the Custom
+ * state and the preset it started from: the framework replays the select,
+ * then every slider off its default.
  *
  * Test moves loop on their own: a path restarts one second after it ends
  * (the stop metrics need 0.3 s, the rest-oscillation metric a few 100 ms
@@ -113,7 +115,9 @@ const PRESETS = [
   { id: 'filters-low', label: 'Filters too low', filters: { torque: 0.5, flux: 0.5, velocity: 0.33 }, move: 'square', highlight: 'filters', loupeMm: 4,
     symptom: 'the loops see their measurements late. The corners round off and after each stop the axis hunts at about 65 Hz; push the filters lower and the current loops go unstable.' },
   { id: 'filters-high', label: 'Filters too high', filters: { torque: 10, flux: 10, velocity: 10 }, move: 'square', highlight: 'filters', loupeMm: LOUPE_DEFAULT,
-    symptom: 'sensor noise passes straight into the current. The noise index triples (a hiss while moving) while the motion itself stays fine.' },
+    symptom: (ctx) => 'sensor noise passes straight into the current. ' + (ctx.motorType === 'bldc'
+      ? 'The noise index rises by half while moving (a hiss); the motion stays fine.'
+      : 'The noise index more than doubles (a hiss while moving); the motion stays fine.') },
 ];
 const PRESET_BY_ID = new Map(PRESETS.map((p) => [p.id, p]));
 
