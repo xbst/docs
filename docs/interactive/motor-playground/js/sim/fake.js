@@ -289,7 +289,10 @@ export class FakeWorld {
     this.sampleCounter = 0;
   }
 
-  /** @private preallocated snapshot, field names per SPEC 5.7 */
+  /**
+   * @private preallocated snapshot, field names per SPEC 5.7 plus the real World's additive
+   * per-motor `mode` (the driver mode in effect, filled by refresh())
+   */
   buildSnapshot() {
     const ph = this.m.phases;
     const motor = () => ({
@@ -298,7 +301,7 @@ export class FakeWorld {
       idStar: 0, iqStar: 0, ud: 0, uq: 0, uMag: 0, uLimit: 0, torque: 0, loadTorque: 0, loadAngle: 0,
       thetaCmd: 0, vAmp: 0, pwmState: new Array(ph).fill(0), sg: null, diag: false,
       flags: { iqTargetLimit: false, xOutputLimit: false, uqOutputLimit: false, udOutputLimit: false, vErrSumLimit: false },
-      status: false, heat: 0, iAmp: 0, iLimit: 0, driver: this.sc.driver, lostCycles: 0,
+      status: false, heat: 0, iAmp: 0, iLimit: 0, driver: this.sc.driver, mode: 'current', lostCycles: 0,
       stepgen: { level: 0, dir: 1, rate: 0, count: 0 },
       encoder: { count: 0, a: 0, b: 0, thetaMeas: 0, omegaEst: 0 },
     });
@@ -554,6 +557,24 @@ export class FakeWorld {
     mt.sweep = this.snap.sweep.results;
   }
 
+  /**
+   * @private driver mode in effect for motor m, as the real World's `motors[i].mode`: FOC
+   * velocity or torque, else position; open loop voltage or current (any other mode is
+   * current), hybrid current at a commanded motor speed ≥ hybridThresholdMmS (no hysteresis
+   * in the fake)
+   * @param {number} m motor index
+   * @returns {string}
+   */
+  modeOf(m) {
+    const dm = this.sc.driverMode;
+    if (this.foc) return dm === 'velocity' || dm === 'torque' ? dm : 'position';
+    if (dm === 'voltage') return 'voltage';
+    if (dm !== 'hybrid') return 'current';
+    const v = this.nMotors === 2 ? (m === 0 ? this.vx + this.vy : this.vx - this.vy) : this.vx;
+    const thr = this.sc.hybridThresholdMmS;
+    return Math.abs(v) >= (typeof thr === 'number' ? thr : 60) ? 'current' : 'voltage';
+  }
+
   /** @private fill the snapshot from the current state */
   refresh() {
     this.dirty = false;
@@ -565,6 +586,7 @@ export class FakeWorld {
       o.iAlpha = e.iAlpha; o.iBeta = e.iBeta; o.id = e.id; o.iq = e.iq; o.idStar = e.idS; o.iqStar = e.iqS;
       o.ud = e.ud; o.uq = e.uq; o.uMag = e.uMag; o.uLimit = e.uLimit; o.torque = e.torque;
       o.loadTorque = e.loadTorque; o.loadAngle = e.loadAngle; o.vAmp = e.vAmp; o.iAmp = e.iAmp; o.iLimit = e.I;
+      o.mode = this.modeOf(m);
       if (M.phases === 2) {
         o.iPhase[0] = e.iAlpha; o.iPhase[1] = e.iBeta; o.iStar[0] = e.iAlphaS; o.iStar[1] = e.iBetaS;
       } else {
