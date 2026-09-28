@@ -76,7 +76,8 @@ function homeAgain(c) {
   w.command('home');
 }
 
-const RESULT_TEXT = { ok: 'detected at the stop', 'false-trigger': 'false trigger', 'no-edge': 'no edge' };
+/** Homing chip text per result; short, so the chip row does not rewrap between "running" and the result. */
+const RESULT_TEXT = { ok: 'detected', 'false-trigger': 'false trigger', 'no-edge': 'no edge' };
 
 export default {
   id: 'sensorless-foc', number: 9, title: 'Sensorless homing with FOC', short: 'Sensorless',
@@ -172,6 +173,10 @@ export default {
     const flag = !!(m.flags && m.flags.iqTargetLimit);
     const status = !!m.status;
     const result = h.active ? (h.pass > 1 ? `running, pass ${h.pass}` : 'running') : (RESULT_TEXT[h.result] || 'not run yet');
+    // Only a pass whose status output rose has a press-in at detection: none during the approach
+    // (the result is null until the edge) or after a no-edge pass. Keyed on the result, since
+    // FakeWorld sets no triggeredAtMm.
+    const edge = h.result === 'ok' || h.result === 'false-trigger';
     // Motor torque as force on the belt: T / (rd / 2π), rd in mm per turn.
     const forceN = Math.abs(m.torque) * 2 * Math.PI / ((snap.rd || 40) / 1000);
     return [
@@ -181,9 +186,10 @@ export default {
       { label: 'Free-motion peak', value: h.freeIqPeak, unit: 'A', digits: 2,
         title: 'Largest Iq target while the carriage moved freely in this pass; set the limit just above it. '
           + 'After a false trigger it reads the limit itself, since the target is capped there' },
-      { label: 'Press-in at detection', value: h.pressInMm, unit: 'mm', digits: 2, warn: h.pressInMm > PRESS_WARN_MM,
+      { label: 'Press-in at detection', value: edge ? h.pressInMm : '–', unit: edge ? 'mm' : '', digits: 2,
+        warn: edge && h.pressInMm > PRESS_WARN_MM,
         title: 'How far the carriage had pushed into the (compliant) stop when the status output rose; '
-          + 'the loop keeps pushing after that, so the carriage sinks in further' },
+          + 'the loop keeps pushing after that, so the carriage sinks in further. A dash until the output rises in this pass' },
       { label: 'Press force', value: forceN, unit: 'N', digits: 0, title: 'Motor torque as belt force, Kt·Iq·2π/rd' },
       { label: 'Homing', value: result, warn: !h.active && (h.result === 'false-trigger' || h.result === 'no-edge'),
         ok: !h.active && h.result === 'ok' },
