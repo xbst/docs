@@ -10,10 +10,11 @@
  *
  *   slider:    { type:'slider', id, label, min, max, step, value, unit, log:false,
  *                format:(v)=>string, live:true, onChange:(v, ctx)=>void }
- *              `log:true` maps the track on log10 (min > 0); `step` then only
- *              rounds the value, and the arrow keys skip track positions that
- *              round to the value already shown. `live:false` fires onChange on
- *              release only.
+ *              `log:true` maps the track on log10 (min > 0) in 200 positions
+ *              (or the whole number nearest to the track over `logStep`), the
+ *              last one at max; `step` then only rounds the value, and the arrow
+ *              keys skip track positions that round to the value already shown.
+ *              `live:false` fires onChange on release only.
  *   segmented: { type:'segmented', id, label, options:[{value, label, disabled, title}], value, onChange }
  *   toggle:    { type:'toggle', id, label, value, onChange }
  *   button:    { type:'button', id, label, kind:'primary'|'normal', onClick:(ctx)=>void }
@@ -223,10 +224,14 @@ const BUILD = {
     const min = +spec.min, max = +spec.max;
     const log = !!spec.log && min > 0 && max > min;
     if (log) {
+      // A whole number of track steps spans the range, each a hair short of its share, so the last
+      // grid point sits just inside max: the browser compares min + k·step with max in decimal, and
+      // a step string that rounds up put max one step out of reach (x9.82 of x10 on 0.25…10).
       const a = Math.log10(min), b = Math.log10(max);
+      const n = Math.max(1, Math.round((b - a) / (spec.logStep > 0 ? spec.logStep : (b - a) / 200)));
       input.min = String(a);
       input.max = String(b);
-      input.step = String(spec.logStep || (b - a) / 200);
+      input.step = String((b - a) / n * (1 - 1e-9));
     } else {
       input.min = String(min);
       input.max = String(max);
@@ -261,7 +266,8 @@ const BUILD = {
     if (spec.live === false) input.addEventListener('change', () => C.fire(spec.onChange, current));
     if (log && spec.step > 0) {
       // Near the low end neighboring track positions round to the same value: an arrow key
-      // moves on to the next position whose value differs (at an end, nothing moves).
+      // moves on to the next position whose value differs. At an end nothing is sent; a thumb
+      // a position or two short of it (a pointer drag) parks on the end, as the native key would.
       input.addEventListener('keydown', (e) => {
         const dir = ARROW_DIR[e.key];
         if (!dir || e.altKey || e.ctrlKey || e.metaKey) return;
@@ -275,6 +281,7 @@ const BUILD = {
           C.fire(spec.onChange, v);     // a key press is its own release, so also with live:false
           return;
         }
+        input.value = String(dir > 0 ? lo + last * st : lo);
       });
     }
     w.append(head, input);
