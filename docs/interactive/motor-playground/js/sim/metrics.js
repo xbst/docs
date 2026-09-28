@@ -39,7 +39,8 @@
 //                     vDecel^2 / (2 * accel), vDecel = speed when the last deceleration began
 //   settleMs          time from the stop until |position error| stays below 0.02 mm (window length if never)
 //   cornerErrMm       max distance of the toolhead from the current/previous commanded segment,
-//                     sampled while planner.atCorner, since the current path started
+//                     sampled while planner.atCorner, since the current path started (from idle
+//                     or another mode, or a runPath while a path runs: World calls pathStarted())
 //   rise              L * I / (Vbus - R * I) * 1000 (ms), Infinity when Vbus <= R * I
 //   lostStepsMm       axis/free: gantry.lostMm[0]; corexy: toolhead shift magnitude
 //                     sqrt(((lA + lB) / 2)^2 + ((lA - lB) / 2)^2) from lostMm[0], lostMm[1]
@@ -340,16 +341,10 @@ export class Metrics {
     const speed = pl.speed;
 
     if (mode !== 'idle' && mode !== this.prevMode) {
-      // A new move, path or jog started: the last-stop metrics no longer apply.
-      this.winActive = false;
-      this.osMm = 0; this.osPct = 0; this.settleMs = 0;
-      this.decelFrom = 0;
-      this.peakSpeed = 0;
-      if (mode === 'path') {
-        this.cornerErr = 0;
-        this.hasCur = false;
-        this.hasPrev = false;
-      }
+      // A new move, path or jog started; a path from idle or another mode also drops the
+      // segment history of the corner tracker (see pathStarted for a path restarted mid-path).
+      this._startMotion(mode === 'path');
+      if (mode === 'path') { this.hasCur = false; this.hasPrev = false; }
     }
     if (phase === 'decel' && this.prevPhase !== 'decel') {
       this.decelFrom = this.prevSpeed > speed ? this.prevSpeed : speed;
@@ -398,6 +393,30 @@ export class Metrics {
     this.prevMode = mode;
     this.prevPhase = phase;
     this.prevSpeed = speed;
+  }
+
+  /**
+   * A new move, path or jog started: the last-stop metrics no longer apply, and a path starts
+   * its corner error over.
+   * @param {boolean} path true for a path
+   */
+  _startMotion(path) {
+    this.winActive = false;
+    this.osMm = 0; this.osPct = 0; this.settleMs = 0;
+    this.decelFrom = 0;
+    this.peakSpeed = 0;
+    if (path) this.cornerErr = 0;
+  }
+
+  /**
+   * A path was started (World.command('runPath')). update() only sees a path start when the
+   * planner's mode changes, so a path started while another one still runs reports it here:
+   * the corner error and the last-stop metrics start over. The segment history stays: the
+   * toolhead still trails on the old path's segment, which counts as the previous segment of
+   * the new path's first one (as at a junction), so its along-track lag is not a corner error.
+   */
+  pathStarted() {
+    this._startMotion(true);
   }
 
   /** Corner (path deviation) tracking at the toolhead point (this.ax, this.ay). Allocation free. */

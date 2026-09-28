@@ -406,6 +406,8 @@ export class World {
         this._abortMachines();
         this._leaveVelocityTarget();
         pl.runPath(path);
+        // Also a path started while another one runs (no mode change): corner error from zero.
+        this.metricsEngine.pathStarted();
         break;
       }
       case 'stop': {
