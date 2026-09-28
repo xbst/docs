@@ -10,7 +10,9 @@
  * stop on the rising edge of the latched status output, retract. "Home again"
  * homes from wherever the carriage is: after a pass with retract 0 it is
  * still pressed against the stop, the status output is still high and the
- * pass ends with no edge, the failure the retract distance prevents.
+ * pass ends with no edge, the failure the retract distance prevents. Pressed
+ * during Home's move-out, it brakes and homes once from where the carriage
+ * stops (not a second pass queued behind the pending one).
  *
  * Default homing currents: 0.5 A on the stepper (free-motion demand peak
  * 0.39 A at 40 mm/s with 0.05 N·m of drag), 1.75 A on the BLDC (Kt is
@@ -53,6 +55,22 @@ function homeFromStart(c) {
   S.homeWhenIdle = true;
 }
 
+/**
+ * "Home again": one pass from where the carriage is. During Home's move-out it brakes instead and
+ * leaves the pending homing to onFrame, so each click homes once, and never from a carriage still
+ * accelerating away (that reversal trips the limit: a false trigger).
+ */
+function homeAgain(c) {
+  const w = c.world;
+  const s = w.snapshot;
+  if (S.homeWhenIdle && s.planner.mode !== 'idle' && !s.homing.active) {
+    w.command('stop');   // S.homeWhenIdle stays set: onFrame homes once the carriage is at rest
+    return;
+  }
+  S.homeWhenIdle = false;
+  w.command('home');
+}
+
 const RESULT_TEXT = { ok: 'detected at the stop', 'false-trigger': 'false trigger', 'no-edge': 'no edge' };
 
 export default {
@@ -93,7 +111,7 @@ export default {
         value: S.drag, unit: 'N·m', onChange: (v, c) => { S.drag = v; c.world.command('setLoad', { drag: v }); } },
       { type: 'button', id: 'home', label: 'Home', kind: 'primary', group: 'Run', onClick: (c) => homeFromStart(c),
         title: 'Move out to 40 mm if needed, then approach the stop, detect it and retract' },
-      { type: 'button', id: 'homeAgain', label: 'Home again', group: 'Run', onClick: (c) => c.world.command('home'),
+      { type: 'button', id: 'homeAgain', label: 'Home again', group: 'Run', onClick: (c) => homeAgain(c),
         title: 'A second pass from where the carriage is now' },
       { type: 'note', group: 'Run', html: `Run current for normal moves: <code>${formatPeak(runCurrent, false)}</code>`
         + (keys.runCurrent ? ` (<code>${keys.runCurrent}</code>)` : '') + '. Homing swaps in the limit above.' },
