@@ -73,13 +73,16 @@
 }
 
 /* Playground tokens, light / dark. Dashed = commanded/target, solid = actual.
-   Red only for errors, flags and the N pole; amber for highlights and the field. */
+   Red only for errors, flags and the N pole; amber for highlights and the field.
+   --page-bg is SPEC 4.9's solid page background, painted in fullscreen (--bg stays
+   transparent so an embed blends with the docs page). */
 :root{
   color-scheme:light;
   --phase-a:#E39A00; --phase-b:#27AE60; --phase-c:#2E86DE;
   --axis-q:#D6336C; --axis-d:#7C4DFF; --target:#666666;
   --rotor-n:#DC2626; --rotor-s:#2563EB;
   --muted:#666666;
+  --page-bg:#f8f8f8;
   --field:var(--phase-a);
   --led-on:var(--ok); --led-trip:var(--err); --led-off:var(--divider);
   --font-scale:1;
@@ -90,6 +93,7 @@
   --axis-q:#FF6EB4; --axis-d:#A97BFF; --target:#AAAAAA;
   --rotor-n:#F87171; --rotor-s:#60A5FA;
   --muted:#9a9a9a;
+  --page-bg:#131313;
 }}
 :root[data-theme="dark"]{
   color-scheme:dark;
@@ -97,6 +101,7 @@
   --axis-q:#FF6EB4; --axis-d:#A97BFF; --target:#AAAAAA;
   --rotor-n:#F87171; --rotor-s:#60A5FA;
   --muted:#9a9a9a;
+  --page-bg:#131313;
 }
 :root[data-theme="light"]{
   color-scheme:light;
@@ -104,6 +109,7 @@
   --axis-q:#D6336C; --axis-d:#7C4DFF; --target:#666666;
   --rotor-n:#DC2626; --rotor-s:#2563EB;
   --muted:#666666;
+  --page-bg:#f8f8f8;
 }
 
 /* ---------------- base ---------------- */
@@ -299,7 +305,9 @@ a{color:inherit}
 
 /* ---------------- fullscreen (class set by main.js on fullscreenchange) ---------------- */
 html.is-fs{font-size:115%;--font-scale:1.15}
-html.is-fs,html.is-fs body{background:var(--bg)}
+/* solid, or an embed shows the parent's black ::backdrop; :fullscreen paints it before the class */
+html.is-fs,html.is-fs body{background:var(--page-bg)}
+html:fullscreen{background:var(--page-bg)}
 html.is-fs body{overflow:hidden}
 html.is-fs .app{height:100%;min-height:0}
 /* taller than the embedded scope, but short viewports (a 1280×800 laptop) keep room for the views */
