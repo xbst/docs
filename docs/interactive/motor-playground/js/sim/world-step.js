@@ -239,6 +239,9 @@ export function stepWorld(w) {
   if (ctrl) {
     const pl = w.planner;
     pl.step(CONTROL_DT);
+    // The FOC position-loop limit held after a maxVelocity drop (World._derive) drops too once
+    // the planner has slowed down to the new limit.
+    if (pl.speed <= w._omegaHoldMmS) w._releaseOmegaHold();
     updateCommand(w, CONTROL_DT);
     if (pl.justFinished) w._emit('pathDone', { path: pl.pathName, xMm: pl.x, yMm: pl.y });
   }

@@ -14,11 +14,13 @@
 //
 // Execution (every `step(dt)`, no allocation): with s the distance along the
 // current segment of length L and end speed vEnd,
-//   vAllowed = min(vmax, √(vEnd² + 2a(L − s))),  v = min(v + a·dt, vAllowed),  s += v·dt
+//   vAllowed = min(max(vmax, v − a·dt), √(vEnd² + 2a(L − s))),  v = min(v + a·dt, vAllowed),  s += v·dt
 // and the residual distance carries into the next segment. (The start ramp
 // √(vStart² + 2as) of the textbook form is implied by v + a·dt, and the end
 // limit is evaluated at the end of the step, v² + 2a·dt·v ≤ vEnd² + 2a(L − s),
-// so the discrete deceleration never exceeds `accel` and arrives at vEnd.)
+// so the discrete deceleration never exceeds `accel` and arrives at vEnd. The
+// max(vmax, v − a·dt) term ramps down to a vmax lowered mid-move by `configure`
+// at `accel` too, in phase 'decel'.)
 //
 // Kinematics (commanded motor angles): axis/free θ = 2πx/rd for every motor;
 // CoreXY θA = 2π(x + y)/rd, θB = 2π(x − y)/rd. The planner never clamps to the
@@ -153,7 +155,8 @@ export class Planner {
   }
 
   /**
-   * Sets limits and kinematics without touching the motion state.
+   * Sets limits and kinematics without touching the motion state. A move or path
+   * running faster than a lowered `maxVelocity` slows down to it at `accel`.
    * @param {{ maxVelocity?: number, accel?: number, scv?: number, rd?: number,
    *           kinematics?: 'axis'|'corexy'|'free', axisLength?: number }} [opts]
    */
@@ -294,11 +297,15 @@ export class Planner {
     const a = this.accel;
     let i = this.segmentIndex;
     let L = this.len[i];
-    const cap = (this.brake && i === 0) ? Infinity : this.maxVelocity;
+    const adt = a * dt;
+    let cap = (this.brake && i === 0) ? Infinity : this.maxVelocity;
+    // A limit lowered mid-move (a live speed slider) is reached at `accel`, not in one step.
+    const vDown = this.speed - adt;
+    const over = vDown > cap;
+    if (over) cap = vDown;
     const rem = L - this.segS;
     // Deceleration limit evaluated at the end of this step (discrete-consistent
     // form of √(vEnd² + 2a(L − s))): v² + 2a·dt·v ≤ vEnd² + 2a·rem.
-    const adt = a * dt;
     const vD = Math.sqrt(adt * adt + this.ve2[i] + 2 * a * (rem > 0 ? rem : 0)) - adt;
     const vUp = this.speed + adt;
     let v = vUp;
@@ -306,7 +313,7 @@ export class Planner {
       this.phase = 'accel';
     } else if (cap <= vD) {
       v = cap;
-      this.phase = 'cruise';
+      this.phase = over ? 'decel' : 'cruise';
     } else {
       v = vD;
       this.phase = 'decel';

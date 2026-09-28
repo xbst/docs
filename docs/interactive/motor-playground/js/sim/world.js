@@ -54,7 +54,8 @@
 //   Kpq = Kpd = L·2πfc, Kiq = Kid = R·2πfc; Kpv = Jt·2πfv/Kt, Kiv = Kpv·2πfv·alpha;
 //   Kpx = 2πfx, Kix = 0 (KixRef = Kpx·2πfx·kixRefRatio); filters at fFilter and fVel;
 //   Umax = 0.96·Vlimit (Vbus, or Vbus/√3 three-phase); ωLimit = omegaLimitFactor·maxVelocity
-//   (×√2 on CoreXY: a 45° move at maxVelocity drives one belt at √2·maxVelocity);
+//   (×√2 on CoreXY: a 45° move at maxVelocity drives one belt at √2·maxVelocity; a maxVelocity
+//   lowered mid-move keeps the planner's speed until the planner has slowed down to it);
 //   iLimit = runCurrent (homingCurrent while homing). scenario.foc.gains holds multipliers.
 //   Values (2026-09-23): fFilter 1200, fc 400, fv 75, alpha 0.25, fVel 225, fx 28, kixRefRatio 2.
 //   Status output: snapshot.motors[i].status is latched like the chip's STATUS_FLAGS (set on any
@@ -259,6 +260,9 @@ export class World {
     this._accelOverride = 0;
     this._homingCurrentOverride = 0;
     this._sweepNoStops = false;
+    // Planner speed (mm/s) at or under which the control tick releases the FOC position-loop
+    // speed limit held after a maxVelocity drop (-1 = no hold; see _derive, _releaseOmegaHold).
+    this._omegaHoldMmS = -1;
     // Step trace state (see world-traces.js). stepPulses: motor 0's pulses since the last trace
     // sample (the `stepN` trace).
     this.stepEdges = 0;
@@ -511,6 +515,7 @@ export class World {
     this._accelOverride = 0;
     this._homingCurrentOverride = 0;
     this._sweepNoStops = false;
+    this._omegaHoldMmS = -1;
 
     // Drivers and presets per motor.
     this.driverKinds = [];
@@ -645,6 +650,11 @@ export class World {
     for (let i = 0; i < n; i++) { mech.theta[i] = this._saveTheta[i]; mech.omega[i] = this._saveOmega[i]; }
     mech.setLoads(sc.loads.drag, sc.loads.torque);
     this.planner.configure(this._plannerCfg());
+    // A maxVelocity lowered under the planner's speed: the planner slows down at accel, and the
+    // FOC position-loop limit (_omegaLimit) stays at that speed until the control tick sees the
+    // planner at or under it (then _releaseOmegaHold).
+    const vMax = num(sc.planner.maxVelocity, 150);
+    this._omegaHoldMmS = this.planner.speed > vMax ? vMax : -1;
     // Driver modes (the compare motor keeps its own).
     this.driverModes[0] = sc.driverMode;
     if (this.kinematics === 'corexy' && n > 1) this.driverModes[1] = sc.driverMode;
@@ -740,13 +750,32 @@ export class World {
 
   /**
    * FOC position-loop speed limit (mech rad/s): omegaLimitFactor·maxVelocity as belt speed,
-   * ×√2 on CoreXY (a 45° move at maxVelocity drives one belt at √2·maxVelocity).
+   * ×√2 on CoreXY (a 45° move at maxVelocity drives one belt at √2·maxVelocity). While the
+   * planner still runs faster than a lowered maxVelocity (it slows down at accel), its speed
+   * stands in for maxVelocity; _derive then holds the limit until the control tick sees the
+   * planner at or under maxVelocity and _releaseOmegaHold pushes the lower one.
    * @returns {number}
    */
   _omegaLimit() {
     const sc = this._sc;
     const belt = this.kinematics === 'corexy' ? Math.SQRT2 : 1;
-    return belt * num(sc.foc.omegaLimitFactor, 1.2) * num(sc.planner.maxVelocity, 150) / this._mmPerRad;
+    const vMax = num(sc.planner.maxVelocity, 150);
+    const sp = this.planner.speed;
+    return belt * num(sc.foc.omegaLimitFactor, 1.2) * (sp > vMax ? sp : vMax) / this._mmPerRad;
+  }
+
+  /**
+   * Ends the hold _derive set on the FOC position-loop speed limit: pushes the limit for the
+   * current maxVelocity into every FOC motor. Called from the control tick (world-step.js)
+   * once the planner has slowed down to `_omegaHoldMmS`.
+   */
+  _releaseOmegaHold() {
+    this._omegaHoldMmS = -1;
+    for (let i = 0; i < this.nMotors; i++) {
+      const f = this.foc[i];
+      if (f !== null) f.configure(this._focCfg(i));
+    }
+    if (this._optimal !== null) this._optimal.omegaLimit = this._omegaLimit();
   }
 
   /**
