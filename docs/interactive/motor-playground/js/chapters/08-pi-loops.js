@@ -17,9 +17,10 @@
  * "Preset multipliers"); the BLDC preset shows the same symptoms, mostly
  * stronger, and where it differs (velocity P too low, torque I too high,
  * filters too high) the symptom sentence depends on the motor type. Moving
- * a slider switches the select to "Custom". A motor-type change keeps the
- * preset, or the Custom state and the preset it started from: the framework
- * replays the select, then every slider off its default.
+ * a slider switches the select to "Custom" (a pending reveal still comes on
+ * time, naming the preset the Custom state started from). A motor-type
+ * change keeps the preset, or the Custom state and the preset it started
+ * from: the framework replays the select, then every slider off its default.
  *
  * Test moves loop on their own: a path restarts one second after it ends
  * (the stop metrics need 0.3 s, the rest-oscillation metric a few 100 ms
@@ -203,11 +204,13 @@ function setMove(c, move) {
   startMove(c);
 }
 
-/** A slider moved: the preset no longer applies. */
+/**
+ * A slider moved: the preset no longer applies. A reveal still pending keeps its time, so the
+ * text names the symptom as promised, as the one the Custom state "started from".
+ */
 function markCustom(c) {
   if (S.preset === 'custom') return;
   S.preset = 'custom';
-  S.revealAt = -1;
   c.app.setControlValue('preset', 'custom');
   c.app.refreshText();
 }
@@ -276,12 +279,13 @@ function applyPreset(c, id) {
 function symptomHtml(ctx) {
   const p = S.lastPreset;
   if (!p) return '';
+  const custom = S.preset === 'custom';
   if (!S.revealed) {
-    return `<p><strong>Preset "${p.label}":</strong> watch the gantry loupe, the scope and the readouts. `
-      + `What changed? The symptom is named here after ${REVEAL_S} s of motor time, or press Reveal.</p>`;
+    return `<p><strong>${custom ? 'Started from' : 'Preset'} "${p.label}":</strong> watch the gantry loupe, the scope and `
+      + `the readouts. What changed? The symptom is named here after ${REVEAL_S} s of motor time, or press Reveal.</p>`;
   }
   const s = typeof p.symptom === 'function' ? p.symptom(ctx) : p.symptom;
-  const head = S.preset === 'custom' ? `Started from "${p.label}"` : (p.id === 'optimal' ? 'Reference' : p.label);
+  const head = custom ? `Started from "${p.label}"` : (p.id === 'optimal' ? 'Reference' : p.label);
   return `<p><strong>${head}:</strong> ${s}</p>`;
 }
 
