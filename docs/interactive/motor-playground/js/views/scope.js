@@ -418,8 +418,8 @@ export class Scope {
       if (tr.digital || tr.dashed || !tr.present || !tr.visible || !tr.group.active) continue;
       const v = this.lastValue(tr.ring);
       if (v !== v) continue;
-      if (refmt || !tr.tagStr) tr.tagStr = formatCompact(v);
       const grp = tr.group;
+      if (refmt || !tr.tagStr) tr.tagStr = formatCompact(v, Math.max(-grp.lo, grp.hi));
       let y = aBot - (v - grp.lo) * ah / ((grp.hi - grp.lo) || 1);
       if (y < aTop + tagH / 2) y = aTop + tagH / 2;
       if (y > aBot - tagH / 2) y = aBot - tagH / 2;

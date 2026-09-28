@@ -43,16 +43,23 @@ export function formatTrim(v) {
 
 /**
  * Like formatValue, but at most about six characters wide: large values get
- * k/M suffixes (12345 → "12.3k"). Used for scope value tags.
+ * k/M suffixes (12345 → "12.3k"); the rest keep three significant digits but
+ * no more decimals than the scale shows, 2 − floor(log10 ref) clamped to 0…4
+ * (1.234 on ±2 → "1.23", 0.0123 on ±0.2 → "0.012", −0.000178 on ±2 → "0.00").
+ * No SI prefix on small values: the tag carries no unit, and the unit (mm,
+ * N·m) may not take one. Used for scope value tags.
  * @param {number} v
+ * @param {number} [ref] the scale's largest absolute bound, max(|lo|, |hi|);
+ *   without it, at most 3 decimals
  * @returns {string}
  */
-export function formatCompact(v) {
+export function formatCompact(v, ref) {
   const a = Math.abs(v);
   if (a >= 1e6) return formatValue(v / 1e6) + 'M';
   if (a >= 1e4) return formatValue(v / 1e3) + 'k';
-  if (a !== 0 && a < 1e-3) return formatValue(v * 1e6) + 'µ';
-  return formatValue(v);
+  const dr = ref > 0 ? Math.min(4, Math.max(0, 2 - Math.floor(Math.log10(ref)))) : 3;
+  const dv = a > 0 ? Math.max(0, 2 - Math.floor(Math.log10(a))) : dr;
+  return formatValue(v, Math.min(dv, dr));
 }
 
 /**
