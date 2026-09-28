@@ -8,7 +8,8 @@
  * unit, so a target and its measured value are always comparable. Solid
  * traces get a value tag in their color at the right edge; the HTML legend
  * under the plot shows each scale and hides/shows a trace on click. A hover
- * cursor with values appears for mouse and pen pointers.
+ * cursor with values appears for mouse and pen pointers; its box stays inside
+ * the canvas (more columns, or a tighter pitch, when the rows do not fit).
  *
  * Trace descriptor:
  *   { name, motor = 0, label, short, unit, group: 'analog' | 'digital',
@@ -713,7 +714,7 @@ export class Scope {
     g.lineTo(x, this.yPrev);
   }
 
-  /** @private hover cursor and value box (builds strings only while hovering) */
+  /** @private hover cursor and value box, kept inside the canvas (builds strings only while hovering) */
   drawHover(th, tL, tR, x0, pps, top, aBot) {
     const g = this.g, s = th.fontScale || 1;
     const hx = Math.round(this.hoverX) + 0.5;
@@ -738,13 +739,27 @@ export class Scope {
       rows.push(tr.color, lab, val);
     }
     const head = 't = ' + formatDuration(t - tR);
-    const lh = Math.round(15 * s), pad = 7, dot = 12;
-    const bw = Math.max(dot + wl + 12 + wv, g.measureText(head).width) + pad * 2;
-    const bh = pad * 2 + lh * (1 + rows.length / 3);
+    // Fit the box to the canvas: rows that do not fit under the header go to more columns, or to a
+    // tighter pitch when the columns would not fit the width; past that the last line counts the rest.
+    const pad = 7, dot = 12, gap = 16, n = rows.length / 3;
+    const by = top + 2, room = this.h - 2 - by - pad * 2;
+    const colW = dot + wl + 12 + wv;
+    let lh = Math.round(15 * s);
+    let cols = Math.ceil(n / Math.max(1, Math.floor(room / lh) - 1)) || 1;
+    if (cols > 1 && cols * (colW + gap) - gap + pad * 2 > this.w - 4) {
+      cols = 1;
+      lh = Math.max(Math.round(13 * s), Math.floor(room / (n + 1)));
+    }
+    let per = Math.ceil(n / cols), shown = n;
+    const fit = Math.floor(room / lh) - 1;
+    if (per > fit) { per = Math.max(1, fit); shown = per * cols - 1; }
+    const inner = Math.max(cols * (colW + gap) - gap, g.measureText(head).width);
+    const cw = cols > 1 ? colW : inner;
+    const bw = inner + pad * 2;
+    const bh = pad * 2 + lh * (1 + per);
     let bx = this.hoverX + 12;
     if (bx + bw > this.w - 2) bx = this.hoverX - 12 - bw;
     if (bx < 2) bx = 2;
-    const by = top + 2;
     g.fillStyle = th.tipBg;
     g.strokeStyle = th.tipBorder;
     g.beginPath();
@@ -754,17 +769,22 @@ export class Scope {
     g.textBaseline = 'middle';
     g.textAlign = 'left';
     g.fillStyle = th.muted;
-    let y = by + pad + lh / 2;
-    g.fillText(head, bx + pad, y);
-    for (let i = 0; i < rows.length; i += 3) {
-      y += lh;
-      g.fillStyle = rows[i];
-      g.beginPath(); g.arc(bx + pad + 4, y, 3.5, 0, Math.PI * 2); g.fill();
+    const y0 = by + pad + lh / 2;
+    g.fillText(head, bx + pad, y0);
+    for (let i = 0; i < shown; i++) {                 // column by column
+      const c = Math.floor(i / per), x = bx + pad + c * (colW + gap), y = y0 + lh * (1 + i - c * per);
+      g.fillStyle = rows[3 * i];
+      g.beginPath(); g.arc(x + 4, y, 3.5, 0, Math.PI * 2); g.fill();
       g.fillStyle = th.text;
       g.textAlign = 'left';
-      g.fillText(rows[i + 1], bx + pad + dot, y);
+      g.fillText(rows[3 * i + 1], x + dot, y);
       g.textAlign = 'right';
-      g.fillText(rows[i + 2], bx + bw - pad, y);
+      g.fillText(rows[3 * i + 2], x + cw, y);
+    }
+    if (shown < n) {
+      g.fillStyle = th.muted;
+      g.textAlign = 'left';
+      g.fillText('+' + (n - shown) + ' more', bx + pad + dot, y0 + lh * per);
     }
   }
 
