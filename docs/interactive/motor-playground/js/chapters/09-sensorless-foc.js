@@ -63,7 +63,7 @@ export default {
   traceWindow: 2.0,
   stage: { primary: 'gantry', secondary: 'blocks', split: 0.6 },
   viewOptions: { gantry: { detailMm: 2, led: true }, blocks: { compact: true, chain: 'limit' } },
-  hint: 'Press Home. At contact the Iq demand jumps past the limit, the flag fires and the status output goes high.',
+  hint: 'Press Home. At contact the Iq target hits the limit, the flag fires and the status output goes high.',
 
   scenario(motorType) {
     return {
@@ -107,7 +107,7 @@ export default {
     return [
       { name: 'flagIqTarget', group: 'digital', label: 'Limit flag' + (keys.flag ? ` (${keys.flag})` : ''), short: 'FLAG', color: 'warn' },
       { name: 'status', group: 'digital', label: 'Status output', short: keys.statusPin || 'STATUS', color: 'err' },
-      { name: 'iqStar', label: 'Iq demand', unit: 'A', color: 'axis-q', dashed: true },
+      { name: 'iqStar', label: 'Iq target', unit: 'A', color: 'axis-q', dashed: true },
       { name: 'iq', label: 'Torque current Iq', unit: 'A', color: 'axis-q' },
       { name: 'iLimit', label: 'Current limit', unit: 'A', color: 'target', dashed: true },
       { name: 'velCmd', label: 'Commanded speed', unit: 'mm/s', color: 'target', dashed: true },
@@ -149,10 +149,11 @@ export default {
     const forceN = Math.abs(m.torque) * 2 * Math.PI / ((snap.rd || 40) / 1000);
     return [
       { label: 'Carriage', value: snap.gantry.x, unit: 'mm', digits: 2 },
-      { label: 'Iq demand', value: Math.abs(m.iqStar), unit: 'A', digits: 2, warn: flag,
-        title: `The velocity loop's request, against the ${formatValue(m.iLimit, 2)} A limit` },
+      { label: 'Iq target', value: Math.abs(m.iqStar), unit: 'A', digits: 2, warn: flag,
+        title: `The velocity loop's request, capped at the ${formatValue(m.iLimit, 2)} A limit` },
       { label: 'Free-motion peak', value: h.freeIqPeak, unit: 'A', digits: 2,
-        title: 'Largest Iq demand while the carriage moved freely in this pass; set the limit just above it' },
+        title: 'Largest Iq target while the carriage moved freely in this pass; set the limit just above it. '
+          + 'After a false trigger it reads the limit itself, since the target is capped there' },
       { label: 'Press-in', value: h.pressInMm, unit: 'mm', digits: 2, warn: h.pressInMm > PRESS_WARN_MM,
         title: 'How far the carriage pushed into the (compliant) stop this pass' },
       { label: 'Press force', value: forceN, unit: 'N', digits: 0, title: 'Motor torque as belt force, Kt·Iq·2π/rd' },
@@ -178,7 +179,7 @@ export default {
   tryThis: (ctx) => {
     const i = DEFAULT_CURRENT[ctx.motorType] || 0.5;
     return [
-      `Home at ${formatValue(i, 2)} A and watch the Iq demand jump to the limit at contact.`,
+      `Home at ${formatValue(i, 2)} A and watch the Iq target jump to the limit at contact.`,
       'Lower the limit until homing trips before the stop, then put it back and raise the drag until it trips again.',
       'Raise the limit to 3 A and watch the press-in and the press force grow. Then set the retract to 0, press Home, '
         + 'and press Home again.',
