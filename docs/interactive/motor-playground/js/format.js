@@ -46,12 +46,13 @@ export function formatTrim(v) {
 }
 
 /**
- * Like formatValue, but at most about six characters wide: large values get
+ * Like formatValue, but at most seven characters wide: large values get
  * k/M suffixes (12345 → "12.3k"); the rest keep three significant digits but
  * no more decimals than the scale shows, 2 − floor(log10 ref) clamped to 0…4
  * (1.234 on ±2 → "1.23", 0.0123 on ±0.2 → "0.012", −0.000178 on ±2 → "0.00").
- * No SI prefix on small values: the tag carries no unit, and the unit (mm,
- * N·m) may not take one. Used for scope value tags.
+ * No SI prefix on small values: a value tag carries no unit for a prefix to
+ * attach to (and mm or mm/s could not take a second one). Used for the scope's
+ * value tags and hover values.
  * @param {number} v
  * @param {number} [ref] the scale's largest absolute bound, max(|lo|, |hi|);
  *   without it, at most 3 decimals
