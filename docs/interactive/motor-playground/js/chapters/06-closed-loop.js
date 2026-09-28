@@ -19,8 +19,10 @@
  * From 3 A peak up the stepper holds the bump; at 0.55 A RMS and 20 000 mm/s² open loop skips
  * with no bump at all while FOC (0.8 A peak) keeps up. 250 ms after a bump the chapter reads
  * the trace rings, finds the largest sideways excursion, holds the gantry's magnifier on it (a
- * dip up to 6 mm; a slip is plain in the frame) and announces how far the toolhead was pushed
- * and when it was back.
+ * dip up to 6 mm) and announces how far the toolhead was pushed and when it was back. A bump
+ * that lost steps in those 250 ms (a stepLost event) gets neither: the slip is plain in the
+ * frame, and a slip along the path, or one that undoes an earlier slip, can look like a small
+ * sideways dip that healed.
  */
 import { formatValue, formatRms, formatPeak } from '../format.js';
 import { TUNING } from '../sim/drivers/foc.js';
@@ -41,7 +43,7 @@ const DIP_MAX_MM = 6;
 const BACK_MM = 0.05;
 
 let st = { ...DEFAULTS };
-let pending = null;          // { t, dirX, dirY } of the bump being measured
+let pending = null;          // { t, dirX, dirY, slipped } of the bump being measured
 let lost = { seen: 0, at: 0, told: 0 };
 
 const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -229,11 +231,12 @@ export default {
         return false;
       case 'bump': {
         const d = ev.data || {};
-        pending = { t: num(ev.t, 0), dirX: num(d.dirX, -1), dirY: num(d.dirY, 0) };
+        pending = { t: num(ev.t, 0), dirX: num(d.dirX, -1), dirY: num(d.dirY, 0), slipped: false };
         return false;
       }
       case 'stepLost':
         lost.at = num(ev.t, 0);
+        if (pending) pending.slipped = true;  // a slip, not a dip: no magnifier, no heal
         return false;                    // announced once the slip is over (onFrame)
       case 'stallDetected':
         return false;                    // StallGuard is chapter 4's topic
@@ -259,7 +262,7 @@ export default {
     const p = pending;
     pending = null;
     const r = measure(ctx.world, p);
-    if (!r || !(r.dev >= 0.1) || r.dev > DIP_MAX_MM) {
+    if (!r || p.slipped || !(r.dev >= 0.1) || r.dev > DIP_MAX_MM) {
       ctx.app.setViewOptions('gantry', { loupe: false, loupeCenter: null });
       return;
     }
