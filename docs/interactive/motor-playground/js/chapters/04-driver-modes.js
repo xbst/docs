@@ -35,20 +35,24 @@
  * ripples more than the SpreadCycle chopper. Neither can show "StealthChop
  * is quiet", so the text explains the hiss instead.
  *
- * Calibration (2026-09-23, 1.5 A rms = 2.12 A peak, homing from rest at 40
+ * Calibration (2026-09-28, 1.5 A rms = 2.12 A peak, homing from rest at 40
  * mm/s with a 500 mm/s² ramp in voltage mode, fresh axis or after running):
- * with drag 0.05 N·m driver_SGTHRS ≤ 40 never detects the stop (the carriage
- * slams and the motor skips) and 60 to 255 stop at contact (0.5 to 0.1 mm into
- * the belt); with drag 0.2 N·m 60 and 100 still stop at contact while 150 to
- * 255 false-trigger. The model's reading has no noise, so a false trigger
- * needs load. 5 mm/s never detects (below the 10 mm/s minimum). StealthChop on
- * the shuttle (accel 5000) holds up to 110 mm/s once running and falls out of
- * step from 130 mm/s (at 120 it slips one cycle and recovers; from a cold
- * start it already slips at 90, so the default is 80); Hybrid and SpreadCycle
- * hold 200. With 0.1 N·m of drag or more, StealthChop slips a few steps on the
- * shuttle too. The chapter's 0.25 N·m bump pulls the reading down to between
- * about 80 and 560, depending on where in the stroke it lands, without
- * skipping a step.
+ * with the default drag of 0.02 N·m driver_SGTHRS ≤ 40 never detects the stop
+ * (the carriage slams and the motor skips) and 50 to 255 stop at contact (0.6
+ * to 0.1 mm into the belt; 100 stops 0.48 mm in); with drag 0.2 N·m 50 to 100
+ * still stop at contact while 150 to 255 false-trigger. The model's reading
+ * has no noise, so a false trigger needs load. 5 mm/s never detects (below
+ * the 10 mm/s minimum). StealthChop on the shuttle (accel 5000) holds up to
+ * 115 mm/s once running and falls out of step from 125 mm/s (at 120 it slips
+ * cycles and recovers). A start from rest (after Home, or after about 20 ms
+ * at rest) holds 85 and slips at 90, but with drag 0.05 it already slips at
+ * 75: hence the defaults of 80 mm/s and 0.02 N·m. A start at t = 0 of a fresh
+ * world is luckier (it holds 95): the driver's reset leaves the measured
+ * current at 0, so the amplitude loop winds the voltage up while the current
+ * rises. Hybrid and SpreadCycle hold 200. With 0.1 N·m of drag or more,
+ * StealthChop slips a few steps on the shuttle too. The chapter's 0.25 N·m
+ * bump pulls the reading down to between about 80 and 510, depending on where
+ * in the stroke it lands, without skipping a step.
  */
 import { formatValue, formatRms } from '../format.js';
 
@@ -69,7 +73,7 @@ const MODE_NAME = { voltage: 'StealthChop', current: 'SpreadCycle' };
 const MODE_KEY = { voltage: 'stealthchop_threshold: 999999', current: 'stealthchop_threshold: 0' };
 
 const DEFAULTS = Object.freeze({
-  mode: 'voltage', threshold: 60, speed: 80, accel: 5000, rms: 1.5, drag: 0.05,
+  mode: 'voltage', threshold: 60, speed: 80, accel: 5000, rms: 1.5, drag: 0.02,
   sgthrs: 100, homingSpeed: 40, scope: 'current',
 });
 
