@@ -15,11 +15,11 @@
  * after 3.5 s of sim time or when the reader presses "Reveal". The
  * multipliers were measured on the stepper preset (chunk 07, STATUS.md
  * "Preset multipliers"); the BLDC preset shows the same symptoms, mostly
- * stronger, and where it differs (torque I too high, filters too high) the
- * symptom sentence depends on the motor type. Moving a slider switches the
- * select to "Custom". A motor-type change keeps the preset, or the Custom
- * state and the preset it started from: the framework replays the select,
- * then every slider off its default.
+ * stronger, and where it differs (velocity P too low, torque I too high,
+ * filters too high) the symptom sentence depends on the motor type. Moving
+ * a slider switches the select to "Custom". A motor-type change keeps the
+ * preset, or the Custom state and the preset it started from: the framework
+ * replays the select, then every slider off its default.
  *
  * Test moves loop on their own: a path restarts one second after it ends
  * (the stop metrics need 0.3 s, the rest-oscillation metric a few 100 ms
@@ -99,7 +99,8 @@ const PRESETS = [
   { id: 'velP-high', label: 'Velocity P too high', gains: { velocityP: 3 }, move: 'square', highlight: 'velocity', loupeMm: LOUPE_DEFAULT,
     symptom: 'the speed loop hunts at about 150 Hz with amps of current, at rest and after every corner. On hardware you would see ringing-like artifacts on the print.' },
   { id: 'velP-low', label: 'Velocity P too low', gains: { velocityP: 0.25 }, move: 'square', highlight: 'velocity', loupeMm: 4,
-    symptom: 'the axis lags behind the target speed, rounds every corner by millimeters and wobbles slowly (30 to 45 Hz) after each stop.' },
+    symptom: (ctx) => `the axis lags the target speed, rounds every corner by about ${ctx.motorType === 'bldc' ? '1' : '2.6'} mm `
+      + 'and wobbles (30 to 45 Hz) after each stop.' },
   { id: 'velI-high', label: 'Velocity I too high', gains: { velocityI: 4 }, move: 'square', highlight: 'velocity', loupeMm: LOUPE_DEFAULT,
     symptom: 'the speed oscillates at about 100 Hz after every corner and keeps oscillating at rest.' },
   { id: 'velI-low', label: 'Velocity I too low', gains: { velocityI: 0.1 }, move: 'holdBump', highlight: 'velocity', loupeMm: LOUPE_DEFAULT,
