@@ -17,7 +17,9 @@
  *   `short`   lane label for digital traces (default: label).
  *   `scale`   traces with the same scale key share a range (default: unit).
  *   `minSpan` smallest auto span, so a quiet trace does not blow its noise up
- *             to full height (defaults by unit, see MIN_SPAN).
+ *             to full height. The largest one among a scale group's members
+ *             replaces the unit default (MIN_SPAN), also when it is smaller;
+ *             groups without one keep the default.
  *   Auto range: symmetric around 0 when the data goes negative, else the data
  *   extent; padded 10 %, rounded to 1-2-2.5-5 steps, with hysteresis.
  *   'fit' (chunk 04): always the data extent, also for negative data, so a
@@ -180,7 +182,7 @@ export class Scope {
         let grp = byKey.get(gk);
         if (!grp) {
           grp = { key: gk, unit: d.unit || '', fixed: null, fit: false, lo: -1, hi: 1, init: false, active: false,
-            minSpan: MIN_SPAN[d.unit] || 0, members: [], scaleStr: d.unit || '', scaleDirty: true };
+            minSpan: 0, members: [], scaleStr: d.unit || '', scaleDirty: true };
           byKey.set(gk, grp);
           this.groups.push(grp);
         }
@@ -197,6 +199,8 @@ export class Scope {
       if (prevHidden.has(tr.key + '|' + tr.label)) tr.visible = false;
       this.traces.push(tr);
     }
+    // The largest minSpan a member gives replaces the unit default, even a smaller one.
+    for (const grp of this.groups) if (!(grp.minSpan > 0)) grp.minSpan = MIN_SPAN[grp.unit] || 0;
     this.buildLegend();
     for (let k = 0; k < this.traces.length; k++) this.colorTrace(this.traces[k]);
     this.updateLabel();
