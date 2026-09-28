@@ -35,6 +35,7 @@ export class Readouts {
     this.live.setAttribute('aria-live', 'polite');
     host.append(this.list, this.live);
     this.chips = [];
+    this.showTimer = 0;
     this.fadeTimer = 0;
     this.clearTimer = 0;
   }
@@ -130,19 +131,21 @@ export class Readouts {
    */
   announce(text) {
     if (!text) return;
+    clearTimeout(this.showTimer);
     clearTimeout(this.fadeTimer);
     clearTimeout(this.clearTimer);
     // Clear first so a repeated identical message is announced again.
     this.live.textContent = '';
     this.live.classList.remove('idle');
-    setTimeout(() => { this.live.textContent = text; }, 40);
+    this.showTimer = setTimeout(() => { this.live.textContent = text; }, 40);
     this.fadeTimer = setTimeout(() => this.live.classList.add('idle'), SHOW_MS);
     this.clearTimer = setTimeout(() => { this.live.textContent = ''; }, SHOW_MS + 600);
   }
 
-  /** Hide all chips and the message (chapter change). */
+  /** Hide all chips and the message (chapter change), including one still due to appear. */
   clear() {
     this.update([]);
+    clearTimeout(this.showTimer);
     clearTimeout(this.fadeTimer);
     clearTimeout(this.clearTimer);
     this.live.textContent = '';
