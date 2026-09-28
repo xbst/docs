@@ -24,7 +24,8 @@
  *   extent; padded 10 %, rounded to 1-2-2.5-5 steps, with hysteresis.
  *   'fit' (chunk 04): always the data extent, also for negative data, so a
  *   small ripple on a large value fills the plot (one trace sets it for its
- *   whole scale group).
+ *   whole scale group); it holds a range only while the data asks for at
+ *   least 80 % of it (auto: 40 %).
  *   `pulses`  (chunk 04) digital lane whose samples count pulses since the
  *             previous sample (the `stepN` trace): a baseline with one thin
  *             spike per pulse, spread over the sample's interval; columns
@@ -48,6 +49,7 @@ const FMT_MS = 100;
 const NONE = -1e9;
 const DASH = [5, 4], HOVER_DASH = [3, 3], SOLID = [];
 const NICE = [1, 2, 2.5, 5, 10];
+const KEEP_AUTO = 0.4, KEEP_FIT = 0.8;   // share of a held range the data must still ask for
 const MIN_SPAN = {
   mm: 2, 'mm/s': 10, A: 0.2, V: 2, 'N·m': 0.02, '°': 10, deg: 10, Hz: 10, kHz: 1,
   '%': 5, 'rad/s': 1, counts: 10,
@@ -533,7 +535,7 @@ export class Scope {
     return ring.v[p];
   }
 
-  /** @private auto range with 10 % padding, nice steps and hysteresis ('fit' groups: never symmetric) */
+  /** @private auto range with 10 % padding, nice steps and hysteresis ('fit' groups: never symmetric, tighter hysteresis) */
   updateRange(grp, mn, mx) {
     if (grp.fixed) return;
     let lo, hi;
@@ -551,8 +553,9 @@ export class Scope {
       hi = Math.ceil(b / step) * step;
       if (mn >= 0 && lo < 0) lo = 0;
     }
-    // Keep the current range while the data fits and still uses a fair part of it.
-    if (grp.init && mn >= grp.lo && mx <= grp.hi && (hi - lo) >= 0.4 * (grp.hi - grp.lo)) return;
+    // Keep the current range while the data fits and still uses a fair part of it ('fit' groups:
+    // most of it, so the range follows a shrinking extent, e.g. after a switch-on transient).
+    if (grp.init && mn >= grp.lo && mx <= grp.hi && (hi - lo) >= (grp.fit ? KEEP_FIT : KEEP_AUTO) * (grp.hi - grp.lo)) return;
     // The first range always gets its legend text, even when it equals the ±1 placeholder.
     const first = !grp.init;
     grp.init = true;
