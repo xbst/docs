@@ -202,6 +202,8 @@ const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : '');
 /* ---------------- world ---------------- */
 async function createWorld(kind) {
   if (kind !== 'fake') {
+    // Covers sim/world.js and its world-only modules. presets.js and drivers/foc.js (with units,
+    // transforms, biquad) are static imports of chapters and views: a failure there stops main.js.
     try {
       const mod = await import('./sim/world.js');
       return new mod.World();
