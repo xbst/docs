@@ -100,7 +100,7 @@ const PRESETS = [
   { id: 'velP-high', label: 'Velocity P too high', gains: { velocityP: 3 }, move: 'square', highlight: 'velocity', loupeMm: LOUPE_DEFAULT,
     symptom: 'the speed loop hunts at about 150 Hz with amps of current, at rest and after every corner. On hardware you would see ringing-like artifacts on the print.' },
   { id: 'velP-low', label: 'Velocity P too low', gains: { velocityP: 0.25 }, move: 'square', highlight: 'velocity', loupeMm: 4,
-    symptom: (ctx) => `the axis lags the target speed, rounds every corner by about ${ctx.motorType === 'bldc' ? '1' : '2.6'} mm `
+    symptom: (ctx) => `the axis lags the target speed, rounds every corner by ${ctx.motorType === 'bldc' ? 'about 1' : '2 to 3'} mm `
       + 'and wobbles (30 to 45 Hz) after each stop.' },
   { id: 'velI-high', label: 'Velocity I too high', gains: { velocityI: 4 }, move: 'square', highlight: 'velocity', loupeMm: LOUPE_DEFAULT,
     symptom: 'the speed oscillates at about 100 Hz after every corner and keeps oscillating at rest.' },
