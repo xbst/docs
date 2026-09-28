@@ -685,7 +685,9 @@ new ResizeObserver(() => {
   fitTabs();
   schedulePost();
 }).observe(document.documentElement);
-new ResizeObserver(() => schedulePost()).observe(el.app);
+// Desktop .app fills the iframe and the stage absorbs row changes: watch the rows idealHeight() sums.
+const heightObs = new ResizeObserver(() => schedulePost());
+for (const row of [el.app, el.tb, el.scope, el.ro, el.bb]) heightObs.observe(row);
 
 /* ---------------- debug overlay (?debug=1) ---------------- */
 let dbg = null, dbgAcc = { frames: 0, steps: 0, sim: 0, draw: 0, since: 0 };
