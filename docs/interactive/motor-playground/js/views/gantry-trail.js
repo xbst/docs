@@ -36,20 +36,31 @@ export class PathTrail {
     this.pxc = 0; this.pyc = 0; this.pxa = 0; this.pya = 0;
   }
 
-  /** Forget every point. */
+  /**
+   * Forget every point, and skip the samples the trace rings already hold: only samples
+   * newer than the newest one at the time of the call are taken in afterwards.
+   */
   clear() {
+    this.reset();
+    const r = this.rings[0];
+    if (r && r.len > 0) this.lastT = r.t[ringIndex(r, r.len - 1)];
+  }
+
+  /** @private forget every point and read the next rings from their start (a new world) */
+  reset() {
     this.fHead = 0; this.fLen = 0;
     this.cHead = 0; this.cLen = 0;
     this.lastT = -Infinity;
   }
 
   /**
-   * Take in the samples since the last call.
+   * Take in the samples since the last call (or since clear()). A snapshot time before the
+   * last sample read means a new world: its rings are read from the start.
    * @param {Object} snap world.snapshot (t, gantry)
    * @param {Map<string, Object>|null} traces world.traces (render ctx)
    */
   update(snap, traces) {
-    if (snap.t < this.lastT) this.clear();
+    if (snap.t < this.lastT) this.reset();
     if (traces && traces !== this.map) {
       this.map = traces;
       for (let k = 0; k < 4; k++) this.rings[k] = traces.get(KEYS[k]) || null;
