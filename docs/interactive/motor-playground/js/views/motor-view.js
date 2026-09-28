@@ -267,7 +267,7 @@ export class MotorView extends CanvasView {
   /** @private 10 Hz strings */
   formatStrings(snap, m, pr, isFoc, iMag, phi, thetaE) {
     const s = this.str;
-    s.delta = Math.round(wrapAngle(phi - thetaE) * DEG) + '°';
+    s.delta = formatValue(Math.round(wrapAngle(phi - thetaE) * DEG), 0) + '°';
     s.torque = 'torque ' + formatValue(num(m.torque, 0), 2) + ' N·m';
     s.count = m.encoder ? String(m.encoder.count) : '';
     const ip = m.iPhase || [];
@@ -713,7 +713,7 @@ export class MotorView extends CanvasView {
     const delta = Math.round(wrapAngle(Math.atan2(num(m.iBeta, 0), num(m.iAlpha, 0)) - num(m.thetaE, 0)) * DEG);
     const foc = m.driver === 'foc';
     return `${kind} cross-section${foc ? ' under field-oriented control' : ''}: rotor at ${deg}° electrical, `
-      + `current ${formatValue(iMag, 2)} A at a load angle of ${delta}°, torque ${formatValue(num(m.torque, 0), 2)} N·m`
+      + `current ${formatValue(iMag, 2)} A at a load angle of ${formatValue(delta, 0)}°, torque ${formatValue(num(m.torque, 0), 2)} N·m`
       + (foc ? `, torque current ${formatValue(num(m.iq, 0), 2)} A, flux current ${formatValue(num(m.id, 0), 2)} A.` : '.');
   }
 }
