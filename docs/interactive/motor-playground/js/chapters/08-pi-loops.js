@@ -402,7 +402,8 @@ export default {
     { name: 'iqStar', motor: 0, label: 'Iq target, motor A', unit: 'A', color: 'axis-q', dashed: true },
     { name: 'iq', motor: 0, label: 'Torque current Iq, motor A', unit: 'A', color: 'axis-q' },
     { name: 'id', motor: 0, label: 'Flux current Id, motor A', unit: 'A', color: 'axis-d' },
-    { name: 'noise', motor: 0, label: 'Current noise, motor A', unit: 'A', color: 'phase-b', scale: 'noise', minSpan: 0.05 },
+    // No minSpan: the amps default (±0.2 A) keeps the optimal noise a thin band, so noisier presets stand out.
+    { name: 'noise', motor: 0, label: 'Current noise, motor A', unit: 'A', color: 'phase-b', scale: 'noise' },
   ],
 
   onEvent(ev) {
