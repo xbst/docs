@@ -63,6 +63,7 @@ export class MotorView extends CanvasView {
     this.noteText = '';
     this.ghostLabel = '';
     this.stages = null;
+    this.nSide = -1;       // rotor letters behind (−1) or ahead (+1) of the pole centers, away from the load-angle label
   }
 
   onTheme() {
@@ -161,14 +162,21 @@ export class MotorView extends CanvasView {
     g.arc(cx, cy, L.Rin - 1.5, 0, TAU);
     g.stroke();
 
+    // load angle; its value label shows beside the arc when the current is up and |δ| > 3°
+    const delta = wrapAngle(phi - thetaE);
+    const arcShown = iMag > 0.04 * Irated;
+    const labelShown = arcShown && !L.compact && Math.abs(delta) > 3 / DEG;
+    // The rotor letters go on the side away from that label and the current vector; the side is
+    // kept while no label shows, so the letters do not jump at standstill.
+    if (labelShown) this.nSide = delta > 0 ? -1 : 1;
+
     if (this.opts.fieldTrail) this.drawTrail(th, snap, iA / Irated, iB / Irated);
-    this.drawRotor(th, thetaE);
+    this.drawRotor(th, thetaE, this.nSide);
     if (this.opts.showTransforms && !L.compact) this.drawProjections(th, m, thetaE, vScale, iA, iB);
     this.drawAxes(th, thetaE);
 
     // load-angle arc (between the rotor's d axis and the current vector)
-    if (iMag > 0.04 * Irated) {
-      const delta = wrapAngle(phi - thetaE);
+    if (arcShown) {
       const r = L.Rr * 0.42;
       g.strokeStyle = th.text;
       g.globalAlpha = 0.75;
@@ -177,7 +185,7 @@ export class MotorView extends CanvasView {
       g.arc(cx, cy, r, -thetaE, -thetaE - delta, delta > 0);
       g.stroke();
       g.globalAlpha = 1;
-      if (!L.compact && Math.abs(delta) > 3 / DEG) {
+      if (labelShown) {
         const mid = thetaE + delta / 2, rl = r + this.fpx(12) * 0.9;
         g.font = this.font.monoBold;
         g.textAlign = 'center';
@@ -344,8 +352,11 @@ export class MotorView extends CanvasView {
     }
   }
 
-  /** @private two-pole rotor at thetaE: N half toward thetaE */
-  drawRotor(th, thetaE) {
+  /**
+   * @private two-pole rotor at thetaE: N half toward thetaE
+   * @param {number} side −1 or +1: the letters sit that far (0.7 rad) behind or ahead of each pole's center
+   */
+  drawRotor(th, thetaE, side) {
     const g = this.g, L = this.lay, cx = L.cx, cy = L.cy, r = L.Rr;
     const a0 = -thetaE - Math.PI / 2, a1 = -thetaE + Math.PI / 2;
     // N half
@@ -372,7 +383,7 @@ export class MotorView extends CanvasView {
     g.strokeStyle = th.rotorS;
     g.beginPath(); g.arc(cx, cy, r, a1, a0 + TAU); g.stroke();
     if (L.compact && r < 30) return;
-    const rl = r * 0.7, off = 0.62;
+    const rl = r * 0.7, off = 0.7 * side;
     g.font = `700 ${this.fpx(13)}px ${this.theme.fontUi}`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
