@@ -86,6 +86,7 @@ function freshState() {
     pending: false,    // waiting for the carriage to stop before the homing move starts
     forced: false,     // the driver was switched to voltage mode for the homing move
     result: null,      // last homing: { kind: 'running'|'ok'|'false-trigger'|'no-edge', xMm, pressInMm, slow }
+    afterHoming: false, // parked after a homing: the slam's last stepLost events are not announced
     lostAt: -Infinity, // performance.now() of the last "fell out of step" announcement
   });
 }
@@ -119,6 +120,7 @@ function restoreMode(ctx) {
  */
 function run(ctx, force) {
   const w = ctx.world;
+  st.afterHoming = false;
   if (st.homing) {
     if (!force) return;
     restoreMode(ctx);
@@ -142,6 +144,7 @@ function home(ctx) {
   const w = ctx.world;
   restoreMode(ctx);                // a homing already running: its forced mode ends here
   st.homing = true;
+  st.afterHoming = false;
   st.result = { kind: 'running' };
   setScope(ctx, 'stallguard');
   const lost = lostMm(w);
@@ -343,6 +346,7 @@ export default {
     // Homing ended (retract done, or aborted by another command).
     if (st.homing && !snap.homing.active) {
       st.homing = false;
+      st.afterHoming = true;       // main.js drains events after onFrame: the slam's last stepLost comes next
       restoreMode(ctx);
       ctx.app.setHint(null);
       if (st.result && st.result.kind === 'running') st.result = null;
@@ -369,7 +373,9 @@ export default {
         // bumps; the LED and the scope show that, and Klipper ignores DIAG then too.
         return false;
       case 'stepLost': {
-        if (st.homing) return false;
+        // A homing reports its own result; its slam's stepLost events may still arrive after it ended
+        // (the carriage stays parked until run() or home()). The Lost chip shows the distance.
+        if (st.homing || st.afterHoming) return false;
         const now = performance.now();
         if (now - st.lostAt < 3000) return false;
         st.lostAt = now;
