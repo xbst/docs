@@ -29,7 +29,7 @@ import { Controls } from './controls.js';
 import { getProduct } from './products.js';
 import { readTokens, onThemeChange } from './theme.js';
 import { formatValue, timeScaleLabel } from './format.js';
-import { EMBEDDED, createHeightPoster, fullscreenAvailable, onFullscreenChange, toggleFullscreen } from './embed.js';
+import { EMBEDDED, canFullscreen, createHeightPoster, onFullscreenChange, toggleFullscreen } from './embed.js';
 
 const params = new URLSearchParams(location.search);
 const SOLO = params.get('nav') === '0';
@@ -260,7 +260,8 @@ function buildToolbar() {
     if (v) setTimeScaleValue(v);
   });
   el.fs.addEventListener('click', () => toggleFullscreen(standaloneUrl));
-  el.fs.hidden = !EMBEDDED && !fullscreenAvailable();   // the new-tab fallback is for iframes only
+  // the new-tab fallback is iframe-only: a standalone page without fullscreen (iPhone Safari) would open a copy of itself
+  el.fs.hidden = !EMBEDDED && !canFullscreen();
   if (SOLO) {
     el.app.classList.add('solo');
     el.openfull.hidden = false;

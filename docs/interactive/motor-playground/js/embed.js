@@ -19,10 +19,20 @@ export function fullscreenAvailable() {
 }
 
 /**
+ * Whether toggleFullscreen can request fullscreen here: it is available and
+ * documentElement has a request method (standard or webkit-prefixed).
+ * @returns {boolean}
+ */
+export function canFullscreen() {
+  const root = document.documentElement;
+  return fullscreenAvailable() && !!(root.requestFullscreen || root.webkitRequestFullscreen);
+}
+
+/**
  * Toggle fullscreen on documentElement. Inside an iframe, where fullscreen is
- * not available or the request is refused, open `fallbackUrl()` in a new tab
- * instead. A standalone page has nowhere better to go, so it does nothing
- * (main.js hides the button there when fullscreen is not available).
+ * not possible (canFullscreen) or the request is refused, open `fallbackUrl()`
+ * in a new tab instead. A standalone page has nowhere better to go, so it does
+ * nothing (main.js hides the button there when canFullscreen() is false).
  * @param {() => string} fallbackUrl absolute URL of the standalone widget
  */
 export function toggleFullscreen(fallbackUrl) {
@@ -32,9 +42,9 @@ export function toggleFullscreen(fallbackUrl) {
     return;
   }
   const open = () => { if (EMBEDDED) window.open(fallbackUrl(), '_blank', 'noopener'); };
+  if (!canFullscreen()) { open(); return; }
   const root = document.documentElement;
   const request = root.requestFullscreen || root.webkitRequestFullscreen;
-  if (!fullscreenAvailable() || !request) { open(); return; }
   try {
     const p = request.call(root);
     if (p && typeof p.catch === 'function') p.catch(open);
