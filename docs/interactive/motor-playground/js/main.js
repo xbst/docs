@@ -258,9 +258,7 @@ function buildToolbar() {
     if (v) setTimeScaleValue(v);
   });
   el.fs.addEventListener('click', () => toggleFullscreen(standaloneUrl));
-  // The new-tab fallback only makes sense inside an iframe: a standalone page that cannot
-  // go fullscreen (iPhone Safari) would open a copy of itself.
-  el.fs.hidden = !EMBEDDED && !fullscreenAvailable();
+  el.fs.hidden = !EMBEDDED && !fullscreenAvailable();   // the new-tab fallback is for iframes only
   if (SOLO) {
     el.app.classList.add('solo');
     el.openfull.hidden = false;
@@ -472,6 +470,14 @@ function sizeView(v) {
   if (w > 0 && h > 0) {
     try { v.view.resize(w, h, dpr); } catch (err) { reportOnce(`${v.name}.resize`, err); }
   }
+}
+
+/* A devicePixelRatio change without a css size change (another monitor, a zoomed fixed-width
+   docs page) reaches no ResizeObserver: re-measure every canvas, then re-arm for the new ratio. */
+function watchDpr() {
+  const mq = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+  mq.addEventListener('change', () => { for (const v of views) sizeView(v); scope.measure(); requestFrame(); watchDpr(); },
+    { once: true });
 }
 
 /** Desktop stage height for the chapter's layout: views at their preferred aspect, clamped. */
@@ -721,9 +727,7 @@ function updateUrl() {
 }
 
 /** Solo mode's "Open the full playground" link, with the current chapter, motor and theme. */
-function updateOpenFull() {
-  if (SOLO && ch) el.openfull.href = buildUrl(false);
-}
+function updateOpenFull() { if (SOLO && ch) el.openfull.href = buildUrl(false); }
 
 /* ---------------- fullscreen and auto-height (SPEC 4.10; helpers in embed.js) ---------------- */
 const standaloneUrl = () => new URL(buildUrl(false), location.href).href;
@@ -781,6 +785,7 @@ async function init() {
   ctx.world = world;
   window.MotorPlayground = { app, world };
   enterChapter(resolveChapter(params.get('chapter')));
+  watchDpr();
   window.addEventListener('resize', () => { fitTabs(); schedulePost(); });
   MOBILE.addEventListener('change', () => { fitTabs(); schedulePost(); });
   if (document.fonts && document.fonts.ready) {
