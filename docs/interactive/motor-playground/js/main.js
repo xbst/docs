@@ -1,7 +1,7 @@
 /**
  * Motor Control Playground: bootstrap, router, chapter lifecycle, frame loop,
  * stage layout, fullscreen and embed height posting (SPEC 4.2, 4.3, 4.8, 4.10;
- * the generic fullscreen and postMessage helpers live in embed.js).
+ * the generic fullscreen, postMessage and devicePixelRatio helpers live in embed.js).
  *
  * URL parameters: chapter=<id|number> (default 1), nav=0 (solo mode: no tabs,
  * an "Open the full playground" link), product=<key> (products.js; unknown =
@@ -29,7 +29,7 @@ import { Controls } from './controls.js';
 import { getProduct } from './products.js';
 import { readTokens, onThemeChange } from './theme.js';
 import { formatValue, timeScaleLabel } from './format.js';
-import { EMBEDDED, canFullscreen, createHeightPoster, onFullscreenChange, toggleFullscreen } from './embed.js';
+import { EMBEDDED, canFullscreen, createHeightPoster, onFullscreenChange, toggleFullscreen, watchDevicePixelRatio } from './embed.js';
 
 const params = new URLSearchParams(location.search);
 const SOLO = params.get('nav') === '0';
@@ -475,14 +475,6 @@ function sizeView(v) {
   }
 }
 
-/* A devicePixelRatio change without a css size change (another monitor, a zoomed fixed-width
-   docs page) reaches no ResizeObserver: re-measure every canvas, then re-arm for the new ratio. */
-function watchDpr() {
-  const mq = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
-  mq.addEventListener('change', () => { for (const v of views) sizeView(v); scope.measure(); requestFrame(); watchDpr(); },
-    { once: true });
-}
-
 /** Desktop stage height for the chapter's layout: views at their preferred aspect, clamped. */
 function desiredStageHeight() {
   const W = el.views.clientWidth;
@@ -792,7 +784,7 @@ async function init() {
   ctx.world = world;
   window.MotorPlayground = { app, world };
   enterChapter(resolveChapter(params.get('chapter')));
-  watchDpr();
+  watchDevicePixelRatio(() => { for (const v of views) sizeView(v); scope.measure(); requestFrame(); });
   window.addEventListener('resize', () => { fitTabs(); schedulePost(); });
   MOBILE.addEventListener('change', () => { fitTabs(); schedulePost(); });
   if (document.fonts && document.fonts.ready) {
