@@ -69,6 +69,8 @@ const MIN_SPEED = 10;
 const LOST_MM = 0.05;
 /** Bump for this chapter: a knock StallGuard notices without skipping a step at the default current. */
 const BUMP = { torque: 0.25, durationS: 0.04 };
+/** The chapter's time-scale range (the toolbar slider's range). */
+const TIME_SCALE = Object.freeze({ default: 0.25, min: 0.01, max: 1 });
 const MODE_NAME = { voltage: 'StealthChop', current: 'SpreadCycle' };
 const MODE_KEY = { voltage: 'stealthchop_threshold: 999999', current: 'stealthchop_threshold: 0' };
 
@@ -87,6 +89,7 @@ function freshState() {
     forced: false,     // the driver was switched to voltage mode for the homing move
     result: null,      // last homing: { kind: 'running'|'ok'|'false-trigger'|'no-edge', xMm, pressInMm, slow }
     afterHoming: false, // parked after a homing: the slam's last stepLost events are not announced
+    slowHint: '',      // the slow-homing hint shown: '' none, 'raise' (advises a faster time scale), 'max'
     lostAt: -Infinity, // performance.now() of the last "fell out of step" announcement
   });
 }
@@ -167,10 +170,18 @@ function startHoming(ctx) {
   }
   w.command('home', { speedMmS: st.homingSpeed, retractMm: RETRACT_MM, passes: 1, accelMmS2: HOMING_ACCEL });
   const far = w.snapshot.gantry.x;
-  if (st.homingSpeed < MIN_SPEED && far > 15) {
-    ctx.app.setHint(`At ${st.homingSpeed} mm/s the carriage needs ${fmt(far / st.homingSpeed, 0)} s of motor time `
-      + 'to reach the stop: raise the time scale to fast-forward.');
-  }
+  if (st.homingSpeed < MIN_SPEED && far > 15) slowHint(ctx, far);
+}
+
+/**
+ * The slow-homing hint: the motor time the approach needs from `farMm`, plus the advice to
+ * fast-forward while the time scale is below the chapter's maximum.
+ */
+function slowHint(ctx, farMm) {
+  const atMax = ctx.app.timeScale >= TIME_SCALE.max;
+  st.slowHint = atMax ? 'max' : 'raise';
+  ctx.app.setHint(`At ${st.homingSpeed} mm/s the carriage needs ${fmt(farMm / st.homingSpeed, 0)} s of motor time `
+    + (atMax ? 'to reach the stop.' : 'to reach the stop: raise the time scale to fast-forward.'));
 }
 
 function setScope(ctx, s) {
@@ -240,7 +251,7 @@ export default {
   id: 'driver-modes', number: 4, title: 'StealthChop, SpreadCycle and StallGuard', short: 'Driver modes',
   takeaway: 'Quiet mode regulates current slowly, fast mode regulates it every cycle, and stall detection guesses the load from how the current behaves.',
   motorTypes: ['stepper'],
-  timeScale: { default: 0.25, min: 0.01, max: 1 },
+  timeScale: TIME_SCALE,
   traceWindow: 1.0,
   stage: { primary: 'motor', secondary: 'gantry', split: 0.5 },
   viewOptions: { gantry: { mode: 'axis', led: true, detailMm: 3 } },
@@ -343,11 +354,16 @@ export default {
       if (snap.planner.mode === 'idle') startHoming(ctx);
       return;
     }
+    // The reader took the hint's advice up to the maximum: drop the advice.
+    if (st.slowHint === 'raise' && ctx.app.timeScale >= TIME_SCALE.max && snap.homing.active && !snap.homing.contact) {
+      slowHint(ctx, snap.gantry.x);
+    }
     // Homing ended (retract done, or aborted by another command).
     if (st.homing && !snap.homing.active) {
       st.homing = false;
       st.afterHoming = true;       // main.js drains events after onFrame: the slam's last stepLost comes next
       restoreMode(ctx);
+      st.slowHint = '';
       ctx.app.setHint(null);
       if (st.result && st.result.kind === 'running') st.result = null;
     }
