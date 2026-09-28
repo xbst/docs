@@ -10,7 +10,8 @@
  * override `onTheme(theme)` and `onOptions(changed)`.
  *
  * Colors come only from `ctx.theme` (camelCase tokens, see theme.js); alpha
- * variants use `globalAlpha`, so nothing is parsed per frame.
+ * variants use `globalAlpha`, so nothing is parsed per frame. Colors derived
+ * from the tokens (`textColor`, `strokeOn`) are cached per theme object.
  */
 import { MOTOR_PRESETS } from '../sim/presets.js';
 
@@ -240,19 +241,38 @@ export function led(g, th, x, y, r, lit, color) {
   }
 }
 
-/** WCAG relative luminance of a CSS hex or rgb() color. */
-export function luminance(color) {
-  let r = 136, gg = 136, b = 136;
+/** [r, g, b] (0–255) of a CSS hex or rgb() color; mid gray when it cannot be read. */
+function rgbOf(color) {
   const s = String(color || '').trim();
   if (s[0] === '#') {
     const hex = s.length === 4 ? s[1] + s[1] + s[2] + s[2] + s[3] + s[3] : s.slice(1, 7);
-    r = parseInt(hex.slice(0, 2), 16); gg = parseInt(hex.slice(2, 4), 16); b = parseInt(hex.slice(4, 6), 16);
-  } else {
-    const m = s.match(/[\d.]+/g);
-    if (m && m.length >= 3) { r = +m[0]; gg = +m[1]; b = +m[2]; }
+    return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
   }
+  const m = s.match(/[\d.]+/g);
+  return m && m.length >= 3 ? [+m[0], +m[1], +m[2]] : [136, 136, 136];
+}
+
+/** '#rrggbb' of r, g, b (rounded, 0–255). */
+function hexOf(r, g, b) {
+  const h = (c) => Math.round(c).toString(16).padStart(2, '0');
+  return '#' + h(r) + h(g) + h(b);
+}
+
+/** WCAG relative luminance of a CSS hex or rgb() color. */
+export function luminance(color) {
+  const [r, gg, b] = rgbOf(color);
   const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
   return 0.2126 * lin(r) + 0.7152 * lin(gg) + 0.0722 * lin(b);
+}
+
+/**
+ * The opaque color `color` gives when drawn at `alpha` over `bg` (what a translucent glow looks like).
+ * @param {string} color @param {number} alpha @param {string} bg opaque background
+ * @returns {string} '#rrggbb'
+ */
+export function blend(color, alpha, bg) {
+  const a = rgbOf(color), b = rgbOf(bg);
+  return hexOf(a[0] * alpha + b[0] * (1 - alpha), a[1] * alpha + b[1] * (1 - alpha), a[2] * alpha + b[2] * (1 - alpha));
 }
 
 /** WCAG contrast ratio of two CSS colors (1 to 21). */
@@ -277,6 +297,39 @@ export function textColor(th, color) {
   let c = m.get(color);
   if (c === undefined) {
     c = contrast(color, th.tipBg) >= 4.5 ? color : th.text;
+    m.set(color, c);
+  }
+  return c;
+}
+
+const strokeCache = new WeakMap();
+
+/**
+ * `color` for lines drawn on `bg`: unchanged in the dark theme or where it reaches 3:1 (WCAG 1.4.11
+ * for graphics), else scaled toward black in 1 % steps until it does. In the light palette amber
+ * #E39A00 becomes #c38400 and green #27AE60 #25a55b on the scope's #fafafa; the tokens stay as they
+ * are. Cached per theme object and background, so it is cheap per frame.
+ * @param {Object} th theme
+ * @param {string} color
+ * @param {string} bg the opaque color under the stroke
+ * @returns {string}
+ */
+export function strokeOn(th, color, bg) {
+  let byBg = strokeCache.get(th);
+  if (!byBg) { byBg = new Map(); strokeCache.set(th, byBg); }
+  let m = byBg.get(bg);
+  if (!m) { m = new Map(); byBg.set(bg, m); }
+  let c = m.get(color);
+  if (c === undefined) {
+    c = color;
+    if (!th.dark && contrast(color, bg) < 3) {
+      const [r, g, b] = rgbOf(color);
+      for (let k = 1; k <= 100; k++) {
+        const f = 1 - k / 100;
+        c = hexOf(r * f, g * f, b * f);
+        if (contrast(c, bg) >= 3) break;
+      }
+    }
     m.set(color, c);
   }
   return c;

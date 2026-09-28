@@ -15,6 +15,8 @@
  *   { name, motor = 0, label, short, unit, group: 'analog' | 'digital',
  *     color: token name ('phase-a', 'target', …) or CSS color,
  *     dashed, range: 'auto' | 'fit' | [min, max], scale, minSpan, pulses }
+ *   `color`   drawn darker in the light theme where it is under 3:1 on the
+ *             plot (view-util strokeOn: amber and green); the tokens stay.
  *   `short`   lane label for digital traces (default: label).
  *   `scale`   traces with the same scale key share a range (default: unit).
  *   `minSpan` smallest auto span, so a quiet trace does not blow its noise up
@@ -40,6 +42,7 @@
  */
 import { tokenColor } from '../theme.js';
 import { formatCompact, formatDuration, formatTrim, formatValue } from '../format.js';
+import { luminance, strokeOn } from './view-util.js';
 
 const MAX_TRACES = 24;
 const LANE_H = 14, LANE_GAP = 5;
@@ -66,18 +69,7 @@ function niceCeil(x) {
 
 /** '#111111' or '#ffffff', whichever contrasts more with a CSS color. */
 function textOn(color) {
-  let r = 136, g = 136, b = 136;
-  const s = String(color).trim();
-  if (s[0] === '#') {
-    const hex = s.length === 4 ? s[1] + s[1] + s[2] + s[2] + s[3] + s[3] : s.slice(1, 7);
-    r = parseInt(hex.slice(0, 2), 16); g = parseInt(hex.slice(2, 4), 16); b = parseInt(hex.slice(4, 6), 16);
-  } else {
-    const m = s.match(/[\d.]+/g);
-    if (m && m.length >= 3) { r = +m[0]; g = +m[1]; b = +m[2]; }
-  }
-  const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
-  const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-  return L > 0.179 ? '#111111' : '#ffffff';
+  return luminance(color) > 0.179 ? '#111111' : '#ffffff';
 }
 
 function rangeText(lo, hi, unit) {
@@ -155,10 +147,11 @@ export class Scope {
     this.dirty = true;
   }
 
-  /** @private */
+  /** @private the trace's color, darkened in the light theme where it would be under 3:1 on the plot */
   colorTrace(tr) {
     if (!this.theme) return;
-    tr.color = tokenColor(this.theme, tr.d.color, this.theme.scopeTrace);
+    const th = this.theme;
+    tr.color = strokeOn(th, tokenColor(th, tr.d.color, th.scopeTrace), th.scopeBg);
     tr.tagText = textOn(tr.color);
     tr.swatch.style.borderColor = tr.color;
   }

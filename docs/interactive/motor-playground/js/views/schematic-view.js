@@ -9,7 +9,8 @@
  * `pwmState[0]` (+1: S1 and S4 on, the supply drives the coil; −1: S2 and S3
  * on, reversed; 0: S2 and S4 on, the coil current circulates through the low
  * side). Chevrons flow along the active current path with a speed that grows
- * with |iA|; they stand still while the simulation is paused.
+ * with |iA|; they stand still while the simulation is paused. In the light
+ * theme they are a darker amber, 3:1 against the path's glow.
  *
  * The state is named from the target's sign: driving toward the target is
  * "drive", 0 V is "slow decay", the opposite polarity is "fast decay".
@@ -17,7 +18,7 @@
  * Options:
  *   phase   phase index to show (default 0, phase A)
  */
-import { CanvasView, TAU, arrow, haloText, roundRect, led, clamp, num, presetOf } from './view-util.js';
+import { CanvasView, TAU, arrow, haloText, roundRect, led, clamp, num, presetOf, blend, strokeOn } from './view-util.js';
 import { formatValue } from '../format.js';
 
 // Design coordinates; the drawing is scaled uniformly to fit the view.
@@ -28,6 +29,7 @@ const XSUP = 40;                             // supply terminal
 const SOLID = [];
 const DASH = [4, 4];
 const CHEV_SPACING = 24;
+const GLOW = 0.22;                           // alpha of the active path's glow
 const FLOW = 80;                             // chevron speed at rated current, design px per real second
 
 // Current paths (design coordinates), each in the direction of the listed coil current sign.
@@ -50,10 +52,16 @@ export class SchematicView extends CanvasView {
     this.oy = 0;
     this.flow = 0;          // chevron offset along the path, design px
     this.lastNow = 0;
+    this.chevColor = '';    // th.field, darkened where it is under 3:1 on the glow (onTheme)
     this.str = {
       vbus: '', i: '', tgt: '', state: '', rl: '', bemf: '',
       driveP: '', driveN: '', fastP: '', fastN: '', slow: '',
     };
+  }
+
+  /** @param {Object} th theme */
+  onTheme(th) {
+    this.chevColor = strokeOn(th, th.field, blend(th.field, GLOW, th.tipBg));
   }
 
   /** @private */
@@ -98,7 +106,7 @@ export class SchematicView extends CanvasView {
     // active path glow
     if (Math.abs(i) > 0.01 * Irated) {
       g.strokeStyle = th.field;
-      g.globalAlpha = 0.22;
+      g.globalAlpha = GLOW;
       g.lineWidth = Math.max(5, 9 * sc);
       g.lineJoin = 'round';
       this.poly(path);
@@ -283,7 +291,7 @@ export class SchematicView extends CanvasView {
     for (let k = 2; k < pts.length; k += 2) total += Math.hypot(pts[k] - pts[k - 2], pts[k + 1] - pts[k - 1]);
     const off = ((this.flow % CHEV_SPACING) + CHEV_SPACING) % CHEV_SPACING;
     const size = Math.max(3.5, 5 * sc);
-    g.strokeStyle = th.field;
+    g.strokeStyle = this.chevColor || th.field;
     g.lineWidth = Math.max(1.8, 2.4 * sc);
     g.lineCap = 'round';
     g.lineJoin = 'round';
