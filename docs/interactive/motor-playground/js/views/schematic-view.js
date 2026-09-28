@@ -52,6 +52,8 @@ export class SchematicView extends CanvasView {
     this.oy = 0;
     this.flow = 0;          // chevron offset along the path, design px
     this.lastNow = 0;
+    this.overW = 0;         // css px widths of the 'over target' and 'measured' labels (layout)
+    this.measuredW = 0;
     this.chevColor = '';    // th.field, darkened where it is under 3:1 on the glow (onTheme)
     this.str = {
       vbus: '', i: '', tgt: '', state: '', rl: '', bemf: '',
@@ -70,6 +72,10 @@ export class SchematicView extends CanvasView {
     this.s = Math.max(0.3, s);
     this.ox = (this.w - DW * this.s) / 2;
     this.oy = (this.h - DH * this.s) / 2;
+    // widths of the control-side labels, which do not scale with the drawing (drawControl)
+    this.g.font = this.font.ui;
+    this.overW = this.g.measureText('over target').width;
+    this.measuredW = this.g.measureText('measured').width;
     this.layoutDirty = false;
   }
 
@@ -374,20 +380,23 @@ export class SchematicView extends CanvasView {
     g.textAlign = 'left';
     g.fillText('−', this.X(cx0 + 5), this.Y(cyT + 14));
     g.fillText('+', this.X(cx0 + 5), this.Y(cyB - 14));
+    // Labels in css px on a scaled drawing: on narrow views (phones) they move left to stay
+    // clear of the chopper-logic box and inside the view.
+    const lx = 392, ly = 236, lw2 = 150, lh = 52;
     g.font = this.font.ui;
     g.fillStyle = th.muted;
     g.textAlign = 'left';
     g.textBaseline = 'top';
-    g.fillText('measured', this.X(XR + 12), this.Y(BOT) + 5);
+    g.fillText('measured', Math.min(this.X(XR + 12), this.X(lx) - 4 - this.measuredW), this.Y(BOT) + 5);
     g.textBaseline = 'middle';
-    // "over target" output LED
+    // "over target" output LED and its label
     const over = Math.abs(i) >= Math.abs(iStar) && Math.abs(iStar) > 0.01;
-    led(this.g, th, this.X(cx1 + 10), this.Y(cyM) - 12, 4, over, th.warn);
+    const tx = Math.min(this.X(cx1 + 18), this.w - 4 - this.overW);
+    led(this.g, th, tx - 8 * sc, this.Y(cyM) - 12, 4, over, th.warn);
     g.textAlign = 'left';
     g.fillStyle = th.muted;
-    g.fillText('over target', this.X(cx1 + 18), this.Y(cyM) - 12);
+    g.fillText('over target', tx, this.Y(cyM) - 12);
     // chopper logic box: which switches it closes
-    const lx = 392, ly = 236, lw2 = 150, lh = 52;
     g.fillStyle = th.tipBg;
     g.strokeStyle = th.tipBorder;
     g.lineWidth = 1.2;
