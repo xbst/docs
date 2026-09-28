@@ -4,10 +4,14 @@
  */
 
 const MINUS = '−';
+/** Magnitude below which a value is float residue and reads "0": a millionth of any display unit. */
+const FLOOR = 1e-6;
 
 /**
  * Format a number to about three significant digits: 1234 → "1234",
  * 123.4 → "123", 12.34 → "12.3", 1.234 → "1.23", 0.01234 → "0.0123".
+ * Magnitudes under 1e-6 (float residue) read "0", so the output never
+ * switches to exponent notation.
  * @param {number} v
  * @param {number} [digits] fixed decimals instead of significant digits
  * @returns {string}
@@ -19,7 +23,7 @@ export function formatValue(v, digits) {
   if (digits != null) s = v.toFixed(digits);
   else {
     const a = Math.abs(v);
-    if (a === 0) s = '0';
+    if (a < FLOOR) s = '0';
     else if (a >= 100) s = v.toFixed(0);
     else if (a >= 10) s = v.toFixed(1);
     else if (a >= 1) s = v.toFixed(2);
