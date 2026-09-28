@@ -5,7 +5,9 @@
  * buttons) and watches the pulses on the scope. Every number comes from the world: steps per mm
  * from the preset (4·p full steps per turn), the microsteps and the rotation distance; the step
  * count is the step generator's position (`world.stepgens[0].sent`, what the controller has
- * sent, counted from 0 mm); "pulses for this move" is that count since the last move command.
+ * sent, counted from 0 mm); "pulses for this move" counts every pulse sent since the last move
+ * command (`world.stepgens[0].pulses`), so a command against the motion also counts the braking
+ * pulses and the way back, and its total "of N" includes them.
  *
  * Speed and acceleration are the planner limits and apply from the next move (a new limit
  * mid-move would change the cruise speed in one step). "Pulse zoom" narrows the scope to 10 ms
@@ -25,7 +27,7 @@ const ZOOM = { window: 0.01, timeScale: 0.01 };
 const NORMAL = { window: 2, timeScale: 1 };
 
 /** Chapter state; reset in onEnter (scenario() runs before it and only reads the constants). */
-const st = { target: FIRST_MOVE_MM, speed: SPEED, accel: ACCEL, zoom: false, sent0: 0, goal: 0, moving: false };
+const st = { target: FIRST_MOVE_MM, speed: SPEED, accel: ACCEL, zoom: false, p0: 0, total: 0, moving: false };
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 /** Scenario of the World (`scenario`) or of FakeWorld (`sc`). */
@@ -34,6 +36,8 @@ const scOf = (w) => w.scenario || w.sc || {};
 const presetOf = (w) => (w.presets && w.presets[0]) || MOTOR_PRESETS[scOf(w).motorPreset] || MOTOR_PRESETS.stepper;
 /** The controller's step position (FakeWorld: its absolute step count). */
 const sentOf = (w) => (w.stepgens && w.stepgens[0] ? w.stepgens[0].sent : w.snapshot.step.count);
+/** Pulses sent so far, each counted once whatever its direction (FakeWorld: its net step count). */
+const pulsesOf = (w) => (w.stepgens && w.stepgens[0] ? w.stepgens[0].pulses : w.snapshot.step.count);
 
 /** Step geometry of the world: full steps per turn, microsteps, rotation distance, pulses per turn and per mm. */
 function geometry(world) {
@@ -47,7 +51,9 @@ function geometry(world) {
 /**
  * Command a move to x mm (clamped to the axis) with the current speed and acceleration. A
  * command that extends the running motion in the same direction continues the same move for
- * the pulse counter (four quick +10 presses count as one 40 mm move).
+ * the pulse counter (four quick +10 presses count as one 40 mm move). When the planner has to
+ * brake first (a target behind the moving carriage, or one ahead too close to stop for), the
+ * move's total adds the pulses to the braking point and back.
  */
 function moveTo(ctx, x) {
   const w = ctx.world, pl = w.snapshot.planner;
@@ -57,10 +63,14 @@ function moveTo(ctx, x) {
   st.target = target;
   w.set('planner.maxVelocity', st.speed);
   w.set('planner.accel', st.accel);
-  if (!continuing) st.sent0 = sentOf(w);
-  st.goal = Math.round(target * geometry(w).spm);
-  st.moving = true;
   w.command('moveTo', { xMm: target });
+  // Planned pulses: those this move already sent, then to the braking point when the plan
+  // starts with a braking segment (it ends at segEndX), then to the target.
+  const P = w.planner, spm = geometry(w).spm, sent = sentOf(w), pulses = pulsesOf(w);
+  const turn = P && P.brake ? Math.round(P.segEndX * spm) : sent;
+  if (!continuing) st.p0 = pulses;
+  st.total = Math.abs(pulses - st.p0) + Math.abs(turn - sent) + Math.abs(Math.round(target * spm) - turn);
+  st.moving = true;
   ctx.app.setControlValue('target', target);
   ctx.app.setViewOptions('gantry', { targetMm: target });
 }
@@ -112,7 +122,8 @@ export default {
     if (ev.type === 'stallDetected') return false;
     if (ev.type !== 'pathDone' || !st.moving) return undefined;
     st.moving = false;
-    const pulses = Math.abs(st.goal - st.sent0);
+    const pulses = Math.abs(pulsesOf(ctx.world) - st.p0);
+    st.total = pulses;   // the finished move shows what it really sent
     const mm = pulses / geometry(ctx.world).spm;
     return `Move done: ${pulses} pulses for ${+mm.toFixed(3)} mm`;
   },
@@ -147,7 +158,7 @@ export default {
   readouts(snap, metrics, ctx) {
     const w = ctx.world;
     const sent = sentOf(w);
-    const done = Math.abs(sent - st.sent0), total = Math.abs(st.goal - st.sent0);
+    const done = Math.abs(pulsesOf(w) - st.p0), total = st.total;
     return [
       { label: 'Step rate', value: snap.step.rate / 1000, unit: 'kHz', digits: 2 },
       { label: 'Step count', value: sent, digits: 0, title: 'Steps sent so far, counted from 0 mm' },

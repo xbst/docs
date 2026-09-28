@@ -102,7 +102,9 @@ export function junctionSpeed(u1x, u1y, u2x, u2y, len1, len2, scv, accel, vmax) 
  * `justFinished` (true for exactly one step when a move or path completes), `pathName`
  * (string|null; 'custom' for a path object), `atCorner` (commanded point within 10 mm of
  * a real corner of the current plan), `segStartX, segStartY, segEndX, segEndY` (current
- * segment), `segS` (mm along it), `stopping` (a ramped stop is in progress).
+ * segment), `segS` (mm along it), `stopping` (a ramped stop is in progress), `brake` (segment 0
+ * of the current plan brakes along the velocity the command found, to the point where the
+ * motion can turn: `segEndX, segEndY` right after the command).
  * Config fields: `maxVelocity`, `accel`, `scv`, `rd`, `kinematics`, `axisLength`.
  */
 export class Planner {

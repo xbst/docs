@@ -25,6 +25,8 @@ const RATE_TAU = 5e-3;
  *   pulse); otherwise the direction of the last pulse, changed in the same step
  *   that emits the first pulse of the new direction, before it counts.
  * - `count`: net signed pulses since `reset`.
+ * - `pulses`: unsigned pulses since `reset` (every pulse counts once, whatever its
+ *   direction: a move that brakes and comes back counts both legs).
  * - `rate`: pulse rate magnitude in pulses/s (EMA, 5 ms time constant, always >= 0).
  * - `pulsesThisStep`: signed pulses emitted by the last `update`.
  * - `stepAngle`: rad per pulse (2π/stepsPerRev).
@@ -41,6 +43,7 @@ export class StepGen {
     this.level = 0;
     this.dir = 1;
     this.count = 0;
+    this.pulses = 0;
     this.rate = 0;
     this.pulsesThisStep = 0;
     this.sent = 0;
@@ -64,12 +67,13 @@ export class StepGen {
   }
 
   /**
-   * Aligns the sent position to `thetaRad` and clears all history (count, rate, level, dir).
+   * Aligns the sent position to `thetaRad` and clears all history (count, pulses, rate, level, dir).
    * @param {number} thetaRad commanded motor angle, rad
    */
   reset(thetaRad) {
     this.sent = Math.round(thetaRad * this.invStepAngle);
     this.count = 0;
+    this.pulses = 0;
     this.rate = 0;
     this.level = 0;
     this.dir = 1;
@@ -78,7 +82,7 @@ export class StepGen {
 
   /**
    * Aligns the sent position to `thetaRad` without emitting pulses; keeps
-   * `count`, `rate`, `dir` and `level` history (used after homing / setPosition).
+   * `count`, `pulses`, `rate`, `dir` and `level` history (used after homing / setPosition).
    * @param {number} thetaRad commanded motor angle, rad
    */
   rebase(thetaRad) {
@@ -105,6 +109,7 @@ export class StepGen {
       this.dir = n > 0 ? 1 : -1;
       this.level = 1;
       this.count += n;
+      this.pulses += n > 0 ? n : -n;
     } else {
       this.level = 0;
     }
