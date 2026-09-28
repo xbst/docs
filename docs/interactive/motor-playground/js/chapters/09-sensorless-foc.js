@@ -154,8 +154,9 @@ export default {
       { label: 'Free-motion peak', value: h.freeIqPeak, unit: 'A', digits: 2,
         title: 'Largest Iq target while the carriage moved freely in this pass; set the limit just above it. '
           + 'After a false trigger it reads the limit itself, since the target is capped there' },
-      { label: 'Press-in', value: h.pressInMm, unit: 'mm', digits: 2, warn: h.pressInMm > PRESS_WARN_MM,
-        title: 'How far the carriage pushed into the (compliant) stop this pass' },
+      { label: 'Press-in at detection', value: h.pressInMm, unit: 'mm', digits: 2, warn: h.pressInMm > PRESS_WARN_MM,
+        title: 'How far the carriage had pushed into the (compliant) stop when the status output rose; '
+          + 'the loop keeps pushing after that, so the carriage sinks in further' },
       { label: 'Press force', value: forceN, unit: 'N', digits: 0, title: 'Motor torque as belt force, Kt·Iq·2π/rd' },
       { label: 'Homing', value: result, warn: !h.active && (h.result === 'false-trigger' || h.result === 'no-edge'),
         ok: !h.active && h.result === 'ok' },
@@ -185,11 +186,14 @@ export default {
         + 'and press Home again.',
     ];
   },
-  deeper: () => '<p>The stop here is a stiff spring (belt compliance), so the press-in shows the force: at the limit current the '
-    + 'motor pushes with Kt·I, and the carriage sinks in until the belt pushes back as hard. Doubling the limit roughly doubles '
-    + 'the press-in.</p>'
+  // Press-in at detection (chunk 10, node), stepper at 40 mm/s: 0.06 / 0.09 / 0.73 / 1.44 mm at 0.5 / 1 / 2 / 3 A;
+  // at 10 mm/s 0.03 / 0.37 / 1.05 / 1.76 mm, so a slower approach presses deeper above ~0.6 A. Above the
+  // contact kick (velocity P × approach speed) the slope is Kt/k: 0.70 mm/A stepper, 0.19 mm/A BLDC.
+  deeper: (ctx) => '<p>The stop is a stiff spring (belt compliance). At contact the speed error alone makes the loop ask for '
+    + 'current in proportion to the approach speed: a limit below that trips right there, a higher one only once the belt has '
+    + `compressed, about ${ctx.motorType === 'bldc' ? '0.2' : '0.7'} mm per extra amp (Kt over the belt stiffness).</p>`
     + '<p>Detection itself takes a few control cycles of 40 µs once the demand crosses the limit; what takes time is the speed '
-    + 'error building up while the belt compresses. A slower approach and a lower limit keep the press-in small.</p>'
+    + 'error building up while the belt compresses. A lower limit keeps the press-in small.</p>'
     + '<p>The status output is the OR of the driver\'s limit flags: the torque-current limit used here plus the voltage '
     + 'limits, so the same pin also reports a saturated supply.</p>',
 };
