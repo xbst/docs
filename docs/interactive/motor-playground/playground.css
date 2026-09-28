@@ -299,7 +299,7 @@ a{color:inherit}
 /* ---------------- bottom hint bar ---------------- */
 .bb{align-self:center;background:var(--tip-bg);color:var(--desc-color);border:1px solid var(--tip-border);
   padding:5px 16px;border-radius:12px;font-size:.72rem;box-shadow:0 2px 8px var(--tip-shadow);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;flex-shrink:0}
+  text-align:center;max-width:100%;flex-shrink:0}
 .bb:empty{display:none}
 
 /* ---------------- debug overlay (?debug=1) ---------------- */
@@ -350,7 +350,6 @@ html.is-fs .vh.strip{flex-basis:104px}
   .scope-plot{height:160px}
   .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
   .live{max-width:45%}
-  .bb{white-space:normal;text-align:center}
   /* fullscreen keeps the one-column page scrolling (the desktop rules lock the viewport) */
   html.is-fs body{overflow-x:hidden;overflow-y:auto}
   html.is-fs .app{height:auto}
