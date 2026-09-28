@@ -290,7 +290,7 @@ function updateToolbar() {
     b.title = ok ? '' : `This chapter uses ${only} motors only`;
   }
   updatePlayButton();
-  if (SOLO) el.openfull.href = buildUrl(false);
+  updateOpenFull();
   fitTabs();
 }
 
@@ -714,6 +714,11 @@ function updateUrl() {
   try { history.replaceState(history.state, '', location.pathname + '?' + p.toString() + location.hash); } catch (err) { /* sandboxed */ }
 }
 
+/** Solo mode's "Open the full playground" link, with the current chapter, motor and theme. */
+function updateOpenFull() {
+  if (SOLO && ch) el.openfull.href = buildUrl(false);
+}
+
 /* ---------------- fullscreen and auto-height (SPEC 4.10; helpers in embed.js) ---------------- */
 const standaloneUrl = () => new URL(buildUrl(false), location.href).href;
 const poster = createHeightPoster(() => (ch ? idealHeight() : 0));
@@ -756,6 +761,7 @@ function applyTheme(tokens) {
   const t = tokens || readTokens();
   renderCtx.theme = t;
   scope.setTheme(t);
+  updateOpenFull();   // the link carries theme=, which the docs page may have just switched
   requestFrame();
 }
 onThemeChange((t) => applyTheme(t));
