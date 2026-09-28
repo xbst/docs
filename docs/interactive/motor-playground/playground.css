@@ -330,4 +330,7 @@ html.is-fs .vh.strip{flex-basis:104px}
   .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
   .live{max-width:45%}
   .bb{white-space:normal;text-align:center}
+  /* fullscreen keeps the one-column page scrolling (the desktop rules lock the viewport) */
+  html.is-fs body{overflow-x:hidden;overflow-y:auto}
+  html.is-fs .app{height:auto}
 }
