@@ -359,6 +359,20 @@ export function niceStep(x) {
   return 10 * k;
 }
 
+/**
+ * Decimals that print every multiple of a tick step exactly (at most 6):
+ * 50 → 0, 0.2 → 1, 0.25 → 2, 0.025 → 3.
+ * @param {number} step a niceStep result
+ * @returns {number}
+ */
+export function stepDecimals(step) {
+  for (let d = 0; d < 6; d++) {
+    const s = step * Math.pow(10, d);
+    if (Math.abs(Math.round(s) - s) < 1e-6) return d;
+  }
+  return 6;
+}
+
 /** Wrap an angle to (−π, π]. */
 export function wrapAngle(a) {
   a = (a + Math.PI) % TAU;

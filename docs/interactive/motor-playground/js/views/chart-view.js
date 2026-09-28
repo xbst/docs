@@ -24,7 +24,7 @@
  *   rms               false (the run current in A peak); true labels it in A RMS (peak / √2),
  *                     as Klipper's run_current for TMC drivers
  */
-import { CanvasView, TAU, haloText, clamp, num, niceStep, presetOf, mmPerRad } from './view-util.js';
+import { CanvasView, TAU, haloText, clamp, num, niceStep, stepDecimals, presetOf, mmPerRad } from './view-util.js';
 import { MOTOR_PRESETS, torqueSpeedPoints, torqueSpeedCurve } from '../sim/presets.js';
 import { formatValue } from '../format.js';
 
@@ -52,7 +52,7 @@ export class ChartView extends CanvasView {
     this.speeds = new Float64Array(N);
     this.tMax = 1;
     this.iEma = NaN;
-    this.lay = { key: '', x0: 0, x1: 0, y0: 0, y1: 0, xStep: 250, yStep: 0.2 };
+    this.lay = { key: '', x0: 0, x1: 0, y0: 0, y1: 0, xStep: 250, yStep: 0.2, yDec: 1 };
     this.str = { legend: '', ref: '', dot: '', knee: '', cur: '' };
     this.preset = null;
     this.refPreset = null;
@@ -111,6 +111,7 @@ export class ChartView extends CanvasView {
     const top = this.tMax * 1.3;                 // headroom for the legend rows above the curves
     L.yStep = niceStep(top / Math.max(2, Math.floor((L.y1 - L.y0) / 40)));
     L.yTop = Math.ceil(top / L.yStep) * L.yStep;
+    L.yDec = Math.max(1, stepDecimals(L.yStep));  // 0.25 steps read 0.25, 0.75, not 0.3, 0.8
     this.layoutDirty = false;
   }
 
@@ -137,7 +138,8 @@ export class ChartView extends CanvasView {
     g.lineWidth = 1;
     g.beginPath();
     for (let v = L.xStep; v < this.maxMmS + 1e-6; v += L.xStep) { const x = Math.round(X(v)) + 0.5; g.moveTo(x, y0); g.lineTo(x, y1); }
-    for (let t = L.yStep; t < L.yTop + 1e-9; t += L.yStep) { const y = Math.round(Y(t)) + 0.5; g.moveTo(x0, y); g.lineTo(x1, y); }
+    // y ticks by index (no accumulated rounding), so gridlines and labels share their values
+    for (let i = 1; i * L.yStep < L.yTop + 1e-9; i++) { const y = Math.round(Y(i * L.yStep)) + 0.5; g.moveTo(x0, y); g.lineTo(x1, y); }
     g.stroke();
     g.strokeStyle = th.lineColor;
     g.beginPath();
@@ -150,7 +152,7 @@ export class ChartView extends CanvasView {
     for (let v = 0; v <= this.maxMmS + 1e-6; v += L.xStep) g.fillText(String(Math.round(v)), X(v), y1 + 4);
     g.textAlign = 'right';
     g.textBaseline = 'middle';
-    for (let t = 0; t <= L.yTop + 1e-9; t += L.yStep) g.fillText(formatValue(t, L.yStep < 0.1 ? 2 : 1), x0 - 5, Y(t));
+    for (let i = 0; i * L.yStep <= L.yTop + 1e-9; i++) g.fillText(formatValue(i * L.yStep, L.yDec), x0 - 5, Y(i * L.yStep));
     g.font = this.font.ui;
     g.textAlign = 'center';
     g.textBaseline = 'bottom';
