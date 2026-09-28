@@ -74,9 +74,9 @@
 
 /* Playground tokens, light / dark. Dashed = commanded/target, solid = actual.
    Red only for errors, flags and the N pole; amber for highlights and the field.
-   --page-bg is SPEC 4.9's solid page background, painted in fullscreen (--bg stays
-   transparent so an embed blends with the docs page). --focus is the keyboard focus
-   ring: at least 3:1 on every surface (the light --pulse is 2.2:1). */
+   --page-bg is SPEC 4.9's solid page background, painted on a standalone page and in
+   fullscreen (--bg stays transparent so an embed blends with the docs page). --focus is
+   the keyboard focus ring: at least 3:1 on every surface (the light --pulse is 2.2:1). */
 :root{
   color-scheme:light;
   --phase-a:#E39A00; --phase-b:#27AE60; --phase-c:#2E86DE;
@@ -122,6 +122,8 @@
 html,body{height:100%;background:var(--bg);color:var(--text);
   font-family:Roboto,system-ui,sans-serif;-webkit-text-size-adjust:100%}
 body{overflow-x:hidden;overflow-y:auto}
+/* main.js sets .is-standalone outside an iframe: no docs page shows through there */
+html.is-standalone{background:var(--page-bg)}
 [hidden]{display:none!important}
 button,select,input{font:inherit;color:inherit}
 button{cursor:pointer}

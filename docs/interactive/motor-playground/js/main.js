@@ -783,6 +783,7 @@ onThemeChange((t) => applyTheme(t));
 
 /* ---------------- start ---------------- */
 async function init() {
+  document.documentElement.classList.toggle('is-standalone', !EMBEDDED);   // SPEC 4.9's solid page background
   buildToolbar();
   scope.setPaused(paused);
   applyTheme();
