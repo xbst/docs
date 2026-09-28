@@ -436,9 +436,14 @@ export class Metrics {
   /**
    * A path was started (World.command('runPath')). update() only sees a path start when the
    * planner's mode changes, so a path started while another one still runs reports it here:
-   * the corner error and the last-stop metrics start over. The segment history stays: the
-   * toolhead still trails on the old path's segment, which counts as the previous segment of
-   * the new path's first one (as at a junction), so its along-track lag is not a corner error.
+   * the corner error and the last-stop metrics start over. The segment history stays: the old
+   * path's current segment counts as the previous segment of the new path's first one (as at a
+   * junction), so a toolhead still trailing on it adds no corner error for its along-track lag.
+   * The tracker keeps only these two segments, though. A restart just past an old corner (the
+   * toolhead still on the segment before it) or a new plan whose short braking segment ends
+   * before the toolhead catches up measures the toolhead against a segment it is not on, and
+   * part of the lag still counts (1.5 mm against 0.64 from rest at position P ×0.25, 0.11 mm
+   * against 0.08 with the optimal gains, CoreXY square restarted 0.73 s in).
    */
   pathStarted() {
     this._startMotion(true);
