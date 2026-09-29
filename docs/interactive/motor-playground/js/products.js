@@ -17,7 +17,7 @@ export const PRODUCTS = {
             homingCurrent: 'homing_current', diagPin: 'diag_pin', retract: 'homing_retract_dist',
             flag: 'PID_IQ_TARGET_LIMIT', statusPin: 'STATUS' },
     notes: { pi: 'On Ouroboros, start from the plugin autotune values and move in the direction the symptoms point.',
-             homing: 'On Ouroboros the status output is already wired to the MCU; see the Sensorless Homing page.' }
+             homing: 'On Ouroboros the status output is already wired to the MCU.' }
   }
 };
 
