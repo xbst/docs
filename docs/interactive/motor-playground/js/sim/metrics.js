@@ -486,8 +486,11 @@ export class Metrics {
     if (n > 0) {
       v.noiseIdx = this.Irated > 0 ? Math.sqrt(this.noiseSq / n) / this.Irated : 0;
       const amp = 0.5 * (this.oscMax - this.oscMin);
-      this.oscHyst = OSC_HYST_FRAC * amp;
       if (this.oscAllRest) {
+        // The Schmitt hysteresis follows the swing of rest periods only: a moving period's swing
+        // can be as large as the ring itself and would leave the next rest period's crossings
+        // uncounted (an amplitude with no frequency, or a single crossing read as a few Hz).
+        this.oscHyst = OSC_HYST_FRAC * amp;
         v.oscFreqHz = this.oscCross / (2 * n * this.dt);
         v.oscAmp = amp;
       } else {
