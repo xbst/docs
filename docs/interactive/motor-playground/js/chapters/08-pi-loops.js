@@ -28,10 +28,13 @@
  * steady torque. Readout thresholds come from the optimal run: corner error
  * 0.08 mm, no overshoot, 0.03 A of "oscillation" at rest (the noise floor),
  * noise index 0.3 % of the rated current, following error v / Kpx (the
- * position loop is P-only, without feed-forward).
+ * position loop is P-only, without feed-forward), heat counted above what the
+ * load itself needs (the load hold's 0.15 N·m needs 20% of rated on the BLDC,
+ * 4% on the stepper).
  */
 import { formatValue } from '../format.js';
 import { TUNING } from '../sim/drivers/foc.js';
+import { MOTOR_PRESETS } from '../sim/presets.js';
 
 const SQUARE = { start: [50, 50], points: [[150, 50], [150, 150], [50, 150], [50, 50]], laps: 1 };
 const LINE = { start: [50, 50], points: [[200, 50], [50, 50]], laps: 1 };
@@ -56,6 +59,15 @@ const DRAG_MAX = { stepper: 0.3, bldc: 0.2 };
 const CRUISE = 0.9;
 /** Rest-oscillation amplitude below which the readout shows no frequency (the noise floor, A). */
 const OSC_FLOOR = 0.06;
+/**
+ * Heat readout thresholds, in points of "% of rated" above the heat the load needs (S.loadHeat): a
+ * well-tuned axis stays within HEAT_OK of it, and more than HEAT_WARN above it is the tuning's
+ * doing. Without drag the optimal run stays within 1.6 points of it on both motors; the presets
+ * that heat the motor add 7 (stepper torque P or flux P too high) to over 90 points.
+ */
+const HEAT_OK = 2, HEAT_WARN = 10;
+/** Time constant of the world's heat reading (s, HEAT_TAU in world.js); the load's heat follows it. */
+const HEAT_TAU_S = 1;
 const LOUPE_DEFAULT = 1.5;
 
 const GAINS = [
@@ -152,6 +164,8 @@ function resetState() {
   S.idPeak = 0;
   S.osc = { amp: 0, freq: 0 };
   S.held = { overshootPct: 0, overshootMm: 0, settleMs: 0 };
+  S.loadHeat = 0;   // heat the load needs, low-passed like the world's heat reading (fraction of rated; onFrame)
+  S.loadHeatT = 0;  // sim time of its last update (s)
 }
 resetState();
 
@@ -442,6 +456,16 @@ export default {
     }
     const id = Math.abs(snap.motors[0].id);
     S.idPeak = id > S.idPeak ? id : S.idPeak * 0.985;
+    // The heat the load needs whatever the tuning (a fraction of rated, like metrics.heat): the load
+    // torque's current over the rated current, squared. The load hold holds HOLD_TORQUE, the drag acts
+    // while the gantry moves. The same torque costs the BLDC about 5.4 times the stepper's heat
+    // (Kt·Irated 0.34 against 0.78 N·m). Low-passed like the world's heat reading, so the Heat chip's
+    // thresholds follow a load switched on or off at the pace of the reading itself.
+    const mp = MOTOR_PRESETS[ctx.motorType] || MOTOR_PRESETS.stepper;
+    const r = ((S.move === 'holdLoad' ? HOLD_TORQUE : 0) + (pl.mode !== 'idle' ? S.drag : 0)) / (mp.Kt * mp.Irated);
+    const dt = t - S.loadHeatT;
+    S.loadHeatT = t;
+    if (dt > 0) S.loadHeat += (1 - Math.exp(-dt / HEAT_TAU_S)) * (r * r - S.loadHeat);
   },
 
   readouts(snap, metrics, ctx) {
@@ -484,8 +508,10 @@ export default {
     items.push({ label: 'Flux current peak', value: S.idPeak, unit: 'A', digits: 2, warn: S.idPeak > 0.5, ok: S.idPeak <= 0.2,
       title: 'Recent peak of |Id|, the current that heats the motor without making torque' });
     const heat = metrics.heat * 100;
-    items.push({ label: 'Heat', value: heat, unit: '% of rated', digits: 0, warn: heat > 10, ok: heat <= 2,
-      title: 'Copper loss compared with running at the rated current, averaged over the last second' });
+    const need = S.loadHeat * 100;   // a load warms the motor at any tuning, the BLDC far more than the stepper
+    items.push({ label: 'Heat', value: heat, unit: '% of rated', digits: 0, warn: heat > need + HEAT_WARN, ok: heat <= need + HEAT_OK,
+      title: 'Copper loss compared with running at the rated current, averaged over the last second'
+        + (need >= 0.5 ? `; the load alone needs about ${formatValue(need, 0)}%` : '') });
     return items;
   },
 
