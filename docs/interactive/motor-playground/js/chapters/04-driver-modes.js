@@ -94,7 +94,7 @@ function freshState() {
     homing: false,     // "Home" pressed: stopping first, then the world's homing machine (approach, retract)
     pending: false,    // waiting for the carriage to stop before the homing move starts
     forced: false,     // the driver was switched to voltage mode for the homing move
-    result: null,      // last homing: { kind: 'running'|'ok'|'false-trigger'|'no-edge', xMm, pressInMm, slow }
+    result: null,      // last homing: { kind: 'running'|'ok'|'false-trigger'|'no-edge'|'canceled', xMm, pressInMm, slow }
     homeSpeed: DEFAULTS.homingSpeed, // speed of the homing move started last (mm/s); the slider applies from the next Home
     homingEndT: -Infinity, // sim time the last homing ended; its slam's trailing stepLost events go unannounced
     slowHint: '',      // the slow-homing hint shown: '' none, 'raise' (advises a faster time scale), 'max'
@@ -132,22 +132,25 @@ function restoreMode(ctx) {
 function run(ctx, force) {
   const w = ctx.world;
   st.homingEndT = -Infinity;       // a reconfigure below restarts sim time
+  let canceled = false;
   if (st.homing) {
     if (!force) return;
     restoreMode(ctx);
     st.homing = false;
     st.pending = false;
-    if (st.result && st.result.kind === 'running') st.result = null;
+    // A homing still on its way to the stop is canceled; one past its trigger keeps its result.
+    if (st.result && st.result.kind === 'running') { st.result = { kind: 'canceled' }; canceled = true; }
     slowHint(ctx, 0);              // onFrame no longer sees this homing end: drop its hint here
   }
   const lost = lostMm(w);
   if (Math.abs(lost) >= LOST_MM) {
     // Open loop never finds its position again: start over from a fresh axis.
     ctx.app.reconfigure();
-    ctx.app.announce(`Axis reset: the motor had lost ${fmt(Math.abs(lost), 1)} mm`);
+    ctx.app.announce(`${canceled ? 'Homing canceled. ' : ''}Axis reset: the motor had lost ${fmt(Math.abs(lost), 1)} mm`);
     startShuttle(ctx);
     return;
   }
+  if (canceled) ctx.app.announce('Homing canceled: the carriage runs back and forth again');
   if (force || w.snapshot.planner.mode === 'idle') startShuttle(ctx);
 }
 
@@ -241,6 +244,8 @@ function resultChip(snap) {
     case 'false-trigger':
       return { label: 'Homing', value: `false trigger at ${fmt(r.xMm, 1)} mm`, warn: true,
         title: 'DIAG went high before the carriage reached the stop.' };
+    case 'canceled':
+      return { label: 'Homing', value: 'canceled', title: 'Ended before the carriage reached the stop, so there is no result.' };
     default:
       return { label: 'Homing', value: r.slow ? 'no detection: too slow' : 'no detection: hit the stop', warn: true,
         title: r.slow ? `Below ${MIN_SPEED} mm/s StallGuard has no reading.`
@@ -384,7 +389,8 @@ export default {
       st.homingEndT = snap.t;      // main.js drains events after onFrame: the slam's last stepLost may come next
       restoreMode(ctx);
       slowHint(ctx, 0);
-      if (st.result && st.result.kind === 'running') st.result = null;
+      // Still running: the result event drained right after this replaces it, else it was aborted.
+      if (st.result && st.result.kind === 'running') st.result = { kind: 'canceled' };
     }
   },
 
