@@ -10,7 +10,8 @@
  * on, reversed; 0: S2 and S4 on, the coil current circulates through the low
  * side). Chevrons flow along the active current path with a speed that grows
  * with |iA|; they stand still while the simulation is paused. In the light
- * theme they are a darker amber, 3:1 against the path's glow.
+ * theme the chevrons, the 'on' levers, the coil-current arrow and the target's
+ * sine icon are a darker amber, 3:1 against the path's glow.
  *
  * The state is named from the target's sign: driving toward the target is
  * "drive", 0 V is "slow decay", the opposite polarity is "fast decay".
@@ -54,8 +55,8 @@ export class SchematicView extends CanvasView {
     this.lastNow = 0;
     this.overW = 0;         // css px widths of the 'over target' and 'measured' labels (layout)
     this.measuredW = 0;
-    // th.field, darkened where it is under 3:1 on the glow (onTheme): the chevrons, the 'on' levers
-    // and the coil-current arrow
+    // th.field, darkened where it is under 3:1 on the glow (onTheme): the chevrons, the 'on' levers,
+    // the coil-current arrow and the target box's sine icon and dot (--field is var(--phase-a))
     this.fieldColor = '';
     this.str = {
       vbus: '', i: '', tgt: '', state: '', rl: '', bemf: '',
@@ -345,7 +346,8 @@ export class SchematicView extends CanvasView {
     g.font = this.font.mono;
     g.fillText(this.str.tgt, this.X(bx + 8), this.Y(by + 14) + this.fpx(12) + 3, bw * sc - 16);
     const wx0 = bx + 92, wx1 = bx + bw - 8, wy = by + bh / 2 + 6, wa = 14;
-    g.strokeStyle = th.phaseA;
+    const amber = this.fieldColor || th.phaseA;       // raw #E39A00 is 2.2:1 on the light card
+    g.strokeStyle = amber;
     g.lineWidth = 1.5;
     g.beginPath();
     for (let k = 0; k <= 24; k++) {
@@ -355,7 +357,7 @@ export class SchematicView extends CanvasView {
     }
     g.stroke();
     const th0 = ((num(m.thetaCmd, 0) % TAU) + TAU) % TAU;
-    g.fillStyle = th.phaseA;
+    g.fillStyle = amber;
     g.beginPath();
     g.arc(this.X(wx0 + (wx1 - wx0) * th0 / TAU), this.Y(wy - wa * Math.cos(th0)), 3.5, 0, TAU);
     g.fill();
