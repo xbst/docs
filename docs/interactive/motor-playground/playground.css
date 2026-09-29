@@ -327,10 +327,12 @@ a{color:inherit}
 @media(pointer:coarse){.tb select,.ctl select{font-size:16px}}
 
 /* ---------------- standalone page (class set in index.html outside an iframe) ---------------- */
-/* a short window scrolls instead of squeezing the views: the stage row keeps the embedded
-   floor (STAGE_MIN in main.js) as in fullscreen; an embed posts its height instead */
+/* a short window scrolls instead of squeezing the views: the stage row keeps a 256 px floor,
+   a little under the embedded and fullscreen 280 px (STAGE_MIN in main.js), so a 1366×768
+   laptop's ~1366×625 viewport keeps its unscrolled layout (every chapter but pi-loops, which
+   scrolls 18 px); an embed posts its height instead */
 html.is-standalone:not(.is-fs) .app{height:auto;min-height:100%}
-html.is-standalone:not(.is-fs) .main{flex:1 0 280px}
+html.is-standalone:not(.is-fs) .main{flex:1 0 256px}
 
 /* ---------------- fullscreen (class set by main.js on fullscreenchange) ---------------- */
 html.is-fs{font-size:115%;--font-scale:1.15}
