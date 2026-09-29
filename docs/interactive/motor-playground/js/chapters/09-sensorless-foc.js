@@ -196,7 +196,10 @@ export default {
         warn: edge && h.pressInMm > PRESS_WARN_MM,
         title: 'How far the carriage had pushed into the (compliant) stop when the status output rose; '
           + 'the loop keeps pushing after that, so the carriage sinks in further. A dash until the output rises in this pass' },
-      { label: 'Press force', value: forceN, unit: 'N', digits: 0, title: 'Motor torque as belt force, Kt·Iq·2π/rd' },
+      // Named for the belt, not the stop: it also reads friction and acceleration while the carriage
+      // moves freely (a dash until contact would change the chip's width twice per Home).
+      { label: 'Belt force', value: forceN, unit: 'N', digits: 0,
+        title: 'Motor torque as belt force, Kt·Iq·2π/rd: friction and acceleration in free motion, the push into the stop at contact' },
       { label: 'Homing', value: result, warn: !h.active && (h.result === 'false-trigger' || h.result === 'no-edge'),
         ok: !h.active && h.result === 'ok' },
       { label: keys.flag || 'Limit flag', value: flag ? 'on' : 'off', led: flag ? 'trip' : 'off',
@@ -221,7 +224,7 @@ export default {
     return [
       `Home at ${formatValue(i, 2)} A and watch the Iq target jump to the limit at contact.`,
       'Lower the limit until homing trips before the stop, then put it back and raise the drag until it trips again.',
-      'Raise the limit to 3 A and watch the press-in and the press force grow. Then set the retract to 0, press Home, '
+      'Raise the limit to 3 A and watch the press-in and the belt force grow. Then set the retract to 0, press Home, '
         + 'and press Home again.',
     ];
   },
