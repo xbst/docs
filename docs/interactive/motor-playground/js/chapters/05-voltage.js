@@ -134,6 +134,14 @@ function tableHtml() {
   return h + '</table>';
 }
 
+/** Current and drag are shared by every comparison; changed conditions invalidate all presets. */
+function clearSweepResults(ctx) {
+  st.table = {};
+  ctx.app.setViewOptions('chart', { results: {} });
+  // Update only the note: rebuilding the controls here would interrupt an active slider drag.
+  ctx.app.setControlValue('sweepResults', tableHtml());
+}
+
 /* ---------------- motion ---------------- */
 
 /** Jog at the reader's speed; from rest when the motor is stalled (it would not catch the field). */
@@ -224,6 +232,7 @@ export default {
         caption: 'run_current', group: 'Supply and motor', format: formatRms,
         onChange: (v, c) => {
           const cut = abortSweep(c);
+          if (v !== st.rms) clearSweepResults(c);
           st.rms = v;
           c.world.set('runCurrent', v * SQRT2);
           if (cut || st.stalled) drive(c);
@@ -243,10 +252,16 @@ export default {
         onChange: (v, c) => { abortSweep(c); st.speed = v; drive(c); } },
       { type: 'slider', id: 'load', label: 'Drag', min: 0, max: 0.3, step: 0.01, value: DEFAULTS.drag, unit: 'N·m',
         group: 'Motion',
-        onChange: (v, c) => { st.drag = v; c.world.command('setLoad', { drag: v }); } },
+        onChange: (v, c) => {
+          const cut = abortSweep(c);
+          if (v !== st.drag) clearSweepResults(c);
+          st.drag = v;
+          c.world.command('setLoad', { drag: v });
+          if (cut || st.stalled) drive(c);
+        } },
       { type: 'button', id: 'sweep', label: `Sweep at ${st.V} V`, kind: 'primary', group: 'Sweep',
         ariaLabel: `Sweep the speed at ${st.V} volts`, onClick: (c) => startSweep(c) },
-      { type: 'note', html: tableHtml(), group: 'Sweep' },
+      { type: 'note', id: 'sweepResults', html: tableHtml(), group: 'Sweep' },
     ];
   },
 
@@ -318,6 +333,7 @@ export default {
   onEvent(ev, ctx) {
     switch (ev.type) {
       case 'sweepDone': {
+        if (!st.sweeping) return false;  // a cancelled run may still have a queued completion event
         const V = st.sweepV;
         const det = (ctx.world.snapshot.sweep.detail || {})[V] || {};
         const res = ev.data && ev.data.results ? ev.data.results[V] : undefined;

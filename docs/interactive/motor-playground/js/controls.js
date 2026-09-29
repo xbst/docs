@@ -406,8 +406,9 @@ const BUILD = {
   note(spec) {
     const w = wrap(spec, 'note-w');
     const n = el('div', 'note');
-    n.innerHTML = spec.html || '';
+    const set = (html) => { n.innerHTML = html || ''; };
+    set(spec.html);
     w.append(n);
-    return { el: w, set: () => {} };
+    return { el: w, set };
   },
 };
