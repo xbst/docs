@@ -65,6 +65,8 @@ const RETRACT_MM = 10;
 const HOMING_ACCEL = 500;
 /** StallGuard minimum speed (mm/s), the world's stallguard.minSpeedMmS. */
 const MIN_SPEED = 10;
+/** Distance from the stop (mm) beyond which a homing below MIN_SPEED gets the slow-homing hint. */
+const SLOW_HINT_MM = 15;
 /** Lost distance (mm) that counts as a lost position (the gantry view shows it from 0.05 mm). */
 const LOST_MM = 0.05;
 /** Bump for this chapter: a knock StallGuard notices without skipping a step at the default current. */
@@ -93,6 +95,7 @@ function freshState() {
     pending: false,    // waiting for the carriage to stop before the homing move starts
     forced: false,     // the driver was switched to voltage mode for the homing move
     result: null,      // last homing: { kind: 'running'|'ok'|'false-trigger'|'no-edge', xMm, pressInMm, slow }
+    homeSpeed: DEFAULTS.homingSpeed, // speed of the homing move started last (mm/s); the slider applies from the next Home
     homingEndT: -Infinity, // sim time the last homing ended; its slam's trailing stepLost events go unannounced
     slowHint: '',      // the slow-homing hint shown: '' none, 'raise' (advises a faster time scale), 'max'
     lostAt: -Infinity, // performance.now() of the last "fell out of step" announcement
@@ -135,10 +138,7 @@ function run(ctx, force) {
     st.homing = false;
     st.pending = false;
     if (st.result && st.result.kind === 'running') st.result = null;
-    if (st.slowHint) {             // onFrame no longer sees this homing end: drop its hint here
-      st.slowHint = '';
-      ctx.app.setHint(null);
-    }
+    slowHint(ctx, 0);              // onFrame no longer sees this homing end: drop its hint here
   }
   const lost = lostMm(w);
   if (Math.abs(lost) >= LOST_MM) {
@@ -155,6 +155,7 @@ function run(ctx, force) {
 function home(ctx) {
   const w = ctx.world;
   restoreMode(ctx);                // a homing already running: its forced mode ends here
+  slowHint(ctx, 0);                // and its hint; startHoming shows the new homing's own
   st.homing = true;
   st.homingEndT = -Infinity;       // a reconfigure below restarts sim time
   st.result = { kind: 'running' };
@@ -177,20 +178,28 @@ function startHoming(ctx) {
     st.forced = true;
     w.set('driverMode', 'voltage');
   }
-  w.command('home', { speedMmS: st.homingSpeed, retractMm: RETRACT_MM, passes: 1, accelMmS2: HOMING_ACCEL });
-  const far = w.snapshot.gantry.x;
-  if (st.homingSpeed < MIN_SPEED && far > 15) slowHint(ctx, far);
+  st.homeSpeed = st.homingSpeed;
+  w.command('home', { speedMmS: st.homeSpeed, retractMm: RETRACT_MM, passes: 1, accelMmS2: HOMING_ACCEL });
+  slowHint(ctx, w.snapshot.gantry.x);
 }
 
 /**
- * The slow-homing hint: the motor time the approach needs from `farMm`, plus the advice to
- * fast-forward while the time scale is below the chapter's maximum.
+ * Shows, updates or clears the slow-homing hint. While the homing runs below StallGuard's minimum
+ * speed (st.homeSpeed, the speed it started with) and the carriage is more than SLOW_HINT_MM from
+ * the stop, the hint gives the motor time the approach needs from `farMm`, plus the advice to
+ * fast-forward while the time scale is below the chapter's maximum. Otherwise a hint shown is
+ * cleared: pass 0 when the homing ends or is replaced.
  */
 function slowHint(ctx, farMm) {
-  const atMax = ctx.app.timeScale >= TIME_SCALE.max;
-  st.slowHint = atMax ? 'max' : 'raise';
-  ctx.app.setHint(`At ${st.homingSpeed} mm/s the carriage needs ${fmt(farMm / st.homingSpeed, 0)} s of motor time `
-    + (atMax ? 'to reach the stop.' : 'to reach the stop: raise the time scale to fast-forward.'));
+  if (st.homeSpeed < MIN_SPEED && farMm > SLOW_HINT_MM) {
+    const atMax = ctx.app.timeScale >= TIME_SCALE.max;
+    st.slowHint = atMax ? 'max' : 'raise';
+    ctx.app.setHint(`At ${st.homeSpeed} mm/s the carriage needs ${fmt(farMm / st.homeSpeed, 0)} s of motor time `
+      + (atMax ? 'to reach the stop.' : 'to reach the stop: raise the time scale to fast-forward.'));
+  } else if (st.slowHint) {
+    st.slowHint = '';
+    ctx.app.setHint(null);
+  }
 }
 
 function setScope(ctx, s) {
@@ -242,8 +251,9 @@ function resultChip(snap) {
 function sgChip(snap, m) {
   const thr = 2 * st.sgthrs;
   if (m.sg == null) {
-    // Homing below the minimum speed; the shuttle passes through it at every reversal (not flagged).
-    const slow = st.homing && st.homingSpeed < MIN_SPEED && snap.planner.mode !== 'idle';
+    // A homing move below the minimum speed; the shuttle passes through it at every reversal, and the
+    // carriage while it stops before a homing (neither flagged).
+    const slow = st.homing && !st.pending && st.homeSpeed < MIN_SPEED && snap.planner.mode !== 'idle';
     return { label: 'StallGuard', value: slow ? 'too slow' : '–', warn: slow,
       title: `No reading below ${MIN_SPEED} mm/s (the driver needs the motor's back-EMF to measure).`,
       bar: { value: 0, max: 1023, mark: thr, off: true } };
@@ -363,7 +373,8 @@ export default {
       if (snap.planner.mode === 'idle') startHoming(ctx);
       return;
     }
-    // The reader took the hint's advice up to the maximum: drop the advice.
+    // The reader took the hint's advice up to the maximum: drop the advice (or the whole hint once
+    // the carriage is within SLOW_HINT_MM of the stop).
     if (st.slowHint === 'raise' && ctx.app.timeScale >= TIME_SCALE.max && snap.homing.active && !snap.homing.contact) {
       slowHint(ctx, snap.gantry.x);
     }
@@ -372,8 +383,7 @@ export default {
       st.homing = false;
       st.homingEndT = snap.t;      // main.js drains events after onFrame: the slam's last stepLost may come next
       restoreMode(ctx);
-      st.slowHint = '';
-      ctx.app.setHint(null);
+      slowHint(ctx, 0);
       if (st.result && st.result.kind === 'running') st.result = null;
     }
   },
@@ -388,7 +398,7 @@ export default {
           : `False trigger: DIAG went high at ${fmt(d.xMm, 1)} mm, before the stop`;
       case 'homingNoEdge': {
         restoreMode(ctx);
-        const slow = st.homingSpeed < MIN_SPEED;
+        const slow = st.homeSpeed < MIN_SPEED;   // the homing's own speed, not the slider moved since
         st.result = { kind: 'no-edge', slow };
         return slow ? `No stall detected: StallGuard has no reading below ${MIN_SPEED} mm/s`
           : 'No stall detected: the carriage hit the stop and the motor skipped';
