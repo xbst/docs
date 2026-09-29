@@ -335,6 +335,10 @@ a{color:inherit}
    scrolls 18 px); an embed posts its height instead */
 html.is-standalone:not(.is-fs) .app{height:auto;min-height:100%}
 html.is-standalone:not(.is-fs) .main{flex:1 0 256px}
+/* a stage with a visible strip (chapter 7's block chain, 90 px plus the gap) keeps the 280 px
+   floor: at 256 its motor and vector canvases are 156 px, under the motor view's 180 px compact
+   threshold and the vector view's voltage inset; browsers without :has keep 256 */
+html.is-standalone:not(.is-fs) .main:has(> .stage > .vh.strip:not([hidden])){flex-basis:280px}
 
 /* ---------------- fullscreen (class set by main.js on fullscreenchange) ---------------- */
 html.is-fs{font-size:115%;--font-scale:1.15}
