@@ -471,8 +471,9 @@ export default {
   readouts(snap, metrics, ctx) {
     const type = ctx.motorType;
     const osc = S.osc;
-    // A period with no counted zero crossing (a swing that decays or drifts, not a ring) has no
-    // frequency to name: the amplitude alone, not "at 0 Hz".
+    // A period with no counted zero crossing (a swing under the counter's hysteresis, e.g. right
+    // after a preset switch away from a larger ring) has no frequency to name: the amplitude
+    // alone, not "at 0 Hz".
     const oscText = osc.amp > OSC_FLOOR && osc.freq > 0
       ? `${formatValue(osc.amp, 2)} A at ${formatValue(osc.freq, 0)} Hz`
       : `${formatValue(osc.amp, 2)} A`;
