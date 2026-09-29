@@ -127,6 +127,11 @@
     </div>
   </header>
 
+  <div class="p-head" id="p-head">
+    <div class="p-num" id="p-num"></div>
+    <h1 class="p-title" id="p-title">Motor Control Playground</h1>
+    <p class="p-take" id="p-take"></p>
+  </div>
   <div class="main" id="main">
     <section class="stage" id="stage" aria-label="Simulation views">
       <div class="views" id="views">
@@ -136,20 +141,18 @@
       <div class="vh strip" id="vh-strip" role="img" aria-label="Simulation view" hidden></div>
     </section>
     <div class="panel" id="panel">
-      <div class="p-head">
-        <div class="p-num" id="p-num"></div>
-        <h1 class="p-title" id="p-title">Motor Control Playground</h1>
-        <p class="p-take" id="p-take"></p>
-      </div>
-      <div class="p-text" id="p-text"></div>
-      <div class="p-try" id="p-try" hidden>
-        <h2 class="p-h">Try this</h2>
-        <ul id="p-try-list"></ul>
-      </div>
       <div class="p-ctl" id="p-ctl" role="group" aria-label="Chapter controls"></div>
-      <details class="p-deep" id="p-deep" hidden>
-        <summary>Deeper</summary>
-        <div class="p-deep-body" id="p-deep-body"></div>
+      <details class="p-learn" id="p-learn">
+        <summary>How it works &amp; things to try</summary>
+        <div class="p-text" id="p-text"></div>
+        <div class="p-try" id="p-try" hidden>
+          <h2 class="p-h">Try this</h2>
+          <ul id="p-try-list"></ul>
+        </div>
+        <details class="p-deep" id="p-deep" hidden>
+          <summary>Deeper</summary>
+          <div class="p-deep-body" id="p-deep-body"></div>
+        </details>
       </details>
     </div>
   </div>

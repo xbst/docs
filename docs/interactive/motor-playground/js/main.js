@@ -48,7 +48,7 @@ const el = {
   motor: $('motor'), play: $('play'), time: $('time'), timeH: $('time-h'), slowed: $('slowed'),
   sound: $('sound'), openfull: $('openfull'), fs: $('fs'), fsOn: $('fs-on'), fsOff: $('fs-off'),
   stage: $('stage'), views: $('views'), vhP: $('vh-primary'), vhS: $('vh-secondary'), vhStrip: $('vh-strip'),
-  panel: $('panel'), pNum: $('p-num'), pTitle: $('p-title'), pTake: $('p-take'), pText: $('p-text'),
+  panel: $('panel'), pHead: $('p-head'), pLearn: $('p-learn'), pNum: $('p-num'), pTitle: $('p-title'), pTake: $('p-take'), pText: $('p-text'),
   pTry: $('p-try'), pTryList: $('p-try-list'), pCtl: $('p-ctl'), pDeep: $('p-deep'), pDeepBody: $('p-deep-body'),
   scope: $('scope'), ro: $('ro'), bb: $('bb'),
 };
@@ -386,6 +386,7 @@ function enterChapter(index) {
   readouts.clear();
   controls.reset();
   el.pDeep.open = false;
+  el.pLearn.open = false;
   el.panel.scrollTop = 0;   // phones scroll the page: in fullscreen, where Next is sticky, open at the title
   if (MOBILE.matches && document.documentElement.classList.contains('is-fs')) window.scrollTo(0, 0);
   hook('onEnter', ctx);
@@ -684,7 +685,7 @@ new ResizeObserver(() => {
 }).observe(document.documentElement);
 // Desktop .app fills the iframe and the stage absorbs row changes: watch the rows idealHeight() sums.
 const heightObs = new ResizeObserver(() => schedulePost());
-for (const row of [el.app, el.tb, el.scope, el.ro, el.bb]) heightObs.observe(row);
+for (const row of [el.app, el.tb, el.pHead, el.scope, el.ro, el.bb]) heightObs.observe(row);
 
 /* ---------------- debug overlay (?debug=1) ---------------- */
 let dbg = null, dbgAcc = { frames: 0, steps: 0, sim: 0, draw: 0, since: 0 };
@@ -757,7 +758,7 @@ function idealHeight() {
   let h = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
   let rows = 1;
   h += desiredStageHeight();
-  for (const part of [el.tb, el.scope, el.ro, el.bb]) {
+  for (const part of [el.tb, el.pHead, el.scope, el.ro, el.bb]) {
     if (getComputedStyle(part).display === 'none') continue;
     h += part.getBoundingClientRect().height;
     rows++;
