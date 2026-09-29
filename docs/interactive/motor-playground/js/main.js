@@ -659,7 +659,7 @@ function draw(now) {
   }
   drainEvents(snap);
   const slowed = now < slowedUntil;
-  // a class on the time group, not `hidden`: the mobile toolbar keeps the badge's room reserved
+  // a class on the time group, not `hidden`: the toolbar keeps the badge's cell reserved at every width
   if (slowed !== slowedShown) { slowedShown = slowed; el.slowed.parentNode.classList.toggle('is-slowed', slowed); }
 }
 
