@@ -30,10 +30,9 @@
 //                     only for periods spent entirely at rest (planner speed and commanded velocity 0,
 //                     no bump pulse or load-torque change within the last 0.2 s: the loops' answer
 //                     to a shove or a load step is not a rest oscillation): f = crossings /
-//                     (2 * period), amp = (max - min) / 2. Crossings
-//                     are counted with a Schmitt trigger whose hysteresis is 25% of the previous
-//                     period's amplitude, so measurement noise riding on a real oscillation is not
-//                     counted.
+//                     (2 * period), amp = (max - min) / 2. Crossings are counted with a Schmitt
+//                     trigger whose hysteresis is 25% of the previous period's amplitude, so
+//                     measurement noise riding on a real oscillation is not counted.
 //   iAmpPct           100 * LPF200(iAmp) / runCurrent (open loop) or / iLimit (FOC)
 //   phaseLagDeg       open loop: LPF50(wrapPi(thetaCmd - currentAngle)) in degrees, sign flipped
 //                     when the last step direction is negative so positive always means "current lags"
@@ -314,13 +313,16 @@ export class Metrics {
     const cvx = world.vxCmd;
     const cvy = world.vyCmd;
     // A bump pulse or a load-torque step, and the hold-off after either, are not rest either
-    // (worlds without loads have neither).
+    // (worlds without loads have neither). prevLoadTorque is stored only when the torque changes,
+    // and no NaN stands in for a missing load: rewriting a double field every step boxes it.
     const ld = s.loads;
-    const lt = ld ? ld.torque : NaN;
-    const pt = this.prevLoadTorque;
-    if (ld && (ld.bump > 0 || ld.bump < 0 || lt > pt || lt < pt)) this.bumpHold = this.bumpHoldSteps;
-    else if (this.bumpHold > 0) this.bumpHold--;
-    this.prevLoadTorque = lt;
+    if (ld) {
+      const lt = ld.torque;
+      const pt = this.prevLoadTorque;
+      if (lt > pt || lt < pt) { this.prevLoadTorque = lt; this.bumpHold = this.bumpHoldSteps; }
+      else if (ld.bump > 0 || ld.bump < 0) this.bumpHold = this.bumpHoldSteps;
+      else if (this.bumpHold > 0) this.bumpHold--;
+    } else if (this.bumpHold > 0) this.bumpHold--;
     if (this.bumpHold > 0 || pl.speed > REST_EPS_MMS || cvx > REST_EPS_MMS || cvx < -REST_EPS_MMS
         || cvy > REST_EPS_MMS || cvy < -REST_EPS_MMS) this.oscAllRest = false;
     if (hpO < this.oscMin) this.oscMin = hpO;
