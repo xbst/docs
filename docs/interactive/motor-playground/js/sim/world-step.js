@@ -240,8 +240,11 @@ export function stepWorld(w) {
     const pl = w.planner;
     pl.step(CONTROL_DT);
     // The FOC position-loop limit held after a maxVelocity drop (World._derive) drops too once
-    // the planner has slowed down to the new limit.
-    if (pl.speed <= w._omegaHoldMmS) w._releaseOmegaHold();
+    // the planner has slowed down to the new limit, or once a jog that took over (a jog command
+    // or a homing seek; jogs ignore maxVelocity) no longer slows down: from then on the jog's
+    // limit is the maxVelocity one, as for any jog.
+    const hold = w._omegaHoldMmS;
+    if (hold >= 0 && (pl.speed <= hold || (pl.mode === 'jog' && pl.phase !== 'decel'))) w._releaseOmegaHold();
     updateCommand(w, CONTROL_DT);
     if (pl.justFinished) w._emit('pathDone', { path: pl.pathName, xMm: pl.x, yMm: pl.y });
   }

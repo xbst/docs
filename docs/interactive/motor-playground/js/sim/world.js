@@ -654,7 +654,8 @@ export class World {
     this.planner.configure(this._plannerCfg());
     // A maxVelocity lowered under the speed of a move or path: the planner slows down at accel,
     // and the FOC position-loop limit (_omegaLimit) stays at its speed until the control tick
-    // sees it at or under the new limit (then _releaseOmegaHold). Jogs ignore maxVelocity.
+    // sees it at or under the new limit, or sees a jog that took over no longer slow down (then
+    // _releaseOmegaHold). Jogs ignore maxVelocity.
     const vMax = num(sc.planner.maxVelocity, 150);
     const pl = this.planner;
     this._omegaHoldMmS = (pl.mode === 'move' || pl.mode === 'path') && pl.speed > vMax ? vMax : -1;
@@ -756,8 +757,9 @@ export class World {
    * ×√2 on CoreXY (a 45° move at maxVelocity drives one belt at √2·maxVelocity). While _derive
    * holds the limit (a move or path still faster than a lowered maxVelocity, slowing down to it
    * at accel), the planner's speed stands in for maxVelocity until the control tick sees it at
-   * or under maxVelocity and _releaseOmegaHold pushes the lower one. Without a hold the
-   * limit is the maxVelocity one, even while a jog or a homing pass runs faster.
+   * or under maxVelocity, or sees a jog that took over (a jog command or a homing seek) no
+   * longer slow down, and _releaseOmegaHold pushes the lower one. Without a hold the limit is
+   * the maxVelocity one, even while a jog or a homing pass runs faster.
    * @returns {number}
    */
   _omegaLimit() {
@@ -771,7 +773,8 @@ export class World {
   /**
    * Ends the hold _derive set on the FOC position-loop speed limit: pushes the limit for the
    * current maxVelocity into every FOC motor. Called from the control tick (world-step.js)
-   * once the planner has slowed down to `_omegaHoldMmS`.
+   * once the planner has slowed down to `_omegaHoldMmS`, or once a jog that took over from the
+   * move or path no longer slows down.
    */
   _releaseOmegaHold() {
     this._omegaHoldMmS = -1;
