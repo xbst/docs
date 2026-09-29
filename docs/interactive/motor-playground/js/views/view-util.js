@@ -335,6 +335,24 @@ export function strokeOn(th, color, bg) {
   return c;
 }
 
+/** Least share of its natural width a label may be squeezed to by fillText's maxWidth (fitForm). */
+export const MIN_SQUEEZE = 0.9;
+
+/**
+ * Index of the first of `forms` (longest first) that fits `room` css px in the current font,
+ * squeezed by fillText's maxWidth to no less than MIN_SQUEEZE of its width; −1 when none fits.
+ * A view calls it from its layout with templates of its widest values (it measures, so not per
+ * frame) and shortens or leaves out a label rather than squeeze it unreadable.
+ * @param {CanvasRenderingContext2D} g
+ * @param {string[]} forms
+ * @param {number} room
+ * @returns {number}
+ */
+export function fitForm(g, forms, room) {
+  for (let k = 0; k < forms.length; k++) if (g.measureText(forms[k]).width * MIN_SQUEEZE <= room) return k;
+  return -1;
+}
+
 /**
  * Edge color drawn under bright strokes (amber, green): the card background in the dark
  * theme (a halo that separates them from what lies below), a gray rim in the light theme,

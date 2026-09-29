@@ -21,9 +21,12 @@
  *                   also automatic below 220 × 180 css px)
  *   dial            'auto' (FOC only), true or false
  *   legend, note    top legend line and the "repeats N times per turn" note (default true)
+ *
+ * Labels that do not fit are shortened, moved or left out, never squeezed below 90% of their
+ * width (fitForm): the torque value goes bare or onto a second legend row, the note shortens.
  */
 import {
-  CanvasView, TAU, arrow, arrowHead, haloText, clamp, num, presetOf, wrapAngle, textColor, rimColor,
+  CanvasView, TAU, arrow, arrowHead, haloText, clamp, num, presetOf, wrapAngle, textColor, rimColor, fitForm,
 } from './view-util.js';
 import { formatValue } from '../format.js';
 
@@ -37,6 +40,7 @@ const DASH = [6, 4];
 const DASH_FINE = [3, 3];
 const PHASE_NAMES = ['A', 'B', 'C'];
 const SIDE_HOLD_MS = 400;            // wall time δ must stay on the other side before the rotor letters move
+const TORQUE_FORMS = ['torque −0.00 N·m', '−0.00 N·m'];   // the legend's torque entry at its widest, full and bare
 
 export class MotorView extends CanvasView {
   /** Preferred height / width (main.js: stage height and mobile host height). */
@@ -54,15 +58,15 @@ export class MotorView extends CanvasView {
     this.trailHead = 0;
     this.trailLen = 0;
     this.lay = {
-      isFoc: false, compact: false, phases: 2, cx: 0, cy: 0, R: 0, Ry: 0, Rin: 0, Rr: 0,
-      legend: false, legendY: 0, note: false, noteY: 0, dial: false, dx: 0, dy: 0, dr: 0,
+      isFoc: false, compact: false, phases: 2, pr: null, cx: 0, cy: 0, R: 0, Ry: 0, Rin: 0, Rr: 0,
+      legend: false, legendY: 0, ghost: '', lgX1: 0, tqForm: -1, tqX: 0, tqY: 0,
+      note: false, noteY: 0, dial: false, dx: 0, dy: 0, dr: 0,
       panel: 0, px: 0, py: 0, pw: 0, ph: 0,
     };
     this.str = {
       delta: '', torque: '', count: '', ph: ['', '', ''], alpha: '', beta: '', d: '', q: '',
     };
     this.noteText = '';
-    this.ghostLabel = '';
     this.stages = null;
     this.nSide = -1;       // rotor letters behind (−1) or ahead (+1) of the pole centers, away from the load-angle label
     this.sideAt = -Infinity;   // wall time (ms) of the last labeled frame that agreed with nSide
@@ -76,15 +80,17 @@ export class MotorView extends CanvasView {
     if ('fieldTrail' in o || 'motor' in o) this.trailLen = 0;
   }
 
-  /** @private layout for the current size, options, phase count and driver */
-  layout(nPh, isFoc) {
+  /** @private layout for the current size, options, phase count, motor preset and driver */
+  layout(nPh, isFoc, pr) {
     const L = this.lay, o = this.opts, w = this.w, h = this.h;
     // Size, options and font scale set layoutDirty (CanvasView); the motor comes from the snapshot.
     // (No per-frame key string: it allocated every frame.)
-    if (!this.layoutDirty && nPh === L.phases && isFoc === L.isFoc) return;
+    if (!this.layoutDirty && nPh === L.phases && isFoc === L.isFoc && pr === L.pr) return;
     this.layoutDirty = false;
+    this.fresh = true;     // the label forms may change: rebuild the 10 Hz strings this frame
     L.isFoc = isFoc;
     L.phases = nPh;
+    L.pr = pr;
     const compact = !!o.compact || w < 220 || h < 180;
     L.compact = compact;
     const line = this.fpx(12) + 8;
@@ -108,7 +114,39 @@ export class MotorView extends CanvasView {
       }
     }
     L.note = !compact && o.note !== false && L.panel !== 2;
-    if (L.legend) { L.legendY = top + line / 2; top += line; }
+    const g = this.g;
+    g.font = this.font.ui;
+    if (L.note) {
+      // a narrow view says only how often the picture repeats
+      const forms = [pr.phases === 3 ? `${pr.p} pole pairs: this picture repeats ${pr.p} times per turn`
+        : `A 1.8° stepper repeats this picture ${pr.p} times per turn`, `This picture repeats ${pr.p} times per turn`];
+      const k = fitForm(g, forms, w - 8);
+      L.note = k >= 0;
+      this.noteText = k >= 0 ? forms[k] : '';
+    }
+    // Legend: 'current' and the ghost's label, then the torque value, in full or bare on the same
+    // row, else on a second row where that costs the motor under a tenth of its size (not beside
+    // the side panel), else left out (F-72).
+    L.tqForm = -1;
+    if (L.legend) {
+      let rows = 1;
+      L.ghost = isFoc ? 'target' : 'command';
+      L.lgX1 = 29 + g.measureText('current').width + 12;
+      L.tqX = L.lgX1 + 21 + g.measureText(L.ghost).width + 12;
+      L.tqForm = fitForm(g, TORQUE_FORMS, w - 27 - L.tqX);
+      if (L.tqForm < 0 && L.panel !== 1) {
+        const k = fitForm(g, TORQUE_FORMS, w - 35);
+        const free = bot - top - line - (L.note ? line : 0) - (L.panel === 2 ? L.ph + 4 : 0);
+        if (k >= 0 && Math.min(right - left, free - line) >= 0.9 * Math.min(right - left, free)) {
+          L.tqForm = k;
+          L.tqX = 8;
+          rows = 2;
+        }
+      }
+      L.legendY = top + line / 2;
+      L.tqY = L.legendY + (rows - 1) * line;
+      top += rows * line;
+    }
     if (L.note) { L.noteY = bot - line / 2; bot -= line; }
     if (L.panel === 2) { L.py = bot - L.ph; bot = L.py - 4; }
     if (L.panel === 1) { L.py = top; L.ph = bot - top; }
@@ -144,7 +182,7 @@ export class MotorView extends CanvasView {
     const pr = presetOf(snap, idx);
     const nPh = m.iPhase && m.iPhase.length === 3 ? 3 : 2;
     const isFoc = m.driver === 'foc' || (m.driver == null && snap.driver === 'foc');
-    this.layout(nPh, isFoc);
+    this.layout(nPh, isFoc, pr);
     const L = this.lay;
     const Irated = pr.Irated || 1;
     const thetaE = num(m.thetaE, 0);
@@ -154,7 +192,7 @@ export class MotorView extends CanvasView {
     const vScale = L.Rin * 0.95 / Irated;           // px per amp for the vectors
     const cx = L.cx, cy = L.cy;
 
-    if (this.fresh) this.formatStrings(snap, m, pr, isFoc, iMag, phi, thetaE);
+    if (this.fresh) this.formatStrings(m, phi, thetaE);
 
     this.drawStator(th, m, nPh, Irated);
 
@@ -253,7 +291,7 @@ export class MotorView extends CanvasView {
     g.stroke();
 
     if (L.dial) this.drawDial(th, m);
-    if (L.legend) this.drawLegend(th, isFoc);
+    if (L.legend) this.drawLegend(th);
     if (L.note) {
       g.font = this.font.ui;
       g.fillStyle = th.muted;
@@ -264,11 +302,11 @@ export class MotorView extends CanvasView {
     if (L.panel) this.drawPanel(th, nPh);
   }
 
-  /** @private 10 Hz strings */
-  formatStrings(snap, m, pr, isFoc, iMag, phi, thetaE) {
+  /** @private 10 Hz strings (in the forms the layout picked) */
+  formatStrings(m, phi, thetaE) {
     const s = this.str;
     s.delta = formatValue(Math.round(wrapAngle(phi - thetaE) * DEG), 0) + '°';
-    s.torque = 'torque ' + formatValue(num(m.torque, 0), 2) + ' N·m';
+    s.torque = (this.lay.tqForm === 0 ? 'torque ' : '') + formatValue(num(m.torque, 0), 2) + ' N·m';
     s.count = m.encoder ? String(m.encoder.count) : '';
     const ip = m.iPhase || [];
     for (let k = 0; k < 3; k++) s.ph[k] = k < ip.length ? signed(ip[k]) + ' A' : '';
@@ -276,10 +314,6 @@ export class MotorView extends CanvasView {
     s.beta = signed(num(m.iBeta, 0)) + ' A';
     s.d = signed(num(m.id, 0)) + ' A';
     s.q = signed(num(m.iq, 0)) + ' A';
-    this.noteText = pr.phases === 3
-      ? `${pr.p} pole pairs: this picture repeats ${pr.p} times per turn`
-      : `A 1.8° stepper repeats this picture ${pr.p} times per turn`;
-    this.ghostLabel = isFoc ? 'target' : 'command';
   }
 
   /** @private yoke, teeth and glowing coils */
@@ -589,18 +623,18 @@ export class MotorView extends CanvasView {
     g.fillText(this.str.count, x, y + r + 3, Math.max(40, r * 2.6));
   }
 
-  /** @private one-line legend at the top */
-  drawLegend(th, isFoc) {
-    const g = this.g, y = this.lay.legendY;
+  /** @private legend at the top, entries where the layout put them (the torque value maybe on a second row) */
+  drawLegend(th) {
+    const g = this.g, L = this.lay, y = L.legendY;
     g.font = this.font.ui;
     g.textBaseline = 'middle';
     g.textAlign = 'left';
-    let x = this.legendItem(th, 8, y, th.field, SOLID, 3, 'current');
-    x = this.legendItem(th, x, y, th.target, DASH, 2, this.ghostLabel || (isFoc ? 'target' : 'command'));
-    if (x + 60 < this.w) this.legendItem(th, x, y, th.axisQ, SOLID, 3, this.str.torque);
+    this.legendItem(th, 8, y, th.field, SOLID, 3, 'current');
+    this.legendItem(th, L.lgX1, y, th.target, DASH, 2, L.ghost);
+    if (L.tqForm >= 0) this.legendItem(th, L.tqX, L.tqY, th.axisQ, SOLID, 3, this.str.torque);
   }
 
-  /** @private one legend entry; returns the x after it */
+  /** @private one legend entry: a 16 px swatch and its label */
   legendItem(th, x, y, color, dash, width, label) {
     const g = this.g;
     g.strokeStyle = color;
@@ -610,7 +644,6 @@ export class MotorView extends CanvasView {
     g.setLineDash(SOLID);
     g.fillStyle = th.descColor;
     g.fillText(label, x + 21, y, Math.max(20, this.w - x - 27));
-    return x + 21 + g.measureText(label).width + 12;
   }
 
   /** @private stage descriptors of the transforms panel (rebuilt with the strings, 10 Hz) */
