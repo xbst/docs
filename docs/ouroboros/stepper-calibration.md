@@ -65,6 +65,11 @@ Tuning means finding the right Proportional (P) and Integral (I) gains for each 
     
     The loops are cascaded: position outputs a velocity target, velocity outputs a torque target, torque outputs a current. If an inner loop is unstable, all the outer ones will be too. That's why tuning order matters — and why the plugin does them in that order automatically.
 
+??? info "Interactive: see what each PI loop does"
+    Change each loop's gains and filters on a simulated gantry, or pick a preset, and see the symptom each mistuned value causes: overshoot, ringing, rounded corners or noise.
+
+    ![Interactive PI loops](../interactive/motor-playground/index.html?chapter=pi-loops&nav=0&product=ouroboros){ type=application/pinout style="height:80vh;min-height:640px;width:100%" }
+
 ## Step 1: Config
 
 Add the following to your `printer.cfg`. The `board_profile: Ouroboros` and `motor_profile: Ouroboros_Stepper` lines pull in all the hardware-specific defaults so you don't have to enter them manually. You can find a list of these hardware-specific parameters in the `TMC4671 Plugin Reference`.

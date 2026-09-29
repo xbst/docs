@@ -18,6 +18,11 @@ When the TMC4671 detects that the motor's velocity PI loop is demanding more cur
 
 Detection happens within ~40 µs of contact (a few PWM cycles), which is fast enough to stop the homing move before any meaningful mechanical force builds up.
 
+??? info "Interactive: how stall detection works"
+    Home a simulated carriage into a hard stop and change `homing_current`, the homing speed and the retract distance to see when the flag fires, what a false trigger looks like, and why the next homing needs a retract.
+
+    ![Interactive sensorless homing](../interactive/motor-playground/index.html?chapter=sensorless-foc&nav=0&product=ouroboros){ type=application/pinout style="height:80vh;min-height:640px;width:100%" }
+
 ## Hardware
 
 On Ouroboros, the `STATUS` pins from both TMC4671 chips are already wired to the MCU:
