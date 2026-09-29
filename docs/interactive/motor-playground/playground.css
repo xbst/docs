@@ -140,6 +140,7 @@ a{color:inherit}
 /* ---------------- toolbar ---------------- */
 .tb{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
 .tb-row{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;min-width:0}
+.tb-nav{flex-wrap:nowrap}
 .tabs{display:flex;flex:0 1 auto;min-width:0;overflow:hidden;
   border:1px solid var(--tip-border);border-radius:8px}
 .tabs button{flex:none;white-space:nowrap;background:var(--tip-bg);color:var(--desc-color);border:0;
