@@ -39,7 +39,7 @@ const STAGE_MIN = 280, STAGE_MAX = 540;
 const TIME_NICE = [1, 1.5, 2, 2.5, 3, 4, 5, 7];
 const MOTOR_NAMES = { stepper: 'stepper', bldc: 'BLDC' };
 const DEFAULT_HINT = 'Move the controls and watch the views and the scope. '
-  + 'Hover the scope to read values; select a legend entry to hide its trace.';
+  + 'Hover, tap or use the scope\'s arrow keys to read values; select a legend entry to hide its trace.';
 const EMPTY = [];
 
 const $ = (id) => document.getElementById(id);

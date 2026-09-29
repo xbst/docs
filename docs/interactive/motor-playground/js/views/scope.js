@@ -7,8 +7,8 @@
  * Each analog trace shares one vertical scale with the other traces of its
  * unit, so a target and its measured value are always comparable. Solid
  * traces get a value tag in their color at the right edge; the HTML legend
- * under the plot shows each scale and hides/shows a trace on click. A hover
- * cursor with values appears for mouse and pen pointers; its box stays inside
+ * under the plot shows each scale and hides/shows a trace on click. A time
+ * cursor supports mouse hover, touch dragging and keyboard inspection; its box stays inside
  * the canvas (a tighter pitch, or more columns, when the rows do not fit) and
  * beside the cursor where there is room (split around it if need be); the
  * cursor line is drawn over the box, so it always shows.
@@ -60,6 +60,7 @@ const MIN_SPAN = {
   mm: 2, 'mm/s': 10, A: 0.2, V: 2, 'N·m': 0.02, '°': 10, deg: 10, Hz: 10, kHz: 1,
   '%': 5, 'rad/s': 1, counts: 10,
 };
+let scopeId = 0;
 
 function niceCeil(x) {
   if (!(x > 0)) return 1;
@@ -87,13 +88,33 @@ export class Scope {
     this.plot = document.createElement('div');
     this.plot.className = 'scope-plot';
     this.canvas = document.createElement('canvas');
-    this.canvas.setAttribute('role', 'img');
+    this.canvas.tabIndex = 0;
+    this.canvas.setAttribute('role', 'slider');
+    this.canvas.setAttribute('aria-orientation', 'horizontal');
+    this.canvas.setAttribute('aria-valuemin', '0');
+    this.canvas.setAttribute('aria-valuemax', '100');
+    this.canvas.setAttribute('aria-valuenow', '100');
+    this.canvas.setAttribute('aria-valuetext', 'Newest sample. Focus the scope to inspect its values.');
     this.plot.append(this.canvas);
+    this.help = document.createElement('div');
+    this.help.className = 'scope-help';
+    this.instructions = document.createElement('p');
+    this.instructions.id = 'scope-help-' + (++scopeId);
+    this.instructions.textContent = 'Pause to inspect a fixed history. Hover or tap and drag horizontally for values. '
+      + 'Keyboard: Left/Right move the cursor, Home/End jump to the edges, Escape clears it.';
+    this.canvas.setAttribute('aria-describedby', this.instructions.id);
+    this.clearButton = document.createElement('button');
+    this.clearButton.type = 'button';
+    this.clearButton.className = 'btn scope-clear';
+    this.clearButton.textContent = 'Clear cursor';
+    this.clearButton.setAttribute('aria-disabled', 'true');
+    this.clearButton.addEventListener('click', () => { if (this.cursorMode) this.clearInspection(); });
+    this.help.append(this.instructions, this.clearButton);
     this.legend = document.createElement('div');
     this.legend.className = 'legend';
     this.legend.setAttribute('role', 'group');
     this.legend.setAttribute('aria-label', 'Scope traces, select to hide or show');
-    host.append(this.plot, this.legend);
+    host.append(this.plot, this.legend, this.help);
     this.g = this.canvas.getContext('2d');
 
     this.traces = [];
@@ -103,6 +124,11 @@ export class Scope {
     this.theme = null;
     this.w = 0; this.h = 0; this.dpr = 1;
     this.hoverX = -1;
+    this.cursorMode = null;
+    this.cursorFraction = 1;
+    this.touchPointer = null;
+    this.plotLeft = 8; this.plotRight = 8;
+    this.inspectionDirty = false;
     this.presenceKnown = false;      // a render has looked up the traces since setTraces
     this.dirty = true;
     this.paused = false;
@@ -117,14 +143,81 @@ export class Scope {
     this.pen = false; this.yPrev = 0;
 
     this.setWindow(2);
-    this.canvas.addEventListener('pointermove', (e) => {
-      if (e.pointerType === 'touch') return;
-      this.hoverX = e.offsetX;
-      this.dirty = true;
+    this.canvas.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch' || e.isPrimary === false) return;
+      this.touchPointer = e.pointerId;
+      this.canvas.setPointerCapture(e.pointerId);
+      this.inspectAt(e.offsetX, 'touch');
     });
-    this.canvas.addEventListener('pointerleave', () => { this.hoverX = -1; this.dirty = true; });
+    this.canvas.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'touch') {
+        if (this.touchPointer === e.pointerId) this.inspectAt(e.offsetX, 'touch');
+      } else this.inspectAt(e.offsetX, 'mouse');
+    });
+    this.canvas.addEventListener('pointerup', (e) => {
+      if (this.touchPointer !== e.pointerId) return;
+      this.inspectAt(e.offsetX, 'touch');
+      this.touchPointer = null;
+      this.canvas.releasePointerCapture(e.pointerId);
+    });
+    this.canvas.addEventListener('pointercancel', (e) => {
+      if (this.touchPointer !== e.pointerId) return;
+      this.touchPointer = null;
+      this.clearInspection();
+    });
+    this.canvas.addEventListener('pointerleave', () => {
+      if (this.cursorMode === 'mouse') this.clearInspection();
+    });
+    this.canvas.addEventListener('focus', () => {
+      if (!this.cursorMode) this.inspectAt(this.plotRight, 'keyboard');
+    });
+    this.canvas.addEventListener('blur', () => {
+      if (this.cursorMode === 'keyboard') this.clearInspection();
+    });
+    this.canvas.addEventListener('keydown', (e) => this.inspectKey(e));
     this.resizeObs = new ResizeObserver(() => this.measure());
     this.resizeObs.observe(this.plot);
+  }
+
+  /** @private select a time in the visible plot; touch/keyboard selections survive resize. */
+  inspectAt(x, mode) {
+    const span = this.plotRight - this.plotLeft;
+    if (!(span > 0)) return;
+    if (mode === 'mouse' && (x < this.plotLeft || x > this.plotRight)) {
+      this.clearInspection();
+      return;
+    }
+    this.cursorMode = mode;
+    this.clearButton.setAttribute('aria-disabled', 'false');
+    this.cursorFraction = Math.max(0, Math.min(1, (x - this.plotLeft) / span));
+    this.hoverX = this.plotLeft + this.cursorFraction * span;
+    this.inspectionDirty = true;
+    this.dirty = true;
+  }
+
+  /** @private */
+  clearInspection() {
+    this.cursorMode = null;
+    this.clearButton.setAttribute('aria-disabled', 'true');
+    this.hoverX = -1;
+    this.inspectionDirty = false;
+    this.canvas.setAttribute('aria-valuetext', 'Inspection cleared. Use Left or Right to inspect values.');
+    this.dirty = true;
+  }
+
+  /** @private keyboard timeline control; unrelated keys retain their normal behavior. */
+  inspectKey(e) {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Escape'].includes(e.key)) return;
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.key === 'Escape') { this.clearInspection(); return; }
+    let fraction = this.cursorMode ? this.cursorFraction : 1;
+    const step = e.shiftKey ? 0.1 : 0.01;
+    if (e.key === 'Home') fraction = 0;
+    else if (e.key === 'End') fraction = 1;
+    else fraction += e.key === 'ArrowLeft' ? -step : step;
+    this.inspectAt(this.plotLeft + fraction * (this.plotRight - this.plotLeft), 'keyboard');
   }
 
   /** Re-read the plot size (called by a ResizeObserver; safe to call any time). */
@@ -166,6 +259,7 @@ export class Scope {
    * @param {{keepHidden?: boolean}} [opts]
    */
   setTraces(descs, { keepHidden = true } = {}) {
+    this.clearInspection();
     const prevHidden = keepHidden ? new Set(this.traces.filter((t) => !t.visible).map((t) => t.key + '|' + t.label)) : null;
     this.traces = [];
     this.groups = [];
@@ -234,6 +328,7 @@ export class Scope {
       b.addEventListener('click', () => {
         tr.visible = !tr.visible;
         b.setAttribute('aria-pressed', String(tr.visible));
+        this.inspectionDirty = !!this.cursorMode;
         this.dirty = true;
       });
       tr.legendEl = b; tr.swatch = sw; tr.scaleEl = scale;
@@ -288,7 +383,7 @@ export class Scope {
       names += (names ? ', ' : '') + t.label + (t.unit ? ` (${t.unit})` : '');
     }
     this.canvas.setAttribute('aria-label',
-      `Oscilloscope showing ${formatDuration(this.window)} of motor time` + (names ? `: ${names}.` : '.'));
+      `Oscilloscope time cursor, ${formatDuration(this.window)} of motor time` + (names ? `: ${names}.` : '.'));
   }
 
   /**
@@ -327,6 +422,8 @@ export class Scope {
     const laneH = Math.round(LANE_H * s);
     const tagH = Math.round(TAG_H * s);
     const x0 = nDig ? Math.round(GUT_L * s) : 8, gr = Math.round(GUT_R * s), x1 = W - gr, pw = x1 - x0;
+    this.plotLeft = x0; this.plotRight = x1;
+    if (this.cursorMode && this.cursorMode !== 'mouse') this.hoverX = x0 + this.cursorFraction * pw;
     const top = PAD_T, aBot = H - Math.round(PAD_B * s);
     const aTop = top + nDig * (laneH + LANE_GAP);
     const ah = aBot - aTop;
@@ -754,6 +851,16 @@ export class Scope {
       rows.push(tr.color, lab, val);
     }
     const head = 't = ' + formatDuration(t - tR);
+    // Update the accessible value on deliberate inspection, not on every animation frame:
+    // continuously announcing a running simulation would drown out screen-reader controls.
+    if (this.inspectionDirty) {
+      this.inspectionDirty = false;
+      const values = [];
+      for (let i = 0; i < rows.length; i += 3) values.push(rows[i + 1] + ': ' + rows[i + 2]);
+      this.canvas.setAttribute('aria-valuenow', String(Math.round(this.cursorFraction * 100)));
+      this.canvas.setAttribute('aria-valuetext', (t === tR ? 'Newest sample' : formatDuration(tR - t) + ' before newest sample')
+        + '. ' + (values.length ? values.join('; ') : 'No samples available.'));
+    }
     // Fit the box to the canvas: one column at the normal pitch, else one column at a tighter pitch
     // (13·s at the least), else more columns; where those would not fit the width, one 13·s column
     // whose last line counts the rows left out.
