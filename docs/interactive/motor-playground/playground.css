@@ -211,7 +211,7 @@ a{color:inherit}
   scrollbar-width:thin}
 .p-head{display:flex;flex-direction:column;gap:4px;flex-shrink:0;padding:4px 2px}
 .panel>*{flex-shrink:0}
-.p-learn{flex-shrink:0;border-top:1px solid var(--divider);padding-top:8px}
+.p-learn{flex-shrink:0;padding:8px 12px}
 .p-learn>summary{cursor:pointer;font-size:.81rem;font-weight:500;padding:4px 0}
 .p-learn[open]>:not(summary){margin-top:12px}
 .p-num{font:500 .69rem "Roboto Mono",monospace;color:var(--muted);letter-spacing:.02em}
@@ -354,6 +354,9 @@ html.is-fs .app{height:100%;min-height:0}
 /* taller than the embedded scope, but short viewports (a 1280×800 laptop) keep room for the views */
 html.is-fs .scope-plot{height:clamp(180px,calc(30vh - 40px),400px)}
 html.is-fs .vh.strip{flex-basis:104px}
+html.is-fs:has(.p-learn[open]) body{overflow-y:auto}
+html.is-fs .app:has(.p-learn[open]){height:auto;min-height:100%}
+html.is-fs .app:has(.p-learn[open]) .main{flex:1 0 280px}
 /* short viewports (a phone in landscape or a small tablet): keep the embedded stage floor
    (STAGE_MIN in main.js) and the embedded scope height, and let the page scroll instead of
    collapsing the views */

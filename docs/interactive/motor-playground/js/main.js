@@ -685,7 +685,7 @@ new ResizeObserver(() => {
 }).observe(document.documentElement);
 // Desktop .app fills the iframe and the stage absorbs row changes: watch the rows idealHeight() sums.
 const heightObs = new ResizeObserver(() => schedulePost());
-for (const row of [el.app, el.tb, el.pHead, el.scope, el.ro, el.bb]) heightObs.observe(row);
+for (const row of [el.app, el.tb, el.pHead, el.scope, el.ro, el.pLearn, el.bb]) heightObs.observe(row);
 
 /* ---------------- debug overlay (?debug=1) ---------------- */
 let dbg = null, dbgAcc = { frames: 0, steps: 0, sim: 0, draw: 0, since: 0 };
@@ -758,7 +758,7 @@ function idealHeight() {
   let h = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
   let rows = 1;
   h += desiredStageHeight();
-  for (const part of [el.tb, el.pHead, el.scope, el.ro, el.bb]) {
+  for (const part of [el.tb, el.pHead, el.scope, el.ro, el.pLearn, el.bb]) {
     if (getComputedStyle(part).display === 'none') continue;
     h += part.getBoundingClientRect().height;
     rows++;
