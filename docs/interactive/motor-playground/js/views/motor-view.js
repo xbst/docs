@@ -327,7 +327,7 @@ export class MotorView extends CanvasView {
     const s = this.str;
     s.delta = formatValue(Math.round(wrapAngle(phi - thetaE) * DEG), 0) + '°';
     s.torque = (this.lay.tqForm === 0 ? 'torque ' : '') + formatValue(num(m.torque, 0), 2) + ' N·m';
-    s.count = m.encoder ? String(m.encoder.count) : '';
+    s.count = m.encoder ? formatValue(m.encoder.count, 0) : '';   // a negative count with the real minus (F-66)
     const ip = m.iPhase || [], vf = this.lay.valForm, dg = vf === 2 ? 1 : 2, u = vf === 0 ? ' A' : '';
     for (let k = 0; k < 3; k++) s.ph[k] = k < ip.length ? signed(ip[k], dg) + u : '';
     s.alpha = signed(num(m.iAlpha, 0), dg) + u;
