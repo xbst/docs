@@ -69,6 +69,11 @@ const MIN_SPEED = 10;
 const LOST_MM = 0.05;
 /** Bump for this chapter: a knock StallGuard notices without skipping a step at the default current. */
 const BUMP = { torque: 0.25, durationS: 0.04 };
+/**
+ * How long after a homing ends its slam's last stepLost events can still arrive (s of sim time):
+ * the world sends at most one per 50 ms, and the last came up to 0.057 s after the end.
+ */
+const SLAM_TRAIL_S = 0.1;
 /** The chapter's time-scale range (the toolbar slider's range). */
 const TIME_SCALE = Object.freeze({ default: 0.25, min: 0.01, max: 1 });
 const MODE_NAME = { voltage: 'StealthChop', current: 'SpreadCycle' };
@@ -88,7 +93,7 @@ function freshState() {
     pending: false,    // waiting for the carriage to stop before the homing move starts
     forced: false,     // the driver was switched to voltage mode for the homing move
     result: null,      // last homing: { kind: 'running'|'ok'|'false-trigger'|'no-edge', xMm, pressInMm, slow }
-    afterHoming: false, // parked after a homing: the slam's last stepLost events are not announced
+    homingEndT: -Infinity, // sim time the last homing ended; its slam's trailing stepLost events go unannounced
     slowHint: '',      // the slow-homing hint shown: '' none, 'raise' (advises a faster time scale), 'max'
     lostAt: -Infinity, // performance.now() of the last "fell out of step" announcement
   });
@@ -123,7 +128,7 @@ function restoreMode(ctx) {
  */
 function run(ctx, force) {
   const w = ctx.world;
-  st.afterHoming = false;
+  st.homingEndT = -Infinity;       // a reconfigure below restarts sim time
   if (st.homing) {
     if (!force) return;
     restoreMode(ctx);
@@ -151,7 +156,7 @@ function home(ctx) {
   const w = ctx.world;
   restoreMode(ctx);                // a homing already running: its forced mode ends here
   st.homing = true;
-  st.afterHoming = false;
+  st.homingEndT = -Infinity;       // a reconfigure below restarts sim time
   st.result = { kind: 'running' };
   setScope(ctx, 'stallguard');
   const lost = lostMm(w);
@@ -365,7 +370,7 @@ export default {
     // Homing ended (retract done, or aborted by another command).
     if (st.homing && !snap.homing.active) {
       st.homing = false;
-      st.afterHoming = true;       // main.js drains events after onFrame: the slam's last stepLost comes next
+      st.homingEndT = snap.t;      // main.js drains events after onFrame: the slam's last stepLost may come next
       restoreMode(ctx);
       st.slowHint = '';
       ctx.app.setHint(null);
@@ -393,9 +398,10 @@ export default {
         // bumps; the LED and the scope show that, and Klipper ignores DIAG then too.
         return false;
       case 'stepLost': {
-        // A homing reports its own result; its slam's stepLost events may still arrive after it ended
-        // (the carriage stays parked until run() or home()). The Lost chip shows the distance.
-        if (st.homing || st.afterHoming) return false;
+        // A homing reports its own result, and its slam's last stepLost events can still arrive just
+        // after it ended. A later slip, such as one the reader causes with Bump on the parked axis at a
+        // low current, is announced. The Lost chip shows the distance either way.
+        if (st.homing || ev.t - st.homingEndT < SLAM_TRAIL_S) return false;
         const now = performance.now();
         if (now - st.lostAt < 3000) return false;
         st.lostAt = now;
