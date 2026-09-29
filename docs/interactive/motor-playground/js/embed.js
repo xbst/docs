@@ -83,15 +83,24 @@ export function watchDevicePixelRatio(onChange) {
 /**
  * Debounced height poster. Posts only when embedded, never in fullscreen or
  * at zero width (inside a closed <details>), and only when the height changed
- * by more than 1 px.
+ * by more than 1 px. It measures at the iframe's full width: while the iframe
+ * is still too short, a classic scrollbar narrows the page, and the phone
+ * layout is shorter when narrower, so a height measured beside the scrollbar
+ * would never make it go away.
  * @param {() => number} measure ideal content height in css px
  * @returns {{schedule: () => void, reset: () => void}} reset() forces the next post
  */
 export function createHeightPoster(measure) {
   let last = 0, timer = 0;
   function post() {
-    if (isFullscreen() || document.documentElement.clientWidth === 0) return;
-    const h = measure();
+    const de = document.documentElement;
+    if (isFullscreen() || de.clientWidth === 0) return;
+    // body's overflow is the viewport's (html keeps overflow visible): hidden for one
+    // synchronous layout, the scrollbar goes and the measure sees the full width
+    const bar = window.innerWidth > de.clientWidth, st = document.body.style, ov = st.overflow;
+    if (bar) st.overflow = 'hidden';
+    let h;
+    try { h = measure(); } finally { if (bar) st.overflow = ov; }
     if (!(h > 0) || Math.abs(h - last) <= 1) return;
     last = h;
     try { window.parent.postMessage({ pinconnectHeight: h }, '*'); } catch (err) { /* parent gone */ }
