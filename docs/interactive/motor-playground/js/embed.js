@@ -81,9 +81,12 @@ export function watchDevicePixelRatio(onChange) {
 }
 
 /**
- * Debounced height poster. Posts only when embedded, never in fullscreen or
- * at zero width (inside a closed <details>), and only when the height changed
- * by more than 1 px. It measures at the iframe's full width: while the iframe
+ * Debounced height poster. After the first measurement, ease height changes
+ * over 240 ms by posting intermediate heights (the shared pinout listener can
+ * keep applying them directly). Reduced-motion users receive the final height
+ * immediately. Posts only when embedded, never in fullscreen or at zero width
+ * (inside a closed <details>), and only when the height changed by more than
+ * 1 px. It measures at the iframe's full width: while the iframe
  * is still too short, a classic scrollbar narrows the page, and the phone
  * layout is shorter when narrower, so a height measured beside the scrollbar
  * would never make it go away.
@@ -91,25 +94,55 @@ export function watchDevicePixelRatio(onChange) {
  * @returns {{schedule: () => void, reset: () => void}} reset() forces the next post
  */
 export function createHeightPoster(measure) {
-  let last = 0, timer = 0;
+  let last = 0, target = 0, timer = 0, frame = 0, from = 0, started = null;
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  const canPost = () => !isFullscreen() && document.documentElement.clientWidth > 0;
+  function stop() {
+    if (frame) cancelAnimationFrame(frame);
+    frame = 0;
+    started = null;
+  }
+  function send(h, final = false) {
+    if (!final && Math.abs(h - last) <= 1) return;
+    last = h;
+    try { window.parent.postMessage({ pinconnectHeight: h }, '*'); } catch (err) { /* parent gone */ }
+  }
+  function animate(now) {
+    frame = 0;
+    if (!canPost()) { target = 0; started = null; return; }
+    if (motion.matches) { send(target, true); started = null; return; }
+    if (started === null) started = now;
+    const p = Math.min(1, (now - started) / 240);
+    const eased = p * p * (3 - 2 * p);
+    send(from + (target - from) * eased, p === 1);
+    if (p < 1) frame = requestAnimationFrame(animate);
+    else started = null;
+  }
   function post() {
     const de = document.documentElement;
-    if (isFullscreen() || de.clientWidth === 0) return;
+    if (!canPost()) { stop(); target = 0; return; }
     // body's overflow is the viewport's (html keeps overflow visible): hidden for one
     // synchronous layout, the scrollbar goes and the measure sees the full width
     const bar = window.innerWidth > de.clientWidth, st = document.body.style, ov = st.overflow;
     if (bar) st.overflow = 'hidden';
     let h;
     try { h = measure(); } finally { if (bar) st.overflow = ov; }
-    if (!(h > 0) || Math.abs(h - last) <= 1) return;
-    last = h;
-    try { window.parent.postMessage({ pinconnectHeight: h }, '*'); } catch (err) { /* parent gone */ }
+    if (!(h > 0)) return;
+    // ResizeObservers fire again for each intermediate iframe height. Comparing
+    // against the destination prevents those notifications restarting the ease.
+    if (Math.abs(h - target) <= 1 && (frame || Math.abs(h - last) <= 1)) return;
+    stop();
+    target = h;
+    if (!last || motion.matches) { send(h, true); return; }
+    if (Math.abs(h - last) <= 1) return;
+    from = last;
+    frame = requestAnimationFrame(animate);
   }
   return {
     schedule() {
       if (!EMBEDDED || timer) return;
       timer = setTimeout(() => { timer = 0; post(); }, 30);
     },
-    reset() { last = 0; },
+    reset() { stop(); last = 0; target = 0; },
   };
 }
