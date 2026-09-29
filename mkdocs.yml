@@ -196,6 +196,7 @@ nav:
     - "GitHub Repository": "https://github.com/xbst/MOAR_CAN"
     - "Store Page": "https://store.isiks.tech/products/MOAR_CAN"
   - "Ouroboros":
+    - ouroboros/index.md
     - "Mount & Wiring": "ouroboros/wiring.md"
     - "Firmware Setup": "ouroboros/firmware-setup.md"
     - "Motor Setup":
