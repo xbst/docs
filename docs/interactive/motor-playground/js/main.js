@@ -47,7 +47,7 @@ const el = {
   app: $('app'), tb: $('tb'), tabs: $('tabs'), tabsel: $('tabsel'), prev: $('prev'), next: $('next'),
   motor: $('motor'), play: $('play'), time: $('time'), timeH: $('time-h'), slowed: $('slowed'),
   sound: $('sound'), openfull: $('openfull'), fs: $('fs'), fsOn: $('fs-on'), fsOff: $('fs-off'),
-  stage: $('stage'), views: $('views'), vhP: $('vh-primary'), vhS: $('vh-secondary'), vhStrip: $('vh-strip'),
+  stage: $('stage'), views: $('views'), viewsel: $('viewsel'), vhP: $('vh-primary'), vhS: $('vh-secondary'), vhStrip: $('vh-strip'),
   panel: $('panel'), pHead: $('p-head'), pLearn: $('p-learn'), pNum: $('p-num'), pTitle: $('p-title'), pTake: $('p-take'), pText: $('p-text'),
   pTry: $('p-try'), pTryList: $('p-try-list'), pCtl: $('p-ctl'), pDeep: $('p-deep'), pDeepBody: $('p-deep-body'),
   scope: $('scope'), ro: $('ro'), bb: $('bb'),
@@ -260,6 +260,11 @@ function buildToolbar() {
     if (v) setTimeScaleValue(v);
   });
   el.fs.addEventListener('click', () => toggleFullscreen(standaloneUrl));
+  el.viewsel.addEventListener('change', () => {
+    el.stage.setAttribute('data-mobile-view', el.viewsel.value);
+    requestFrame();
+    schedulePost();
+  });
   // the new-tab fallback is iframe-only: a standalone page without fullscreen (iPhone Safari) would open a copy of itself
   el.fs.hidden = !EMBEDDED && !canFullscreen();
   if (SOLO) {
@@ -444,6 +449,17 @@ function buildStage() {
   else el.vhS.hidden = true;
   if (stageSpec.strip) mountView('strip', el.vhStrip, stageSpec.strip);
   else el.vhStrip.hidden = true;
+  const labels = { gantry: 'Carriage', motor: 'Motor', vector: 'Current vectors',
+    blocks: 'Control loops', chart: 'Torque and speed', schematic: 'Driver circuit' };
+  el.viewsel.replaceChildren(...views.map((v) => {
+    const option = document.createElement('option');
+    option.value = v.slot;
+    option.textContent = labels[v.name] || cap(v.name);
+    return option;
+  }));
+  el.viewsel.value = 'primary';
+  el.stage.setAttribute('data-mobile-view', 'primary');
+  el.stage.classList.toggle('multi-view', views.length > 1);
   renderCtx.chapterId = ch.id;
 }
 

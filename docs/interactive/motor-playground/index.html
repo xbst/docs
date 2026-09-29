@@ -109,6 +109,9 @@
         </div>
       </div>
       <button class="btn" id="play" type="button" aria-label="Pause the simulation">&#10074;&#10074; Pause</button>
+      <button class="btn icon" id="fs" type="button" aria-label="Enter fullscreen" title="Fullscreen">
+        <svg viewBox="0 0 16 16" aria-hidden="true" id="fs-on"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg>
+        <svg viewBox="0 0 16 16" aria-hidden="true" id="fs-off" hidden><path d="M6 2v4H2M14 6h-4V2M10 14v-4h4M2 10h4v4"/></svg></button>
       <div class="tb-grp time">
         <label class="tb-lbl" for="time">Time</label>
         <input type="range" id="time" min="0" max="1" step="1" value="0">
@@ -121,9 +124,6 @@
       <a class="btn" id="openfull" target="_blank" rel="noopener" hidden>Open the full playground
         <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2">
           <path d="M9 3h4v4M13 3 7 9M11 9v4H3V5h4"/></svg></a>
-      <button class="btn icon" id="fs" type="button" aria-label="Enter fullscreen" title="Fullscreen">
-        <svg viewBox="0 0 16 16" aria-hidden="true" id="fs-on"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg>
-        <svg viewBox="0 0 16 16" aria-hidden="true" id="fs-off" hidden><path d="M6 2v4H2M14 6h-4V2M10 14v-4h4M2 10h4v4"/></svg></button>
     </div>
   </header>
 
@@ -134,6 +134,10 @@
   </div>
   <div class="main" id="main">
     <section class="stage" id="stage" aria-label="Simulation views">
+      <div class="view-picker">
+        <label for="viewsel">View</label>
+        <select id="viewsel" aria-label="Simulation view"></select>
+      </div>
       <div class="views" id="views">
         <div class="vh p" id="vh-primary" role="img" aria-label="Simulation view"></div>
         <div class="vh s" id="vh-secondary" role="img" aria-label="Simulation view" hidden></div>

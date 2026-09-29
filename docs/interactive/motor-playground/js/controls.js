@@ -91,10 +91,11 @@ export class Controls {
     /** @type {Map<string, {set: (v: *) => void, el: HTMLElement}>} */
     this.items = new Map();
     this.gen = 0;
+    this.groupKey = null;
   }
 
   /** Forget preserved values (called on chapter change). */
-  reset() { this.memory.clear(); }
+  reset() { this.memory.clear(); this.groupKey = null; }
 
   /** Remove all controls and forget preserved values. */
   clear() { this.reset(); this.items.clear(); this.host.replaceChildren(); }
@@ -150,7 +151,35 @@ export class Controls {
       g.append(item.el);
       if (spec.id != null) this.items.set(String(spec.id), item);
     }
-    this.host.replaceChildren(frag);
+    // Long chapters expose one set of controls at a time. Keep all inputs mounted
+    // so switching sections never resets a gain or interrupts the simulation.
+    const sections = [...groups.keys()].filter(Boolean);
+    let picker = null;
+    if (sections.length > 2) {
+      if (this.groupKey !== '*' && !sections.includes(this.groupKey)) this.groupKey = sections[0];
+      picker = el('div', 'ctl section-picker');
+      const label = el('label', 'ctl-l', 'Adjust');
+      label.htmlFor = PREFIX + 'section';
+      const select = el('select');
+      select.id = label.htmlFor;
+      select.setAttribute('aria-label', 'Control group');
+      for (const key of [...sections, '*']) {
+        const option = el('option', null, key === '*' ? 'All controls' : key);
+        option.value = key;
+        select.append(option);
+      }
+      select.value = this.groupKey;
+      const show = () => {
+        for (const [key, group] of groups) {
+          group.hidden = !!key && this.groupKey !== '*' && key !== this.groupKey;
+          group.setAttribute('data-sectioned', String(this.groupKey !== '*'));
+        }
+      };
+      select.addEventListener('change', () => { this.groupKey = select.value; show(); });
+      show();
+      picker.append(label, select);
+    }
+    this.host.replaceChildren(...(picker ? [picker, frag] : [frag]));
     if (focusId) {
       const f = document.getElementById(focusId);
       if (f) f.focus({ preventScroll: true });

@@ -11,7 +11,7 @@
  * Presets set the multipliers to one symptom row of the calibration tables
  * (only the rows this model reproduces; the others are listed under "Deeper"
  * as things you would also see on hardware), pick a fitting test move, size
- * the gantry loupe to the symptom, and name the symptom in the panel text
+ * the gantry loupe to the symptom, and name the symptom beside the preset
  * after 3.5 s of sim time or when the reader presses "Reveal". The
  * multipliers were measured on the stepper preset (chunk 07, STATUS.md
  * "Preset multipliers"); the BLDC preset shows the same symptoms, mostly
@@ -226,7 +226,7 @@ function markCustom(c) {
   if (S.preset === 'custom') return;
   S.preset = 'custom';
   c.app.setControlValue('preset', 'custom');
-  c.app.refreshText();
+  refreshSymptom(c);
 }
 
 /**
@@ -258,11 +258,11 @@ function setFilter(c, f, v) {
   markCustom(c);
 }
 
-/** Names the current preset's symptom in the panel text. */
+/** Names the current preset's symptom beside its controls and in the explanation. */
 function reveal(c) {
   S.revealed = true;
   S.revealAt = -1;
-  c.app.refreshText();
+  refreshSymptom(c);
 }
 
 function applyPreset(c, id) {
@@ -287,6 +287,12 @@ function applyPreset(c, id) {
   }
   clearHeld();
   startMove(c);
+  refreshSymptom(c);
+}
+
+/** Keep the visible note current without replacing a slider being adjusted. */
+function refreshSymptom(c) {
+  c.app.setControlValue('symptom', symptomHtml(c));
   c.app.refreshText();
 }
 
@@ -341,7 +347,7 @@ export default {
   traceWindow: 2.0,
   stage: { primary: 'gantry', secondary: 'blocks', split: 0.55 },
   viewOptions: { gantry: { loupe: true, loupeMm: LOUPE_DEFAULT }, blocks: { filters: { torque: 1, flux: 1, velocity: 1 } } },
-  hint: `Every slider lights its loop in the block diagram. A preset names its symptom in the text after ${REVEAL_S} s `
+  hint: `Every slider lights its loop in the block diagram. The Presets controls name the symptom after ${REVEAL_S} s `
     + 'of motor time, or press Reveal.',
 
   scenario(motorType) {
@@ -389,6 +395,7 @@ export default {
         options: PRESETS.map((p) => ({ value: p.id, label: p.label })).concat([{ value: 'custom', label: 'Custom (sliders moved)', disabled: true }]),
         onChange: (v, c) => (v === 'custom' ? restoreCustom(c) : applyPreset(c, v)) },
       { type: 'button', id: 'reveal', label: 'Reveal the symptom', group: 'Presets', onClick: (c) => reveal(c) },
+      { type: 'note', id: 'symptom', group: 'Presets', html: symptomHtml(ctx) },
       { type: 'select', id: 'move', label: 'Test move', group: 'Test move', value: S.move, options: MOVES,
         onChange: (v, c) => setMove(c, v) },
       { type: 'slider', id: 'speed', label: 'Speed', group: 'Test move', min: 50, max: 300, step: 10, value: S.speed, unit: 'mm/s',
