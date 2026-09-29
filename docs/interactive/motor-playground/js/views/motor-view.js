@@ -23,7 +23,8 @@
  *   legend, note    top legend line and the "repeats N times per turn" note (default true)
  *
  * Labels that do not fit are shortened, moved or left out, never squeezed below 90% of their
- * width (fitForm): the torque value goes bare or onto a second legend row, the note shortens.
+ * width (fitForm): the torque value goes bare or onto a second legend row, the note shortens,
+ * and a narrow bottom transforms panel gets short titles and bare currents (one decimal at last).
  */
 import {
   CanvasView, TAU, arrow, arrowHead, haloText, clamp, num, presetOf, wrapAngle, textColor, rimColor, fitForm,
@@ -41,6 +42,14 @@ const DASH_FINE = [3, 3];
 const PHASE_NAMES = ['A', 'B', 'C'];
 const SIDE_HOLD_MS = 400;            // wall time δ must stay on the other side before the rotor letters move
 const TORQUE_FORMS = ['torque −0.00 N·m', '−0.00 N·m'];   // the legend's torque entry at its widest, full and bare
+const VALUE_FORMS = ['−0.00 A', '−0.00', '−0.0'];          // a panel current at its widest: in A, bare, one decimal
+// transforms panel titles: numbered over a note in the side panel, short in a narrow bottom panel
+const STAGE_TITLES = {
+  side: ['1  Phase currents', '2  Clarke → α, β', '3  Park → d, q'],
+  full: ['Phase currents', 'Clarke → α, β', 'Park → d, q'],
+  short: ['Phases', 'Clarke', 'Park'],
+};
+const STAGE_NOTES = ['what the sensors read', 'stator frame: they rotate', 'rotor frame: they hold still'];
 
 export class MotorView extends CanvasView {
   /** Preferred height / width (main.js: stage height and mobile host height). */
@@ -61,7 +70,7 @@ export class MotorView extends CanvasView {
       isFoc: false, compact: false, phases: 2, pr: null, cx: 0, cy: 0, R: 0, Ry: 0, Rin: 0, Rr: 0,
       legend: false, legendY: 0, ghost: '', lgX1: 0, tqForm: -1, tqX: 0, tqY: 0,
       note: false, noteY: 0, dial: false, dx: 0, dy: 0, dr: 0,
-      panel: 0, px: 0, py: 0, pw: 0, ph: 0,
+      panel: 0, px: 0, py: 0, pw: 0, ph: 0, shortTitles: false, valForm: 0, nameW: 0,
     };
     this.str = {
       delta: '', torque: '', count: '', ph: ['', '', ''], alpha: '', beta: '', d: '', q: '',
@@ -115,6 +124,17 @@ export class MotorView extends CanvasView {
     }
     L.note = !compact && o.note !== false && L.panel !== 2;
     const g = this.g;
+    if (L.panel) {
+      // a narrow bottom panel gets short titles, and currents without their unit or with one
+      // decimal, rather than squeezed ones (F-73)
+      const sw = L.panel === 1 ? L.pw : (L.pw - 28) / 3;
+      g.font = this.font.uiBold;
+      L.shortTitles = L.panel === 2 && STAGE_TITLES.full.some((s) => fitForm(g, [s], sw - 12) < 0);
+      g.font = this.font.mono;
+      L.nameW = g.measureText('A').width;
+      const k = fitForm(g, VALUE_FORMS, sw - 24 - L.nameW);
+      L.valForm = k < 0 ? VALUE_FORMS.length - 1 : k;
+    }
     g.font = this.font.ui;
     if (L.note) {
       // a narrow view says only how often the picture repeats
@@ -308,12 +328,12 @@ export class MotorView extends CanvasView {
     s.delta = formatValue(Math.round(wrapAngle(phi - thetaE) * DEG), 0) + '°';
     s.torque = (this.lay.tqForm === 0 ? 'torque ' : '') + formatValue(num(m.torque, 0), 2) + ' N·m';
     s.count = m.encoder ? String(m.encoder.count) : '';
-    const ip = m.iPhase || [];
-    for (let k = 0; k < 3; k++) s.ph[k] = k < ip.length ? signed(ip[k]) + ' A' : '';
-    s.alpha = signed(num(m.iAlpha, 0)) + ' A';
-    s.beta = signed(num(m.iBeta, 0)) + ' A';
-    s.d = signed(num(m.id, 0)) + ' A';
-    s.q = signed(num(m.iq, 0)) + ' A';
+    const ip = m.iPhase || [], vf = this.lay.valForm, dg = vf === 2 ? 1 : 2, u = vf === 0 ? ' A' : '';
+    for (let k = 0; k < 3; k++) s.ph[k] = k < ip.length ? signed(ip[k], dg) + u : '';
+    s.alpha = signed(num(m.iAlpha, 0), dg) + u;
+    s.beta = signed(num(m.iBeta, 0), dg) + u;
+    s.d = signed(num(m.id, 0), dg) + u;
+    s.q = signed(num(m.iq, 0), dg) + u;
   }
 
   /** @private yoke, teeth and glowing coils */
@@ -649,14 +669,13 @@ export class MotorView extends CanvasView {
   /** @private stage descriptors of the transforms panel (rebuilt with the strings, 10 Hz) */
   buildStages(th, nPh) {
     const s = this.str, side = this.lay.panel === 1;
+    const t = side ? STAGE_TITLES.side : this.lay.shortTitles ? STAGE_TITLES.short : STAGE_TITLES.full;
     const phases = [['A', s.ph[0], th.phaseA], ['B', s.ph[1], th.phaseB]];
     if (nPh === 3) phases.push(['C', s.ph[2], th.phaseC]);
     this.stages = [
-      { title: side ? '1  Phase currents' : 'Phase currents', note: side ? 'what the sensors read' : '', rows: phases },
-      { title: side ? '2  Clarke → α, β' : 'Clarke → α, β', note: side ? 'stator frame: they rotate' : '',
-        rows: [['α', s.alpha, th.muted], ['β', s.beta, th.muted]] },
-      { title: side ? '3  Park → d, q' : 'Park → d, q', note: side ? 'rotor frame: they hold still' : '',
-        rows: [['d', s.d, th.axisD], ['q', s.q, th.axisQ]] },
+      { title: t[0], note: side ? STAGE_NOTES[0] : '', rows: phases },
+      { title: t[1], note: side ? STAGE_NOTES[1] : '', rows: [['α', s.alpha, th.muted], ['β', s.beta, th.muted]] },
+      { title: t[2], note: side ? STAGE_NOTES[2] : '', rows: [['d', s.d, th.axisD], ['q', s.q, th.axisQ]] },
     ];
   }
 
@@ -724,12 +743,12 @@ export class MotorView extends CanvasView {
     for (let k = 0; k < rows.length; k++) {
       const row = rows[k];
       g.fillStyle = row[2];
-      g.beginPath(); g.arc(x + 10, yy, 3.5, 0, TAU); g.fill();
+      g.beginPath(); g.arc(x + 9, yy, 3.5, 0, TAU); g.fill();
       g.fillStyle = th.text;
       g.textAlign = 'left';
-      g.fillText(row[0], x + 18, yy);
+      g.fillText(row[0], x + 16, yy);
       g.textAlign = 'right';
-      g.fillText(row[1], x + w - 6, yy, w - 40);
+      g.fillText(row[1], x + w - 5, yy, w - 24 - this.lay.nameW);   // right of the name, 3 px clear
       yy += lh;
     }
   }
@@ -751,10 +770,10 @@ export class MotorView extends CanvasView {
   }
 }
 
-/** Signed value with a real minus sign and two decimals ("+1.23", "−0.61"). */
-function signed(v) {
-  const s = formatValue(v, 2);
-  return v > 0 && s !== '0.00' ? '+' + s : s;
+/** Signed value with a real minus sign and `digits` decimals ("+1.23", "−0.61", "0.00"). */
+function signed(v, digits = 2) {
+  const s = formatValue(v, digits);
+  return v > 0 && Number(s) !== 0 ? '+' + s : s;
 }
 
 /**

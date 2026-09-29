@@ -7,6 +7,9 @@
  * (id*, iq*) is dashed. The circle is the current limit (motor 0's `iLimit`).
  * An inset shows the voltage vector (ud, uq) against the voltage circle
  * (`uMag` of `uLimit`); it turns amber when the drive is at its voltage limit.
+ * Its value moves left into free room where it needs to and shortens (the
+ * limit without its decimal, then only the voltage) rather than squeeze; in a
+ * narrow view the current rows at the top leave out their targets.
  * With two motors in a comparison world (chapter 7's open-loop stepper next to
  * the FOC motor), the second motor's current vector is drawn in the target
  * color with a label.
@@ -17,12 +20,14 @@
  *   voltage   show the voltage inset (default true)
  *   range     'limit' (the circle is the current limit) or a fixed radius in A
  */
-import { CanvasView, TAU, arrow, haloText, clamp, num, presetOf, mechanicsOf, textColor, rimColor } from './view-util.js';
+import { CanvasView, TAU, arrow, haloText, clamp, num, presetOf, mechanicsOf, textColor, rimColor, fitForm } from './view-util.js';
 import { formatValue } from '../format.js';
 
 const SOLID = [];
 const DASH = [6, 4];
 const DASH_FINE = [3, 3];
+const U_FORMS = ['00.0 of 00.0 V', '00.0 of 00 V', '00.0 V'];   // the inset's value at its widest, in each form
+const ROW_FORMS = ['iq −0.00 A  (target −0.00)', 'iq −0.00 A'];  // a current row at its widest, with and without the target
 
 export class VectorView extends CanvasView {
   /** Preferred height / width. */
@@ -34,7 +39,9 @@ export class VectorView extends CanvasView {
    */
   constructor(host, opts) {
     super(host, opts, { motor: 0, compare: 'auto', voltage: true, range: 'limit' });
-    this.lay = { cx: 0, cy: 0, R: 0, vx: 0, vy: 0, vr: 0, voltage: false, top: 0, small: false };
+    this.lay = {
+      cx: 0, cy: 0, R: 0, vx: 0, vy: 0, vr: 0, voltage: false, top: 0, small: false, rowTarget: true, uForm: 0, uX: 0, uRoom: 0,
+    };
     this.str = { iq: '', id: '', lim: '', u: '', cmp: '', cmpq: '' };
     this.scaleA = 0;        // A at the circle; 0 = nothing drawn yet: the first frame snaps, later changes ease
   }
@@ -45,7 +52,10 @@ export class VectorView extends CanvasView {
     // Size, options and font scale set layoutDirty (CanvasView).
     if (!this.layoutDirty) return;
     this.layoutDirty = false;
+    this.fresh = true;     // the value forms may change: rebuild the 10 Hz strings this frame
     L.small = w < 230 || h < 200;
+    this.g.font = this.font.mono;
+    L.rowTarget = fitForm(this.g, ROW_FORMS, w - 28) === 0;    // the rows' targets where they fit (valueRow)
     const line = this.fpx(12) + 5;
     L.top = 6 + line * (L.small ? 1 : 2);
     L.voltage = this.opts.voltage !== false && w >= 180 && h >= 170;
@@ -71,6 +81,17 @@ export class VectorView extends CanvasView {
         dist = Math.hypot(L.vx - cx, L.vy - cy);
         if (dist < need) R = Math.max(20, dist - vr - 8);
       }
+      // The value under the inset: centered on it, else moved left as far as the main circle (and
+      // its axes, 1.04 R) leaves room on that row, in the longest form that fits (F-73).
+      const g = this.g, ty0 = L.vy + vr + 4, ty1 = ty0 + this.fpx(12);
+      const dy = ty0 > cy ? ty0 - cy : ty1 < cy ? cy - ty1 : 0;
+      const x0 = dy >= R * 1.04 ? 4 : cx + (dy < R ? Math.sqrt(R * R - dy * dy) : 0) + 4;
+      L.uRoom = w - 4 - x0;
+      g.font = this.font.mono;
+      const k = fitForm(g, U_FORMS, L.uRoom);
+      L.uForm = k < 0 ? U_FORMS.length - 1 : k;
+      const tw = Math.min(g.measureText(U_FORMS[L.uForm]).width, L.uRoom);
+      L.uX = clamp(L.vx, x0 + tw / 2, w - 4 - tw / 2);
     }
     L.cx = cx;
     L.cy = cy;
@@ -261,16 +282,18 @@ export class VectorView extends CanvasView {
     g.font = this.font.mono;
     g.fillStyle = full ? th.text : th.descColor;
     g.textBaseline = 'top';
-    g.fillText(this.str.u, x, y + r + 4, r * 2 + 16);
+    g.fillText(this.str.u, L.uX, y + r + 4, L.uRoom);
   }
 
   /** @private 10 Hz strings */
   formatStrings(m, cm, lim) {
     const s = this.str;
-    s.iq = `iq ${formatValue(num(m.iq, 0), 2)} A  (target ${formatValue(num(m.iqStar, 0), 2)})`;
-    s.id = `id ${formatValue(num(m.id, 0), 2)} A  (target ${formatValue(num(m.idStar, 0), 2)})`;
+    const tg = this.lay.rowTarget;
+    s.iq = `iq ${formatValue(num(m.iq, 0), 2)} A` + (tg ? `  (target ${formatValue(num(m.iqStar, 0), 2)})` : '');
+    s.id = `id ${formatValue(num(m.id, 0), 2)} A` + (tg ? `  (target ${formatValue(num(m.idStar, 0), 2)})` : '');
     s.lim = `limit ${formatValue(lim, 2)} A`;
-    s.u = `${formatValue(num(m.uMag, 0), 1)} of ${formatValue(num(m.uLimit, 0), 1)} V`;
+    const f = this.lay.uForm, u = formatValue(num(m.uMag, 0), 1);
+    s.u = f === 2 ? `${u} V` : `${u} of ${formatValue(num(m.uLimit, 0), f === 0 ? 1 : 0)} V`;
     if (cm) {
       const a = Math.hypot(num(cm.id, 0), num(cm.iq, 0));
       s.cmp = `open loop ${formatValue(a, 2)} A`;
