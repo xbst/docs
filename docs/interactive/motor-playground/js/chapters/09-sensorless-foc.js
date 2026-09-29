@@ -45,10 +45,16 @@ function resetState(type) {
 }
 resetState('stepper');
 
-/** "Home": out to the start position first when the carriage is closer, then the homing sequence. */
+/**
+ * "Home": out to the start position first when the carriage is closer, then the homing sequence.
+ * Pressed again after the move-out while the carriage still settles, it leaves the pending homing
+ * to onFrame, as homeAgain() does (a pass started then can false-trigger, and the pending one would
+ * run after it).
+ */
 function homeFromStart(c) {
   const w = c.world;
   const s = w.snapshot;
+  if (S.homeWhenIdle && s.planner.mode === 'idle' && !s.homing.active) return;   // onFrame homes once the carriage rests
   if (Math.abs(s.gantry.x - START_X) < 0.5 && s.planner.mode === 'idle' && !s.homing.active) {
     w.command('home');
     return;
