@@ -386,7 +386,8 @@ function enterChapter(index) {
   readouts.clear();
   controls.reset();
   el.pDeep.open = false;
-  el.panel.scrollTop = 0;
+  el.panel.scrollTop = 0;   // phones scroll the page: in fullscreen, where Next is sticky, open at the title
+  if (MOBILE.matches && document.documentElement.classList.contains('is-fs')) window.scrollTo(0, 0);
   hook('onEnter', ctx);
   scope.setTraces(resolveTraces(), { keepHidden: false });
   renderPanel();

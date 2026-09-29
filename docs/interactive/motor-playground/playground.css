@@ -377,9 +377,11 @@ html.is-fs .vh.strip{flex-basis:104px}
   .live{position:static;flex:none;max-width:45%;box-shadow:none}
   /* fullscreen keeps the one-column page scrolling (the desktop rules lock the viewport); the
      toolbar stays on top, across the side gutters, so exit fullscreen stays in reach, and a
-     control focused from below scrolls clear of it (the toolbar is at most about 153 px) */
+     content control focused from below scrolls clear of it (the toolbar is at most about
+     153 px). The margin sits on the content only: on the root, as scroll-padding, it would
+     scroll the page whenever a toolbar control takes focus */
   html.is-fs body{overflow-x:hidden;overflow-y:auto}
   html.is-fs .app{height:auto}
   html.is-fs .tb{position:sticky;top:0;z-index:3;margin:-8px;padding:8px;background:var(--page-bg)}
-  html.is-fs{scroll-padding-top:9rem}
+  html.is-fs .app>:not(.tb) *{scroll-margin-top:9rem}
 }
