@@ -52,6 +52,7 @@ resetState('stepper');
  * run after it).
  */
 function homeFromStart(c) {
+  S.autoHomeAt = -1;   // a manual Home replaces the delayed demonstration, even while paused
   const w = c.world;
   const s = w.snapshot;
   if (S.homeWhenIdle && s.planner.mode === 'idle' && !s.homing.active) return;   // onFrame homes once the carriage rests
@@ -70,6 +71,7 @@ function homeFromStart(c) {
  * reverses: a false trigger).
  */
 function homeAgain(c) {
+  S.autoHomeAt = -1;
   const w = c.world;
   const s = w.snapshot;
   if (S.homeWhenIdle && !s.homing.active) {
