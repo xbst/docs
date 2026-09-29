@@ -288,7 +288,9 @@ a{color:inherit}
 /* ---------------- readouts (views/readouts.js) ---------------- */
 .ro{position:relative;display:flex;align-items:center;gap:8px;flex-shrink:0;min-height:26px;min-width:0}
 .chips{display:flex;gap:6px;flex-wrap:wrap;flex:1 1 auto;min-width:0}
-.chip{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;color:var(--desc-color);
+/* flex:none: readouts.js holds each chip's widest width as a min-width, and a flex item that may
+   shrink would be squeezed down to that minimum in the phone layout's overflowing row */
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;color:var(--desc-color);flex:none;
   background:var(--tip-bg);border:1px solid var(--tip-border);border-radius:10px;padding:3px 10px;white-space:nowrap}
 .chip b{font:500 .75rem "Roboto Mono",monospace;color:var(--text)}
 .chip .u{color:var(--muted)}
