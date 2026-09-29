@@ -10,10 +10,11 @@
  *
  *   slider:    { type:'slider', id, label, min, max, step, value, unit, log:false,
  *                format:(v)=>string, live:true, onChange:(v, ctx)=>void }
- *              `log:true` maps the track on log10 (min > 0) in 200 positions
- *              (or the whole number nearest to the track over `logStep`), the
- *              last one at max; `step` then only rounds the value, and the arrow
- *              keys skip track positions that round to the value already shown.
+ *              `log:true` maps the track on log10 (min > 0) in n positions (200,
+ *              or the whole number nearest to log10(max/min)/`logStep`), the last
+ *              one a hair inside max so the browser can reach it; `step` then
+ *              only rounds the value, and the arrow keys skip track positions
+ *              that round to the value already shown.
  *              `live:false` fires onChange on release only.
  *   segmented: { type:'segmented', id, label, options:[{value, label, disabled, title}], value, onChange }
  *   toggle:    { type:'toggle', id, label, value, onChange }
