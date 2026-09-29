@@ -769,6 +769,7 @@ function applyTheme(tokens) {
   const t = tokens || readTokens();
   renderCtx.theme = t;
   scope.setTheme(t);
+  readouts.resetWidths();   // fonts loaded or fullscreen: the chips measure their widths again
   updateOpenFull();   // the link carries theme=, which the docs page may have just switched
   requestFrame();
 }

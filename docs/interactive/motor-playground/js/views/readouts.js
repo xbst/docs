@@ -12,15 +12,21 @@
  *     `low`, empty and gray while `off` (no reading). Decorative (aria-hidden); the value text
  *     carries the number.
  * Up to 8 chips; they wrap on desktop and scroll sideways on mobile. DOM nodes
- * are reused and only touched when their text or state changes.
+ * are reused and only touched when their text or state changes. A chip keeps
+ * the widest width it has had for its label (a min-width), so the rows do not
+ * rewrap as a value changes width (a dash, a longer result); clear() and
+ * resetWidths() forget those widths.
  */
 import { formatValue } from '../format.js';
 
 const MAX_CHIPS = 8;
 const SHOW_MS = 4000;
 
+/** Set a node's text; true when it changed. */
 function setText(node, text) {
-  if (node.textContent !== text) node.textContent = text;
+  if (node.textContent === text) return false;
+  node.textContent = text;
+  return true;
 }
 
 export class Readouts {
@@ -63,7 +69,15 @@ export class Readouts {
     // Real spaces for screen readers; flex layout ignores whitespace-only text.
     chip.append(led, lbl, ' ', val, ' ', unit, bar);
     this.list.append(chip);
-    return { el: chip, led, lbl, val, unit, bar, fill, mark, barKey: '', cls: 'chip', ledState: '', hidden: false, title: '' };
+    return {
+      el: chip, led, lbl, val, unit, bar, fill, mark, barKey: '', cls: 'chip', ledState: '', hidden: false, title: '',
+      minW: 0, w: 0, measure: false,    // widest width for this label (css px), last measured width, due for a measure
+    };
+  }
+
+  /** @private forget a chip's widest width */
+  forget(c) {
+    if (c.minW) { c.minW = 0; c.el.style.minWidth = ''; }
   }
 
   /** @private level bar of a chip (item.bar), touched only when its state changes */
@@ -100,17 +114,18 @@ export class Readouts {
         if (!c.hidden) { c.el.hidden = true; c.hidden = true; }
         continue;
       }
-      if (c.hidden) { c.el.hidden = false; c.hidden = false; }
-      setText(c.lbl, it.label || '');
+      if (c.hidden) { c.el.hidden = false; c.hidden = false; c.measure = true; }
+      // a new quantity in this slot starts over with its width
+      if (setText(c.lbl, it.label || '')) { this.forget(c); c.measure = true; }
       // "%" and "°" attach to the number (US style: 85%, 66°; dropped when there is no number);
       // the rest of the unit follows.
       const unit = it.unit || '';
       const sym = unit[0] === '%' || unit[0] === '°' ? unit[0] : '';
       const numeric = typeof it.value === 'number' && Number.isFinite(it.value);
-      setText(c.val, formatValue(it.value, it.digits) + (numeric ? sym : ''));
+      if (setText(c.val, formatValue(it.value, it.digits) + (numeric ? sym : ''))) c.measure = true;
       const rest = sym ? unit.slice(1).trim() : unit;
-      setText(c.unit, rest);
-      if (c.unit.hidden !== !rest) c.unit.hidden = !rest;
+      if (setText(c.unit, rest)) c.measure = true;
+      if (c.unit.hidden !== !rest) { c.unit.hidden = !rest; c.measure = true; }
       const cls = 'chip' + (it.warn ? ' warn' : it.ok ? ' ok' : '');
       if (c.cls !== cls) { c.el.className = cls; c.cls = cls; }
       const led = it.led || '';
@@ -118,11 +133,36 @@ export class Readouts {
         c.led.hidden = !led;
         c.led.className = 'led' + (led && led !== 'off' ? ' ' + led : '');
         c.ledState = led;
+        c.measure = true;
       }
       const title = it.title || '';
       if (c.title !== title) { c.el.title = title; c.title = title; }
+      const barHidden = c.bar.hidden;
       this.setBar(c, it.bar);
+      if (c.bar.hidden !== barHidden || !c.minW) c.measure = true;
     }
+    this.holdWidths();
+  }
+
+  /**
+   * @private Each chip whose content changed keeps the widest width it has had, so the chip rows
+   * do not rewrap on every change of a value's width (chapter 9's Home: F-60). All widths are
+   * read before any is written, so the browser lays the strip out once.
+   */
+  holdWidths() {
+    const cs = this.chips;
+    for (let i = 0; i < cs.length; i++) if (cs[i].measure) cs[i].w = cs[i].hidden ? 0 : cs[i].el.getBoundingClientRect().width;
+    for (let i = 0; i < cs.length; i++) {
+      const c = cs[i];
+      if (!c.measure) continue;
+      c.measure = false;
+      if (c.w > c.minW) { c.minW = c.w; c.el.style.minWidth = c.w + 'px'; }
+    }
+  }
+
+  /** Forget the chips' widest widths (their font changed: fonts loaded, fullscreen, a new theme). */
+  resetWidths() {
+    for (let i = 0; i < this.chips.length; i++) this.forget(this.chips[i]);
   }
 
   /**
@@ -142,9 +182,10 @@ export class Readouts {
     this.clearTimer = setTimeout(() => { this.live.textContent = ''; }, SHOW_MS + 600);
   }
 
-  /** Hide all chips and the message (chapter change), including one still due to appear. */
+  /** Hide all chips and the message (chapter change), including one still due to appear; forget their widths. */
   clear() {
     this.update([]);
+    this.resetWidths();
     clearTimeout(this.showTimer);
     clearTimeout(this.fadeTimer);
     clearTimeout(this.clearTimer);
