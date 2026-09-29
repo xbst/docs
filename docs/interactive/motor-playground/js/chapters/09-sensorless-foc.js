@@ -194,19 +194,20 @@ export default {
       { label: 'Free-motion peak', value: h.freeIqPeak, unit: 'A', digits: 2,
         title: 'Largest Iq target while the carriage moved freely in this pass; set the limit just above it. '
           + 'After a false trigger it reads the limit itself, since the target is capped there' },
-      { label: 'Press-in at detection', value: edge ? h.pressInMm : '–', unit: edge ? 'mm' : '', digits: 2,
+      // Reserve the result and its unit before the first home, so detection cannot add a chip row.
+      { label: 'Press-in at detection', value: edge ? h.pressInMm : '–', unit: 'mm', digits: 2, minChars: 4,
         warn: edge && h.pressInMm > PRESS_WARN_MM,
         title: 'How far the carriage had pushed into the (compliant) stop when the status output rose; '
           + 'the loop keeps pushing after that, so the carriage sinks in further. A dash until the output rises in this pass' },
       // Named for the belt, not the stop: it also reads friction and acceleration while the carriage
       // moves freely (a dash until contact would change the chip's width twice per Home).
-      { label: 'Belt force', value: forceN, unit: 'N', digits: 0,
+      { label: 'Belt force', value: forceN, unit: 'N', digits: 0, minChars: 3,
         title: 'Motor torque as belt force, Kt·Iq·2π/rd: friction and acceleration in free motion, the push into the stop at contact' },
       { label: 'Homing', value: result, warn: !h.active && (h.result === 'false-trigger' || h.result === 'no-edge'),
         ok: !h.active && h.result === 'ok' },
       { label: keys.flag || 'Limit flag', value: flag ? 'on' : 'off', led: flag ? 'trip' : 'off',
         title: 'Set while the velocity loop asks for more current than the limit allows' },
-      { label: keys.statusPin || 'Status output', value: status ? 'high' : 'low', led: status ? 'trip' : 'off',
+      { label: keys.statusPin || 'Status output', value: status ? 'high' : 'low', minChars: 4, led: status ? 'trip' : 'off',
         title: 'Latched from the limit flags; clears once the carriage is off the stop' },
     ];
   },
