@@ -3,7 +3,7 @@
  * iframe, and auto-height posting to the pinout_embed listener on the docs
  * page, which resizes the iframe when the widget posts {pinconnectHeight: N}.
  * What N is depends on the layout, so main.js passes in the measuring function.
- * Also a devicePixelRatio watcher for re-sizing the canvases (SPEC 4.5).
+ * Also a devicePixelRatio watcher for resizing the canvases (SPEC 4.5).
  */
 
 /** True when the widget runs inside an iframe. */
