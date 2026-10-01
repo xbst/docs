@@ -162,19 +162,23 @@ export default {
   traces: [
     { name: 'stepN', group: 'digital', pulses: true, label: 'STEP', color: 'phase-a' },
     { name: 'dir', group: 'digital', label: 'DIR', color: 'phase-b' },
-    { name: 'posCmd', label: 'Commanded position', unit: 'mm', color: 'target', dashed: true },
-    { name: 'velCmd', label: 'Commanded speed', unit: 'mm/s', color: 'phase-c', dashed: true },
+    // Legend room for the longest ranges a move gives ("342.5 to 347.5 mm" as the scope zooms in
+    // at the end of a long move, "0 to 300 mm/s" after "±300"), so its end moves nothing (B-006).
+    { name: 'posCmd', label: 'Commanded position', unit: 'mm', color: 'target', dashed: true, scaleChars: 17 },
+    { name: 'velCmd', label: 'Commanded speed', unit: 'mm/s', color: 'phase-c', dashed: true, scaleChars: 13 },
   ],
 
   readouts(snap, metrics, ctx) {
     const w = ctx.world;
     const sent = sentOf(w);
     const done = Math.abs(pulsesOf(w) - st.p0), total = st.total;
+    // Values keep room for a full-length move at full speed (28000 steps, 350.00 mm, 24.00 kHz), so
+    // the chip rows stay put while a move runs (B-006).
     return [
-      { label: 'Step rate', value: snap.step.rate / 1000, unit: 'kHz', digits: 2 },
-      { label: 'Step count', value: sent, digits: 0, title: 'Steps sent so far, counted from 0 mm' },
-      { label: 'Pulses for this move', value: done, digits: 0, unit: `of ${total}`, ok: total > 0 && done === total },
-      { label: 'Carriage', value: snap.gantry.x, unit: 'mm', digits: 2 },
+      { label: 'Step rate', value: snap.step.rate / 1000, unit: 'kHz', digits: 2, minChars: 5 },
+      { label: 'Step count', value: sent, digits: 0, minChars: 5, title: 'Steps sent so far, counted from 0 mm' },
+      { label: 'Pulses for this move', value: done, digits: 0, unit: `of ${total}`, ok: total > 0 && done === total, minChars: 5 },
+      { label: 'Carriage', value: snap.gantry.x, unit: 'mm', digits: 2, minChars: 6 },
       { label: 'Steps per mm', value: geometry(w).spm, digits: 0 },
     ];
   },

@@ -171,8 +171,11 @@ export default {
       { label: 'Field per microstep', value: 90 / n, unit: '° electrical' },
       { label: 'Torque per microstep', value: 100 * Math.sin(Math.PI / 2 / n), unit: '% of holding',
         title: 'The pull toward a microstep one step away: holding torque × sin(90°/n)' },
-      { label: 'Position ripple', value: ripple, unit: 'µm', title: 'Peak-to-peak wobble of the carriage around the commanded motion (last 50 ms)' },
-      { label: 'Lag', value: lag * spm, unit: `microsteps (${formatValue(lag * 1000)} µm)`,
+      // Fixed decimals and room for them ("214.0", "25.60 microsteps (125.0 µm)"): significant
+      // digits grew the text as the lag settled toward zero ("0.000909"), so the chip rows moved (B-006).
+      { label: 'Position ripple', value: ripple, unit: 'µm', digits: 1, minChars: 5,
+        title: 'Peak-to-peak wobble of the carriage around the commanded motion (last 50 ms)' },
+      { label: 'Lag', value: lag * spm, unit: `microsteps (${formatValue(lag * 1000, 1)} µm)`, digits: 2, minChars: 5, unitChars: 21,
         title: 'How far the carriage trails the command (mean over the last 50 ms)' },
       { label: 'Ring frequency', value: ringHz(w, peakOf(w)), unit: 'Hz',
         title: '√(Kt·I·p/J)/2π: the rotor on the spring of the field, with this run current and carriage' },

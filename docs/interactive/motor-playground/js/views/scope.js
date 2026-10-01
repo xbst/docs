@@ -7,7 +7,9 @@
  * Each analog trace shares one vertical scale with the other traces of its
  * unit, so a target and its measured value are always comparable. Solid
  * traces get a value tag in their color at the right edge; the HTML legend
- * under the plot shows each scale and hides/shows a trace on click. A time
+ * under the plot shows each scale and hides/shows a trace on click (a scale
+ * keeps room for its longest range text, so the legend never rewraps and the
+ * widget's height stays put while the ranges follow the data). A time
  * cursor supports mouse hover, touch dragging and keyboard inspection; its box stays inside
  * the canvas (a tighter pitch, or more columns, when the rows do not fit) and
  * beside the cursor where there is room (split around it if need be); the
@@ -31,6 +33,9 @@
  *   small ripple on a large value fills the plot (one trace sets it for its
  *   whole scale group); it holds a range only while the data asks for at
  *   least 80 % of it (auto: 40 %).
+ *   `scaleChars` legend room for the scale text from the start, in characters,
+ *             for a range that settles to a longer text than it starts with
+ *             (chapter 3's fitted current); the room only grows (B-006).
  *   `pulses`  (chunk 04) digital lane whose samples count pulses since the
  *             previous sample (the `stepN` trace): a baseline with one thin
  *             spike per pulse, spread over the sample's interval; columns
@@ -79,6 +84,19 @@ function rangeText(lo, hi, unit) {
   const u = unit ? ' ' + unit : '';
   if (lo === -hi) return '±' + formatTrim(hi) + u;
   return formatTrim(lo) + ' to ' + formatTrim(hi) + u;
+}
+
+/**
+ * Characters of a "lo to hi" range text with both bounds printed to the decimals the group's step
+ * can give them: "100.0 to 102.0 mm" for 100 to 102 on 0.5 steps, which may read 100.5 to 102.5
+ * next. A "±m" range has no such variants.
+ */
+function steppedRangeLength(grp) {
+  if (grp.lo === -grp.hi || !(grp.step > 0)) return 0;
+  let dec = 0;
+  while (dec < 4 && Math.abs(grp.step * 10 ** dec - Math.round(grp.step * 10 ** dec)) > 1e-6) dec++;
+  const len = (x) => (x < 0 ? 1 : 0) + Math.abs(x).toFixed(dec).length;
+  return len(grp.lo) + 4 + len(grp.hi) + (grp.unit ? grp.unit.length + 1 : 0);
 }
 
 export class Scope {
@@ -280,7 +298,7 @@ export class Scope {
         let grp = byKey.get(gk);
         if (!grp) {
           grp = { key: gk, unit: d.unit || '', fixed: null, fit: false, lo: -1, hi: 1, init: false, active: false,
-            minSpan: 0, members: [], scaleStr: d.unit || '', scaleDirty: true };
+            minSpan: 0, members: [], scaleStr: d.unit || '', scaleDirty: true, step: 0, holdCh: 0 };
           byKey.set(gk, grp);
           this.groups.push(grp);
         }
@@ -291,6 +309,7 @@ export class Scope {
           grp.scaleStr = rangeText(grp.lo, grp.hi, grp.unit);
         }
         if (d.minSpan > grp.minSpan) grp.minSpan = d.minSpan;
+        if (d.scaleChars > grp.holdCh) grp.holdCh = d.scaleChars;
         grp.members.push(tr);
         tr.group = grp;
       }
@@ -323,6 +342,7 @@ export class Scope {
       const scale = document.createElement('span');
       scale.className = 'u';
       scale.textContent = tr.digital ? '' : tr.group.scaleStr;
+      if (!tr.digital && tr.group.holdCh) scale.style.minWidth = `${tr.group.holdCh}ch`;
       b.append(sw, name, scale);
       b.hidden = true;               // shown once the world provides the trace
       b.addEventListener('click', () => {
@@ -493,6 +513,7 @@ export class Scope {
       if (grp.scaleDirty) {
         grp.scaleDirty = false;
         for (let j = 0; j < mem.length; j++) mem[j].scaleEl.textContent = grp.scaleStr;
+        this.holdScale(grp);
       }
     }
     if (symmetric && ah > 16) {
@@ -652,20 +673,34 @@ export class Scope {
     return ring.v[p];
   }
 
+  /**
+   * @private The group's legend scales keep room for the longest range text the group has shown,
+   * and for the decimals its step allows, so a range that gets shorter (25 to 150 → 0 to 200, or
+   * 0 to 200 → ±200 at chapter 8's first corner) or alternates (100 to 102 ↔ 100.5 to 102.5 as
+   * chapter 2's carriage creeps) cannot rewrap the legend: the scope, and an embed, would change
+   * height (B-006). The scale text is monospace, so a character is 1ch.
+   */
+  holdScale(grp) {
+    const n = Math.max(grp.scaleStr.length, steppedRangeLength(grp));
+    if (n <= grp.holdCh) return;
+    grp.holdCh = n;
+    for (let j = 0; j < grp.members.length; j++) grp.members[j].scaleEl.style.minWidth = `${n}ch`;
+  }
+
   /** @private auto range with 10 % padding, nice steps and hysteresis ('fit' groups: never symmetric, tighter hysteresis) */
   updateRange(grp, mn, mx) {
     if (grp.fixed) return;
-    let lo, hi;
+    let lo, hi, step;
     if (mn < 0 && !grp.fit) {
       const m = niceCeil(Math.max(-mn, mx, grp.minSpan / 2, 1e-12) * 1.1);
-      lo = -m; hi = m;
+      lo = -m; hi = m; step = m / 2;
     } else {
       let a = mn, b = mx;
       const minSpan = Math.max(grp.minSpan, Math.abs(b) * 1e-3, 1e-12);
       if (b - a < minSpan) { const c = (a + b) / 2; a = c - minSpan / 2; b = c + minSpan / 2; }
       const pad = (b - a) * 0.1;
       a -= pad; b += pad;
-      const step = niceCeil((b - a) / DIVS_Y);
+      step = niceCeil((b - a) / DIVS_Y);
       lo = Math.floor(a / step) * step;
       hi = Math.ceil(b / step) * step;
       if (mn >= 0 && lo < 0) lo = 0;
@@ -677,7 +712,7 @@ export class Scope {
     const first = !grp.init;
     grp.init = true;
     if (first || lo !== grp.lo || hi !== grp.hi) {
-      grp.lo = lo; grp.hi = hi;
+      grp.lo = lo; grp.hi = hi; grp.step = step;
       grp.scaleStr = rangeText(lo, hi, grp.unit);
       grp.scaleDirty = true;
     }

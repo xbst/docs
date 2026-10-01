@@ -266,9 +266,11 @@ export default {
   },
 
   traces: [
-    { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'target', dashed: true },
+    // Legend room for the ranges a sweep leaves behind ("0 to 4 A" after "±5 A", "−20 to 60 V"),
+    // so the end of a sweep moves nothing (B-006).
+    { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'target', dashed: true, scaleChars: 8 },
     { name: 'iA', label: 'Phase A current', unit: 'A', color: 'phase-a' },
-    { name: 'bemfA', label: 'Back-EMF, phase A', unit: 'V', color: 'axis-q' },
+    { name: 'bemfA', label: 'Back-EMF, phase A', unit: 'V', color: 'axis-q', scaleChars: 11 },
     { name: 'uMag', label: 'Voltage used', unit: 'V', color: 'phase-c' },
     // 'fit' for the volts group: the data extent (−back-EMF up to the bus), not ±2× the bus.
     { name: 'uLimit', label: 'Bus voltage', unit: 'V', color: 'target', dashed: true, range: 'fit' },
@@ -285,25 +287,28 @@ export default {
     const iF = w.iAmpLpfOut ? w.iAmpLpfOut[0] : m.iAmp;
     const pct = peak > 0 ? (100 * iF) / peak : 0;
     const V = snap.supplyV;
+    // Values keep room for what a sweep reaches (thousands of hertz, 100%), and the sweep result
+    // has its chip from the start, so a sweep cannot add a chip row as it runs or ends (B-006).
+    const t = st.table[snap.motorPreset];
+    const r = t && t[V];
     const items = [
-      { label: 'Back-EMF', value: Math.hypot(m.bemf[0], m.bemf[1]), digits: 1, unit: 'V peak',
+      { label: 'Back-EMF', value: Math.hypot(m.bemf[0], m.bemf[1]), digits: 1, unit: 'V peak', minChars: 4,
         title: 'The voltage the spinning motor generates against the supply' },
-      { label: 'Electrical', value: (Math.abs(m.omegaM) * pr.p) / TAU, digits: 0, unit: 'Hz',
+      { label: 'Electrical', value: (Math.abs(m.omegaM) * pr.p) / TAU, digits: 0, unit: 'Hz', minChars: 4,
         title: 'How often the current has to reverse (50 electrical cycles per turn)' },
-      { label: 'Current', value: pct, digits: 0, unit: '% of target', warn: pct < 90,
+      { label: 'Current', value: pct, digits: 0, unit: '% of target', warn: pct < 90, minChars: 4,
         title: 'Current amplitude the driver reaches, as a share of the run current' },
       { label: 'Torque available', value: pr.Kt * iF, digits: 2, unit: 'N·m',
         title: 'Most torque the motor can make with the current it gets (the ring on the chart)' },
-      { label: 'Voltage used', value: m.vAmp, digits: 1, unit: `of ${fmt(V, 0)} V`, warn: m.vAmp > 0.97 * V,
+      { label: 'Voltage used', value: m.vAmp, digits: 1, unit: `of ${fmt(V, 0)} V`, warn: m.vAmp > 0.97 * V, minChars: 4,
         title: 'Phase voltage the driver applies; at the bus voltage it has nothing left' },
+      { label: `Sweep, ${fmt(V, 0)} V`, value: r && r.sag != null ? r.sag : '–', digits: 0, unit: 'mm/s', minChars: 4,
+        title: 'Highest speed at which the current held 70% of its target in the last sweep at this bus voltage; a dash until you sweep' },
     ];
     if (st.stalled) {
       items.push({ label: 'Motor', value: 'stalled', warn: true,
         title: 'The rotor lost the field. Lower the speed, raise the voltage or lower the drag.' });
     }
-    const t = st.table[snap.motorPreset];
-    const r = t && t[V];
-    if (r && r.sag != null) items.push({ label: `Sweep, ${fmt(V, 0)} V`, value: r.sag, digits: 0, unit: 'mm/s' });
     return items;
   },
 

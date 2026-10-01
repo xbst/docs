@@ -205,19 +205,21 @@ export default {
     const m0 = snap.motors[0], m1 = snap.motors[1];
     const amp = Math.max(ampOf(ctx.world, snap, 0), m1 ? ampOf(ctx.world, snap, 1) : 0);
     const heat = Math.max(num(m0.heat, 0), m1 ? num(m1.heat, 0) : 0);
+    // Values keep room for what a bump or a slip makes of them (12.57 mm, 100%), so the chip rows
+    // stay put after Bump (B-006).
     const items = [
-      { label: 'Position error', value: err, unit: 'mm', digits: 2, warn: err > 3,
+      { label: 'Position error', value: err, unit: 'mm', digits: 2, warn: err > 3, minChars: 5,
         title: 'Distance between the toolhead and where Klipper commanded it right now' },
-      { label: 'Lost', value: shift, unit: 'mm', digits: 1, warn: shift >= 0.05, ok: foc,
+      { label: 'Lost', value: shift, unit: 'mm', digits: 1, warn: shift >= 0.05, ok: foc, minChars: 4,
         title: foc ? 'A closed loop cannot lose steps: it corrects from the encoder'
           : 'How far the print has shifted because the rotors slipped' },
       { label: 'Current', value: amp, unit: 'A peak', digits: 2,
         title: 'Phase current amplitude, the larger of the two motors' },
-      { label: 'Heat', value: 100 * heat, unit: '% of rated', digits: 0, warn: heat > 0.8,
+      { label: 'Heat', value: 100 * heat, unit: '% of rated', digits: 0, warn: heat > 0.8, minChars: 4,
         title: 'Copper loss compared with running at the rated current, averaged over the last second' },
     ];
     if (foc && m0.encoder) {
-      items.push({ label: 'Encoder A', value: String(m0.encoder.count), unit: 'counts',
+      items.push({ label: 'Encoder A', value: String(m0.encoder.count), unit: 'counts', minChars: 5,
         title: 'Motor A\'s encoder position: 4000 counts per turn' });
     }
     return items;

@@ -169,14 +169,16 @@ export default {
     // Heat from the present current, (I / I_rated)²: the world's 1 s average would take about a
     // minute of real time to settle at this chapter's time scale.
     const heat = (amp, preset) => 100 * (amp / preset.Irated) ** 2;
+    // Values keep room for a sign and a bump's peak (−0.24 N·m, 100%), so the chip rows stay put
+    // after Bump or a setpoint change (B-006).
     const items = [
-      { label: 'Id', value: sm.id, unit: 'A', digits: 2, title: 'Flux current: no torque, only heat. FOC holds it at zero' },
-      { label: 'Iq', value: sm.iq, unit: 'A', digits: 2, title: 'Torque current: torque = Kt × Iq' },
-      { label: 'Load angle', value: sm.amp > 0.05 ? sm.la : '–', unit: '°', digits: 0,
+      { label: 'Id', value: sm.id, unit: 'A', digits: 2, minChars: 5, title: 'Flux current: no torque, only heat. FOC holds it at zero' },
+      { label: 'Iq', value: sm.iq, unit: 'A', digits: 2, minChars: 5, title: 'Torque current: torque = Kt × Iq' },
+      { label: 'Load angle', value: sm.amp > 0.05 ? sm.la : '–', unit: '°', digits: 0, minChars: 4,
         title: 'Angle between the current vector and the rotor magnet' },
-      { label: 'Current', value: sm.amp, unit: 'A peak', digits: 2, title: 'Phase current amplitude' },
-      { label: 'Torque', value: sm.tq, unit: 'N·m', digits: 2 },
-      { label: 'Heat', value: heat(sm.amp, MOTOR_PRESETS[typeOf(ctx)]), unit: '% of rated', digits: 0,
+      { label: 'Current', value: sm.amp, unit: 'A peak', digits: 2, minChars: 4, title: 'Phase current amplitude' },
+      { label: 'Torque', value: sm.tq, unit: 'N·m', digits: 2, minChars: 5 },
+      { label: 'Heat', value: heat(sm.amp, MOTOR_PRESETS[typeOf(ctx)]), unit: '% of rated', digits: 0, minChars: 4,
         title: 'Copper loss at this current, compared with running at the rated current' },
     ];
     if (m1) {

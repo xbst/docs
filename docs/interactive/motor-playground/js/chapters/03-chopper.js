@@ -131,10 +131,12 @@ export default {
 
   traces() {
     const range = st.zoom === 'us' ? 'fit' : 'auto';
+    // The fitted range settles at quarter amps ("2.75 to 3.75 A") after the switch-on's whole
+    // amps: reserve that room, or the legend gains a row a second into the chapter (B-006).
     return [
       { name: 'pwmA', group: 'digital', label: 'Bridge A: +V, 0 or −V', short: 'Bridge A', color: 'phase-a', range: [-1, 1] },
-      { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'target', dashed: true, range, minSpan: 0.1 },
-      { name: 'iA', label: 'Phase A current', unit: 'A', color: 'phase-a', range },
+      { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'target', dashed: true, range, minSpan: 0.1, scaleChars: 14 },
+      { name: 'iA', label: 'Phase A current', unit: 'A', color: 'phase-a', range, scaleChars: 14 },
     ];
   },
 
@@ -152,10 +154,11 @@ export default {
     return [
       { label: 'Rise time', value: rise, unit: 'ms', title: 'From 0 A to the target: (L/R)·ln(V / (V − R·I))' },
       { label: 'Current ramp', value: head / L / 1000, unit: 'A/ms', title: 'How fast the current climbs with the bridge on: (V − R·I)/L' },
-      { label: 'Ripple', value: pp * 1000, unit: 'mA p-p', title: 'Peak-to-peak sawtooth per chopper cycle' },
+      // Room for the ripple and the average as they settle after Switch on (B-006).
+      { label: 'Ripple', value: pp * 1000, unit: 'mA p-p', minChars: 4, title: 'Peak-to-peak sawtooth per chopper cycle' },
       { label: 'Switching', value: (sc.chopper ? sc.chopper.freqHz : st.chopKHz * 1000) / 1000, unit: 'kHz',
         title: 'Chopper cycles per second' },
-      { label: 'Average', value: avg, digits: 3, unit: `A (target ${formatValue(tgt, 3)} A)`,
+      { label: 'Average', value: avg, digits: 3, unit: `A (target ${formatValue(tgt, 3)} A)`, minChars: 6,
         ok: Math.abs(avg - tgt) < 0.02 * I, title: 'Mean coil current and mean target over the last 1 ms' },
     ];
   },

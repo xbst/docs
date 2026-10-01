@@ -232,22 +232,27 @@ const SG_TRACES = [
 
 /* ---------------- readouts ---------------- */
 
+/** The longest homing result, "stopped 0.48 mm into the stop": its room is kept from the start (B-006). */
+const RESULT_CHARS = 29;
+
 function resultChip(snap) {
   const r = st.result;
-  if (!r) return { label: 'Homing', value: 'not run yet' };
+  if (!r) return { label: 'Homing', value: 'not run yet', minChars: RESULT_CHARS };
   switch (r.kind) {
     case 'running':
-      return { label: 'Homing', value: st.pending ? 'stopping first…' : snap.homing.contact ? 'at the stop…' : 'moving to the stop…' };
+      return { label: 'Homing', value: st.pending ? 'stopping first…' : snap.homing.contact ? 'at the stop…' : 'moving to the stop…',
+        minChars: RESULT_CHARS };
     case 'ok':
-      return { label: 'Homing', value: `stopped ${fmt(Math.max(0, r.pressInMm), 2)} mm into the stop`, ok: true,
+      return { label: 'Homing', value: `stopped ${fmt(Math.max(0, r.pressInMm), 2)} mm into the stop`, ok: true, minChars: RESULT_CHARS,
         title: 'DIAG went high at the stop. The carriage pressed into the belt by this much first.' };
     case 'false-trigger':
-      return { label: 'Homing', value: `false trigger at ${fmt(r.xMm, 1)} mm`, warn: true,
+      return { label: 'Homing', value: `false trigger at ${fmt(r.xMm, 1)} mm`, warn: true, minChars: RESULT_CHARS,
         title: 'DIAG went high before the carriage reached the stop.' };
     case 'canceled':
-      return { label: 'Homing', value: 'canceled', title: 'Ended before the carriage reached the stop, so there is no result.' };
+      return { label: 'Homing', value: 'canceled', minChars: RESULT_CHARS,
+        title: 'Ended before the carriage reached the stop, so there is no result.' };
     default:
-      return { label: 'Homing', value: r.slow ? 'no detection: too slow' : 'no detection: hit the stop', warn: true,
+      return { label: 'Homing', value: r.slow ? 'no detection: too slow' : 'no detection: hit the stop', warn: true, minChars: RESULT_CHARS,
         title: r.slow ? `Below ${MIN_SPEED} mm/s StallGuard has no reading.`
           : 'The reading never fell below the threshold, so the motor ground against the stop.' };
   }
@@ -259,12 +264,12 @@ function sgChip(snap, m) {
     // A homing move below the minimum speed; the shuttle passes through it at every reversal, and the
     // carriage while it stops before a homing (neither flagged).
     const slow = st.homing && !st.pending && st.homeSpeed < MIN_SPEED && snap.planner.mode !== 'idle';
-    return { label: 'StallGuard', value: slow ? 'too slow' : '–', warn: slow,
+    return { label: 'StallGuard', value: slow ? 'too slow' : '–', warn: slow, minChars: 8,
       title: `No reading below ${MIN_SPEED} mm/s (the driver needs the motor's back-EMF to measure).`,
       bar: { value: 0, max: 1023, mark: thr, off: true } };
   }
   const low = m.sg < thr;
-  return { label: 'StallGuard', value: m.sg, digits: 0, warn: low,
+  return { label: 'StallGuard', value: m.sg, digits: 0, warn: low, minChars: 8,
     title: `Reading 0 to 1023 (high = little load). DIAG goes high below ${thr} (2 × driver_SGTHRS).`,
     bar: { value: m.sg, max: 1023, mark: thr, low } };
 }
@@ -354,15 +359,17 @@ export default {
     const peak = st.rms * SQRT2;
     const pct = peak > 0 && w.iAmpLpfOut ? (100 * w.iAmpLpfOut[0]) / peak : metrics.iAmpPct;
     const active = MODE_NAME[m.mode] || MODE_NAME.current;
+    // Values keep room for their widest form (a homing's "StealthChop for homing", 100%, a result),
+    // so a value that grows after Home or Run cannot add a chip row (B-006).
     const items = [
-      { label: 'Driver', value: st.forced ? `${active} for homing` : active,
+      { label: 'Driver', value: st.forced ? `${active} for homing` : active, minChars: 22,
         title: st.mode === 'hybrid' ? `Hybrid: StealthChop below ${st.threshold} mm/s, SpreadCycle above` : '' },
-      { label: 'Current', value: pct, digits: 0, unit: '% of target', warn: pct < 85 || pct > 115,
+      { label: 'Current', value: pct, digits: 0, unit: '% of target', warn: pct < 85 || pct > 115, minChars: 4,
         title: 'Current amplitude as a share of the run current' },
-      { label: 'Lag', value: metrics.phaseLagDeg, digits: 0, unit: '°',
+      { label: 'Lag', value: metrics.phaseLagDeg, digits: 0, unit: '°', minChars: 4,
         title: 'How far the current trails the commanded field (electrical degrees)' },
       sgChip(snap, m),
-      { label: 'DIAG', value: m.diag ? 'high' : 'low', led: m.diag ? 'trip' : 'off' },
+      { label: 'DIAG', value: m.diag ? 'high' : 'low', led: m.diag ? 'trip' : 'off', minChars: 4 },
       resultChip(snap),
     ];
     const lost = lostMm(w);

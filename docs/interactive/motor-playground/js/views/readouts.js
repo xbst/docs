@@ -3,11 +3,12 @@
  * chips, plus one polite live region that announces events (stall detected,
  * steps lost, homing done) and shows them briefly as a pill.
  *
- * Item: { label, value, unit, warn, ok, led: 'on'|'off'|'trip', title, digits, minChars, bar }
+ * Item: { label, value, unit, warn, ok, led: 'on'|'off'|'trip', title, digits, minChars, unitChars, bar }
  *   value: number (formatted to ~3 significant digits, or `digits` decimals) or string.
  *   unit: text after the value; a leading "%" or "°" attaches to the number ("85% of target").
  *   warn / ok: tint the chip (warn wins). led: prepend an LED dot.
  *   minChars: reserve this many monospace characters for a value before it arrives.
+ *   unitChars: reserve room for a unit that carries a number of its own ("microsteps (3.30 µm)").
  *   bar: { value, max, mark, low, off } appends a small level bar (chunk 05, the StallGuard
  *     reading): filled to value/max, a tick at mark/max (e.g. the DIAG threshold), red while
  *     `low`, empty and gray while `off` (no reading). Decorative (aria-hidden); the value text
@@ -72,7 +73,7 @@ export class Readouts {
     this.list.append(chip);
     return {
       el: chip, led, lbl, val, unit, bar, fill, mark, barKey: '', cls: 'chip', ledState: '', hidden: false, title: '',
-      minChars: 0,
+      minChars: 0, unitChars: 0,
       minW: 0, w: 0, measure: false,    // widest width for this label (css px), last measured width, due for a measure
     };
   }
@@ -123,6 +124,13 @@ export class Readouts {
       if (c.minChars !== minChars) {
         c.minChars = minChars;
         c.val.style.minWidth = minChars ? minChars + 'ch' : '';
+        this.forget(c);
+        c.measure = true;
+      }
+      const unitChars = Math.max(0, +it.unitChars || 0);
+      if (c.unitChars !== unitChars) {
+        c.unitChars = unitChars;
+        c.unit.style.minWidth = unitChars ? unitChars + 'ch' : '';
         this.forget(c);
         c.measure = true;
       }

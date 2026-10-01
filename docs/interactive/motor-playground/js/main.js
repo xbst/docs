@@ -340,6 +340,11 @@ function syncTimeSlider() {
   el.time.max = String(tsSteps.length - 1);
   el.time.value = String(best);
   el.time.disabled = tsSteps.length < 2;
+  // Room for the longest step's label (monospace), so moving the slider or a chapter's own switch
+  // (chapter 1's Pulse zoom) cannot rewrap the toolbar and change an embed's height (B-006).
+  let longest = 0;
+  for (const v of tsSteps) longest = Math.max(longest, timeScaleLabel(v).length);
+  el.timeH.style.minWidth = `max(11.5em, ${longest}ch)`;
   showTimeLabel();
 }
 

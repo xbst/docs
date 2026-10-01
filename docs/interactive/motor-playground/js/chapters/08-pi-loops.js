@@ -300,13 +300,17 @@ function symptomHtml(ctx) {
   const p = S.lastPreset;
   if (!p) return '';
   const custom = S.preset === 'custom';
-  if (!S.revealed) {
-    return `<p><strong>${custom ? 'Started from' : 'Preset'} "${p.label}":</strong> watch the gantry loupe, the scope and `
-      + `the readouts. What changed? The symptom is named here after ${REVEAL_S} s of motor time, or press Reveal.</p>`;
-  }
   const s = typeof p.symptom === 'function' ? p.symptom(ctx) : p.symptom;
   const head = custom ? `Started from "${p.label}"` : (p.id === 'optimal' ? 'Reference' : p.label);
-  return `<p><strong>${head}:</strong> ${s}</p>`;
+  const named = `<strong>${head}:</strong> ${s}`;
+  if (p.id === 'optimal' && !custom) return `<p>${named}</p>`;
+  // The placeholder and the symptom share one grid cell (.stack), the hidden one invisible and
+  // second, so the paragraph is as tall as the longer before and after the reveal and nothing below
+  // it moves (B-006).
+  const waiting = `<strong>${custom ? 'Started from' : 'Preset'} "${p.label}":</strong> watch the gantry loupe, the scope and `
+    + `the readouts. What changed? The symptom is named here after ${REVEAL_S} s of motor time, or press Reveal.`;
+  const [shown, hidden] = S.revealed ? [named, waiting] : [waiting, named];
+  return `<p class="stack"><span>${shown}</span><span aria-hidden="true">${hidden}</span></p>`;
 }
 
 const ROWS = [
@@ -484,40 +488,44 @@ export default {
     const oscText = osc.amp > OSC_FLOOR && osc.freq > 0
       ? `${formatValue(osc.amp, 2)} A at ${formatValue(osc.freq, 0)} Hz`
       : `${formatValue(osc.amp, 2)} A`;
+    // Every value keeps room for what the worst preset makes of it ("3.77 A at 165 Hz", 10.05%,
+    // 1200 ms), so the chip rows stay put as a preset's symptom builds up (B-006).
     const items = [];
     if (S.move === 'holdBump') {
       const ref = DIP_REF[type] || 0.5;
       items.push({ label: 'Bump dip', value: S.dip, unit: 'mm', digits: 2, warn: S.dip > 1.5 * ref, ok: S.dip > 0 && S.dip <= 1.2 * ref,
-        title: 'Largest position error after the last bump' });
+        minChars: 4, title: 'Largest position error after the last bump' });
       items.push({ label: 'Heal time', value: S.heal * 1000, unit: 'ms', digits: 0, warn: S.heal > 0.15, ok: S.heal > 0 && S.heal <= 0.1,
-        title: 'Time after the bump until the error stays below 0.03 mm' });
+        minChars: 4, title: 'Time after the bump until the error stays below 0.03 mm' });
     } else if (S.move === 'holdLoad') {
       const e = metrics.posErrMm;
-      items.push({ label: 'Position error', value: e, unit: 'mm', digits: 3, warn: e > 0.05, ok: e <= 0.02 });
-      items.push({ label: 'Holding current', value: Math.abs(snap.motors[0].iq), unit: 'A', digits: 2, title: 'Iq that holds the load torque' });
+      items.push({ label: 'Position error', value: e, unit: 'mm', digits: 3, warn: e > 0.05, ok: e <= 0.02, minChars: 5 });
+      items.push({ label: 'Holding current', value: Math.abs(snap.motors[0].iq), unit: 'A', digits: 2, minChars: 4,
+        title: 'Iq that holds the load torque' });
     } else {
       const h = S.held;
       items.push({ label: 'Overshoot', value: h.overshootPct, unit: '%', digits: 1, warn: h.overshootPct > 2, ok: h.overshootPct < 0.5,
-        title: `${formatValue(h.overshootMm, 3)} mm past the last stop, as a share of the deceleration distance` });
+        minChars: 5, title: `${formatValue(h.overshootMm, 3)} mm past the last stop, as a share of the deceleration distance` });
       items.push({ label: 'Settle', value: h.settleMs, unit: 'ms', digits: 0, warn: h.settleMs > 100, ok: h.settleMs <= 50,
-        title: 'Time after the stop until the error stays below 0.02 mm' });
+        minChars: 4, title: 'Time after the stop until the error stays below 0.02 mm' });
       items.push({ label: 'Corner error', value: metrics.cornerErrMm, unit: 'mm', digits: 2, warn: metrics.cornerErrMm > 0.15,
-        ok: metrics.cornerErrMm <= 0.1 });
+        ok: metrics.cornerErrMm <= 0.1, minChars: 4 });
       const expect = S.speed / (2 * Math.PI * TUNING.fx);
       items.push({ label: 'Following error', value: S.follow, unit: 'mm', digits: 2, warn: S.follow > 1.6 * expect,
-        ok: S.follow > 0 && S.follow <= 1.2 * expect,
+        ok: S.follow > 0 && S.follow <= 1.2 * expect, minChars: 4,
         title: 'Largest distance behind the commanded point at cruise speed (a P-only position loop trails by speed / Kpx)' });
     }
     items.push({ label: 'Oscillation at rest', value: oscText, warn: osc.amp > 0.1, ok: osc.amp > 0 && osc.amp <= OSC_FLOOR,
-      title: 'Iq oscillation while the gantry holds still (0.03 A is the sensor-noise floor)' });
+      minChars: 16, title: 'Iq oscillation while the gantry holds still (0.03 A is the sensor-noise floor)' });
     const nz = metrics.noiseIdx * 100;
-    items.push({ label: 'Noise index', value: nz, unit: '%', digits: 2, warn: nz > 0.8, ok: nz <= 0.5,
+    items.push({ label: 'Noise index', value: nz, unit: '%', digits: 2, warn: nz > 0.8, ok: nz <= 0.5, minChars: 6,
       title: 'High-frequency content of the torque loop\'s output as a share of the rated current' });
     items.push({ label: 'Flux current peak', value: S.idPeak, unit: 'A', digits: 2, warn: S.idPeak > 0.5, ok: S.idPeak <= 0.2,
-      title: 'Recent peak of |Id|, the current that heats the motor without making torque' });
+      minChars: 4, title: 'Recent peak of |Id|, the current that heats the motor without making torque' });
     const heat = metrics.heat * 100;
     const need = S.loadHeat * 100;   // a load warms the motor at any tuning, the BLDC far more than the stepper
     items.push({ label: 'Heat', value: heat, unit: '% of rated', digits: 0, warn: heat > need + HEAT_WARN, ok: heat <= need + HEAT_OK,
+      minChars: 4,
       title: 'Copper loss compared with running at the rated current, averaged over the last second'
         + (need >= 0.5 ? `; the load alone needs about ${formatValue(need, 0)}%` : '') });
     return items;
