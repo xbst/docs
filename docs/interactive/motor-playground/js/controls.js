@@ -14,7 +14,10 @@
  *              or the whole number nearest to log10(max/min)/`logStep`), the last
  *              one a hair inside max so the browser can reach it; `step` then
  *              only rounds the value, and the arrow keys skip track positions
- *              that round to the value already shown.
+ *              that round to the value already shown. `sig` (log only) rounds to
+ *              that many significant digits instead, on a track fine enough to
+ *              reach every such value (sig 2: 690, 700, 710 and 19 000, 20 000;
+ *              a config's round numbers); `step` then only sets the decimals.
  *              `live:false` fires onChange on release only.
  *   segmented: { type:'segmented', id, label, options:[{value, label, disabled, title}], value, onChange }
  *   toggle:    { type:'toggle', id, label, value, onChange }
@@ -254,12 +257,16 @@ const BUILD = {
     input.id = id;
     const min = +spec.min, max = +spec.max;
     const log = !!spec.log && min > 0 && max > min;
+    const sig = log && spec.sig > 0 ? Math.round(spec.sig) : 0;
     if (log) {
       // A whole number of track steps spans the range, each a hair short of its share, so the last
       // grid point sits just inside max: the browser compares min + k·step with max in decimal, and
       // a step string that rounds up put max one step out of reach (x9.82 of x10 on 0.25…10).
+      // With `sig` a step is at most 90% of the narrowest rounding interval (the one just under a
+      // power of ten, 1 part in 10^sig), so each sig-digit value has a track position.
       const a = Math.log10(min), b = Math.log10(max);
-      const n = Math.max(1, Math.round((b - a) / (spec.logStep > 0 ? spec.logStep : (b - a) / 200)));
+      const share = spec.logStep > 0 ? spec.logStep : sig ? 0.9 * Math.log10(1 + 10 ** -sig) : (b - a) / 200;
+      const n = Math.max(1, sig && !(spec.logStep > 0) ? Math.ceil((b - a) / share) : Math.round((b - a) / share));
       input.min = String(a);
       input.max = String(b);
       input.step = String((b - a) / n * (1 - 1e-9));
@@ -276,7 +283,7 @@ const BUILD = {
     const fromRaw = (r) => {
       if (!log) return +r;
       const v = Math.pow(10, +r);
-      return spec.step > 0 ? roundTo(v, spec.step) : +v.toPrecision(3);
+      return sig ? Math.min(max, Math.max(min, +v.toPrecision(sig))) : spec.step > 0 ? roundTo(v, spec.step) : +v.toPrecision(3);
     };
     let current = value;
     const show = (v) => {
@@ -295,7 +302,7 @@ const BUILD = {
       if (spec.live !== false) C.fire(spec.onChange, v);
     });
     if (spec.live === false) input.addEventListener('change', () => C.fire(spec.onChange, current));
-    if (log && spec.step > 0) {
+    if (log && (spec.step > 0 || sig)) {
       // Near the low end neighboring track positions round to the same value: an arrow key
       // moves on to the next position whose value differs. At an end nothing is sent; a thumb
       // a position or two short of it (a pointer drag) parks on the end, as the native key would.

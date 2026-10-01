@@ -53,6 +53,13 @@
  * StealthChop slips a few steps on the shuttle too. The chapter's 0.25 N·m
  * bump pulls the reading down to between about 80 and 510, depending on where
  * in the stroke it lands, without skipping a step.
+ *
+ * The speed and acceleration sliders reach past what printers run, 1000 mm/s
+ * and 100 000 mm/s² (B-009, 2026-10-01): SpreadCycle holds the shuttle up to
+ * 600 mm/s at 20 000 mm/s² and falls out of step at 1000 mm/s, or at 600 mm/s
+ * with 100 000 mm/s²; Hybrid slips a little earlier. The bus stays at 24 V:
+ * StealthChop and this StallGuard are TMC2209 features (a driver for up to
+ * 29 V), and 48 V changed nothing on the shuttle.
  */
 import { formatValue, formatRms } from '../format.js';
 
@@ -323,10 +330,10 @@ export default {
         caption: 'run_current', group: 'Driver', format: formatRms,
         onChange: (v, c) => { st.rms = v; c.world.set('runCurrent', v * SQRT2); } },
 
-      { type: 'slider', id: 'speed', label: 'Speed', min: 20, max: 200, step: 5, value: DEFAULTS.speed, unit: 'mm/s',
+      { type: 'slider', id: 'speed', label: 'Speed', min: 20, max: 1000, step: 1, sig: 2, log: true, value: DEFAULTS.speed, unit: 'mm/s',
         group: 'Motion',
         onChange: (v, c) => { st.speed = v; c.world.set('planner.maxVelocity', v); run(c, false); } },
-      { type: 'slider', id: 'accel', label: 'Acceleration', min: 500, max: 20000, step: 500, value: DEFAULTS.accel,
+      { type: 'slider', id: 'accel', label: 'Acceleration', min: 500, max: 100000, step: 1, sig: 2, log: true, value: DEFAULTS.accel,
         unit: 'mm/s²', caption: 'max_accel', group: 'Motion',
         onChange: (v, c) => { st.accel = v; c.world.set('planner.accel', v); run(c, false); } },
       { type: 'slider', id: 'drag', label: 'Drag', min: 0, max: 0.3, step: 0.01, value: DEFAULTS.drag, unit: 'N·m',

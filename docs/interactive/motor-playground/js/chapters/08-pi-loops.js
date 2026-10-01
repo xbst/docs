@@ -33,6 +33,15 @@
  * position loop is P-only, without feed-forward), heat counted above what the
  * load itself needs (the load hold's 0.15 N·m needs 20% of rated on the BLDC,
  * 4% on the stepper).
+ *
+ * Speed and acceleration (B-009, 2026-10-01): the test move's sliders reach 1000 mm/s and
+ * 100 000 mm/s², past what printers run; the supply stays 24 V. From about 600 mm/s the stepper
+ * runs out of voltage (its back-EMF) and trails far beyond speed / Kpx: at 1000 mm/s by 26 mm
+ * at 20 000 mm/s² and 48 mm at 100 000 mm/s² with the optimal gains (113 mm with flux P too
+ * high). The BLDC keeps up (6 and 10 mm). At 48 V three stepper presets (position P too high,
+ * position I too high, velocity P too low) run away into the frame with 24 to 26 A at 800 mm/s:
+ * the model's current loops have no feed-forward of the d/q cross-coupling (ωL·I), which the
+ * voltage limit keeps in check on 24 V.
  */
 import { formatValue } from '../format.js';
 import { TUNING } from '../sim/drivers/foc.js';
@@ -196,6 +205,12 @@ function posError(snap) {
 }
 
 /**
+ * Decimals of a distance readout (mm), so it stays within four characters up to 999 mm: at
+ * 1000 mm/s the stepper, out of voltage on 24 V, trails by up to 113 mm (B-009).
+ */
+const mmDigits = (v) => (v >= 100 ? 0 : v >= 10 ? 1 : 2);
+
+/**
  * Starts (or restarts) the selected test move: the gantry stops where it is,
  * settles with the current gains, then a path starts from rest. (The metrics
  * restart their corner error on any runPath, but the following-error readout
@@ -357,7 +372,8 @@ const DEEPER = `<p>Loop bandwidths in this model: current loops ${TUNING.fc} Hz 
   + `${formatValue(TUNING.fFilter / 1000, 1)} kHz, velocity loop ${TUNING.fv} Hz with its filter at ${TUNING.fVel} Hz, `
   + `position loop ${TUNING.fx} Hz. The position loop has no feed-forward, so at cruise the toolhead trails the command by `
   + `speed / P (${formatValue(150 / (2 * Math.PI * TUNING.fx), 2)} mm at 150 mm/s) even when well tuned; the corners `
-  + 'stay sharp because both axes trail alike.</p>'
+  + 'stay sharp because both axes trail alike. From about 600&nbsp;mm/s the stepper runs out of voltage on this '
+  + '24&nbsp;V supply (chapter 5) and trails far more, whatever the tuning; the BLDC keeps up.</p>'
   + '<p>On hardware you would also see symptoms this model does not reproduce, so they have no preset: torque P too '
   + 'low (overshoot on fast moves), torque I too low (slow position loss under a static load), flux P too low (less '
   + 'torque at speed) and position I too low (drift during long prints).</p>';
@@ -430,10 +446,11 @@ export default {
       { type: 'note', group: 'Test move',
         html: 'A preset switches the test move to the one that shows its symptom. To try a preset on another '
           + 'move, pick the move after the preset.' },
-      { type: 'slider', id: 'speed', label: 'Speed', group: 'Test move', min: 50, max: 300, step: 10, value: S.speed, unit: 'mm/s',
-        live: false, onChange: (v, c) => { S.speed = v; c.world.set('planner.maxVelocity', v); startMove(c); } },
-      { type: 'slider', id: 'accel', label: 'Acceleration', group: 'Test move', min: 1000, max: 10000, step: 500, value: S.accel,
-        unit: 'mm/s²', live: false, onChange: (v, c) => { S.accel = v; c.world.set('planner.accel', v); startMove(c); } },
+      { type: 'slider', id: 'speed', label: 'Speed', group: 'Test move', min: 50, max: 1000, step: 1, sig: 2, log: true, value: S.speed,
+        unit: 'mm/s', live: false, onChange: (v, c) => { S.speed = v; c.world.set('planner.maxVelocity', v); startMove(c); } },
+      { type: 'slider', id: 'accel', label: 'Acceleration', group: 'Test move', min: 1000, max: 100000, step: 1, sig: 2, log: true,
+        value: S.accel, unit: 'mm/s²', live: false,
+        onChange: (v, c) => { S.accel = v; c.world.set('planner.accel', v); startMove(c); } },
       { type: 'slider', id: 'drag', label: 'Drag', group: 'Test move', min: 0, max: DRAG_MAX[type] || 0.3, step: 0.01, value: S.drag,
         unit: 'N·m', onChange: (v, c) => { S.drag = v; c.world.command('setLoad', { drag: v }); } },
       { type: 'button', id: 'bump', label: 'Bump', group: 'Test move',
@@ -536,11 +553,11 @@ export default {
         minChars: 5, title: `${formatValue(h.overshootMm, 3)} mm past the last stop, as a share of the deceleration distance` });
       items.push({ label: 'Settle', value: h.settleMs, unit: 'ms', digits: 0, warn: h.settleMs > 100, ok: h.settleMs <= 50,
         minChars: 4, title: 'Time after the stop until the error stays below 0.02 mm' });
-      items.push({ label: 'Corner error', value: metrics.cornerErrMm, unit: 'mm', digits: 2, warn: metrics.cornerErrMm > 0.15,
-        ok: metrics.cornerErrMm <= 0.1, minChars: 4 });
+      items.push({ label: 'Corner error', value: metrics.cornerErrMm, unit: 'mm', digits: mmDigits(metrics.cornerErrMm),
+        warn: metrics.cornerErrMm > 0.15, ok: metrics.cornerErrMm <= 0.1, minChars: 4 });
       const expect = S.speed / (2 * Math.PI * TUNING.fx);
-      items.push({ label: 'Following error', value: S.follow, unit: 'mm', digits: 2, warn: S.follow > 1.6 * expect,
-        ok: S.follow > 0 && S.follow <= 1.2 * expect, minChars: 4,
+      items.push({ label: 'Following error', value: S.follow, unit: 'mm', digits: mmDigits(S.follow),
+        warn: S.follow > 1.6 * expect, ok: S.follow > 0 && S.follow <= 1.2 * expect, minChars: 4,
         title: 'Largest distance behind the commanded point at cruise speed (a P-only position loop trails by speed / Kpx)' });
     }
     items.push({ label: 'Oscillation at rest', value: oscText, warn: osc.amp > 0.1, ok: osc.amp > 0 && osc.amp <= OSC_FLOOR,

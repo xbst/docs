@@ -24,11 +24,20 @@ const START_MM = 50;
 const FIRST_MOVE_MM = 90;
 const SPEED = 100;
 const ACCEL = 2000;
+/**
+ * Supply voltage (B-009): the sliders reach past what printers run, 1000 mm/s and 100 000 mm/s².
+ * At 24 V this motor (2.5 A RMS) stalls on a long move from about 500 mm/s at 20 000 mm/s²; at
+ * 48 V it holds 700 mm/s there and stalls from about 1000 mm/s.
+ */
+const BUS = 48;
 const ZOOM = { window: 0.01, timeScale: 0.01 };
 const NORMAL = { window: 2, timeScale: 1 };
 
-/** Chapter state; reset in onEnter (scenario() runs before it and only reads the constants). */
-const st = { target: FIRST_MOVE_MM, speed: SPEED, accel: ACCEL, zoom: false, p0: 0, total: 0, moving: false };
+/**
+ * Chapter state; reset in onEnter, except the bus voltage, which scenario() reads before onEnter
+ * and onLeave puts back.
+ */
+const st = { target: FIRST_MOVE_MM, speed: SPEED, accel: ACCEL, bus: BUS, zoom: false, p0: 0, total: 0, moving: false };
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 /** Scenario of the World (`scenario`) or of FakeWorld (`sc`). */
@@ -112,7 +121,7 @@ export default {
   scenario(motorType) {
     return {
       motorType, motorPreset: 'stepper', driver: 'openloop', driverMode: 'current', mechanics: 'axis',
-      microsteps: 16, interpolate: true, start: { x: START_MM, y: 50 },
+      microsteps: 16, interpolate: true, start: { x: START_MM, y: 50 }, supplyV: st.bus,
       planner: { maxVelocity: SPEED, accel: ACCEL },
     };
   },
@@ -127,6 +136,7 @@ export default {
   onLeave() {
     st.zoom = false;
     st.moving = false;
+    st.bus = BUS;
   },
 
   // The longest announcement (a move with its braking and the way back), so the readouts row keeps
@@ -149,11 +159,16 @@ export default {
       { type: 'slider', id: 'target', label: 'Move to', min: 0, max: AXIS_MM, step: 1, value: st.target, unit: 'mm',
         live: false, group: 'Move', onChange: (v, c) => moveTo(c, v) },
       nudge(-100), nudge(-10), nudge(10), nudge(100),
-      { type: 'slider', id: 'speed', label: 'Speed', min: 10, max: 300, step: 5, value: st.speed, unit: 'mm/s',
+      { type: 'slider', id: 'speed', label: 'Speed', min: 10, max: 1000, step: 1, sig: 2, log: true, value: st.speed, unit: 'mm/s',
         group: 'Motion', onChange: (v) => { st.speed = v; } },
-      { type: 'slider', id: 'accel', label: 'Acceleration', min: 500, max: 10000, step: 100, value: st.accel,
+      { type: 'slider', id: 'accel', label: 'Acceleration', min: 500, max: 100000, step: 1, sig: 2, log: true, value: st.accel,
         unit: 'mm/s²', group: 'Motion', onChange: (v) => { st.accel = v; } },
-      { type: 'note', group: 'Motion', html: 'New speed and acceleration values apply from the next move.' },
+      { type: 'segmented', id: 'bus', label: 'Bus voltage', value: st.bus, group: 'Motion',
+        options: [{ value: 24, label: '24 V' }, { value: 48, label: '48 V' }],
+        title: 'The driver\'s supply: a faster move needs more voltage (chapter 5)',
+        onChange: (v, c) => { st.bus = v; c.world.set('supplyV', v); } },
+      { type: 'note', group: 'Motion', html: 'New speed and acceleration values apply from the next move. Push them far enough '
+        + 'and the motor stalls, sooner at 24 V than at 48 V, while the driver still counts every pulse.' },
       { type: 'toggle', id: 'zoom', label: 'Pulse zoom', value: st.zoom, group: 'Scope',
         onChange: (v, c) => setZoom(c, v) },
       { type: 'note', group: 'Scope',
@@ -167,16 +182,16 @@ export default {
     { name: 'stepN', group: 'digital', pulses: true, label: 'STEP', color: 'phase-a' },
     { name: 'dir', group: 'digital', label: 'DIR', color: 'phase-b' },
     // Legend room for the longest ranges a move gives ("342.5 to 347.5 mm" as the scope zooms in
-    // at the end of a long move, "0 to 300 mm/s" after "±300"), so its end moves nothing (B-006).
+    // at the end of a long move, "0 to 1000 mm/s" after "±1000"), so its end moves nothing (B-006).
     { name: 'posCmd', label: 'Commanded position', unit: 'mm', color: 'target', dashed: true, scaleChars: 17 },
-    { name: 'velCmd', label: 'Commanded speed', unit: 'mm/s', color: 'phase-c', dashed: true, scaleChars: 13 },
+    { name: 'velCmd', label: 'Commanded speed', unit: 'mm/s', color: 'phase-c', dashed: true, scaleChars: 14 },
   ],
 
   readouts(snap, metrics, ctx) {
     const w = ctx.world;
     const sent = sentOf(w);
     const done = Math.abs(pulsesOf(w) - st.p0), total = st.total;
-    // Values keep room for a full-length move at full speed (28000 steps, 350.00 mm, 24.00 kHz), so
+    // Values keep room for a full-length move at full speed (28000 steps, 350.00 mm, 80.00 kHz), so
     // the chip rows stay put while a move runs (B-006).
     return [
       { label: 'Step rate', value: snap.step.rate / 1000, unit: 'kHz', digits: 2, minChars: 5 },

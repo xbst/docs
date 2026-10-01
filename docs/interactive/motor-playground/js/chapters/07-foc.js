@@ -17,17 +17,29 @@
  * (BLDC FOC) and 100% (open-loop stepper at 3.54 A). Limits: the BLDC
  * makes at most Kt·5.6 A = 0.34 N·m, so its load slider stops at 0.3 N·m and its bump is
  * 0.15 N·m. The comparison stepper holds 0.78 N·m at 3.54 A up to about 250 mm/s (less
- * beyond, back-EMF), so on the stepper the load stops at 0.4 N·m, the bump is 0.25 N·m and
- * the speed stops at 250 mm/s: load, bump and acceleration stay below its holding torque
- * (0.4 + 0.3 slipped it at 300 mm/s). A slipped stepper under a constant load is driven
- * backward without end (about 19 m/s here), so a stepLost on the comparison motor restarts
- * both motors.
+ * beyond, back-EMF), so on the stepper the load stops at 0.4 N·m and the bump is 0.25 N·m:
+ * up to there load, bump and acceleration stay below its holding torque (0.4 + 0.3 slipped it
+ * at 300 mm/s).
+ *
+ * Speed (B-009, 2026-10-01): the setpoint reaches 1000 mm/s, past what printers run, so the
+ * limits show. At 24 V the stepper's FOC runs out of voltage at about 550 mm/s at the default
+ * load (390 mm/s at 0.4 N·m, 670 mm/s with none): the voltage inset fills and the speed stays
+ * under the setpoint. The BLDC reaches 1000 mm/s with 8 of its 13 V. The comparison stepper
+ * slips from about 400 mm/s at the default load. A slipped stepper under a constant load is
+ * driven backward without end (about 19 m/s here), so a stepLost on the comparison motor starts
+ * both motors again at rest; they run again when the speed setpoint, Hold or Compare changes
+ * (running them at once would only slip again at the same speed). Turning the comparison off
+ * instead removed its chips and its legend entry, a row change the reader had not asked for (B-006).
+ * The supply stays 24 V: the model's current loops have no feed-forward of the d/q cross-coupling
+ * (ωL·I), so with no load the stepper's speed already wobbles by up to 10% between 500 and
+ * 650 mm/s, and at 48 V, where the voltage no longer stops it first, it hunts from 550 mm/s
+ * (±150 mm/s, Id 1 to 1.6 A on average).
  */
 import { MOTOR_PRESETS } from '../sim/presets.js';
 
 const DEFAULTS = { speed: 40, load: 0.2, hold: false, compare: false, transforms: false };
 const MAX_LOAD = { stepper: 0.4, bldc: 0.3 };
-const MAX_SPEED = 250;
+const MAX_SPEED = 1000;
 const BUMP = { stepper: { torque: 0.25, durationS: 0.04 }, bldc: { torque: 0.15, durationS: 0.04 } };
 /** Time scale and scope window per motor type: about one electrical turn per second on screen at 40 mm/s. */
 const PACE = { stepper: { time: 0.02, window: 0.1 }, bldc: { time: 0.1, window: 0.5 } };
@@ -62,7 +74,7 @@ export default {
     const type = motorType === 'bldc' ? 'bldc' : 'stepper';
     return {
       motorType: type, motorPreset: type, driver: 'foc', driverMode: st.hold ? 'position' : 'velocity',
-      mechanics: 'free', loads: { drag: 0, torque: Math.min(st.load, MAX_LOAD[type]) }, bump: BUMP[type],
+      mechanics: 'free', supplyV: 24, loads: { drag: 0, torque: Math.min(st.load, MAX_LOAD[type]) }, bump: BUMP[type],
       compareMotor: st.compare ? { driver: 'openloop', driverMode: 'current' } : null,
       planner: { maxVelocity: 300, accel: 5000, scv: 5, microsteps: 16, fullStepsPerRev: 200 },
     };
@@ -93,7 +105,7 @@ export default {
           if (v > max) c.app.setControlValue('load', max);
           c.world.set('loads.torque', st.load);
         } },
-      { type: 'slider', id: 'speed', label: 'Speed setpoint', min: 0, max: MAX_SPEED, step: 5, value: st.speed, unit: 'mm/s',
+      { type: 'slider', id: 'speed', label: 'Speed setpoint', min: 0, max: MAX_SPEED, step: 10, value: st.speed, unit: 'mm/s',
         title: 'The velocity loop\'s target. Moving it leaves Hold position',
         onChange: (v, c) => {
           st.speed = v;
@@ -193,18 +205,21 @@ export default {
     return items;
   },
 
-  // The only announcement, so the readouts row keeps room for it (B-008).
-  announceSample: 'The open-loop stepper slipped under the load, so both motors start again',
+  // The only announcement, at its longest, so the readouts row keeps room for it (B-008).
+  announceSample: 'The open-loop stepper slipped at 1000 mm/s, so both motors stopped',
 
   onEvent(ev, ctx) {
     if (ev.type === 'stallDetected') return false;     // the open-loop comparison motor's StallGuard
     if (ev.type === 'stepLost' && ev.data && ev.data.motor === 1) {
-      // Safety net (the ranges keep load + bump below its holding torque): a slipped stepper
-      // under a constant load would be driven backward without end, so start both motors again.
+      // A slipped stepper under a constant load would be driven backward without end. Both motors
+      // start again at rest and stay there until the speed setpoint, Hold or Compare changes:
+      // from about 400 mm/s the stepper slips again on its own, so running them again would only
+      // repeat the slip. The comparison stays on, so the chips and the legend keep their rows.
+      const pl = ctx.world.snapshot && ctx.world.snapshot.planner;
+      const speed = pl ? Math.round(Math.hypot(num(pl.vx, 0), num(pl.vy, 0))) : st.speed;
       ctx.app.reconfigure();
       resetSmoothing();
-      startMotion(ctx);
-      return 'The open-loop stepper slipped under the load, so both motors start again';
+      return `The open-loop stepper slipped at ${speed} mm/s, so both motors stopped`;
     }
     return undefined;
   },

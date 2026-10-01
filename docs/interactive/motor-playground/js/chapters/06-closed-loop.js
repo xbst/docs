@@ -23,6 +23,20 @@
  * that lost steps in those 250 ms (a stepLost event) gets neither: the slip is plain in the
  * frame, and a slip along the path, or one that undoes an earlier slip, can look like a small
  * sideways dip that healed.
+ *
+ * Speed and acceleration (B-009, 2026-10-01): the sliders reach 1000 mm/s and 100 000 mm/s²,
+ * past what printers run, so the limits show. Measured over 5 s of the square: at 1.75 A RMS
+ * open loop holds 500 mm/s at 20 000 mm/s² and loses steps at 800 mm/s, or at 50 000 mm/s²
+ * from 500 mm/s; which currents slip there is erratic (1 A RMS held 800 mm/s at 20 000 mm/s²
+ * where 1.75 A slipped). Closed loop never loses steps: its error peaks at 2.3 mm at 400 mm/s
+ * and 3.4 mm at 500 mm/s; above that the supply runs out (the stepper's back-EMF) and it trails
+ * by 15 mm at 800 mm/s and 26 mm at 1000 mm/s (20 000 mm/s²), 48 mm at 1000 mm/s and
+ * 100 000 mm/s²; at the lowest current limit (0.5 A peak) by up to 85 mm. The supply stays 24 V:
+ * the model's current loops have no feed-forward of the d/q cross-coupling (ωL·I). On 24 V that
+ * shows only around 500 to 600 mm/s (Id up to 1.4 A while cruising); at 48 V, where the voltage
+ * no longer stops it first, the closed loop hunts from about 500 mm/s (Id 1 to 1.6 A on average
+ * while cruising, peaks of 13 to 15 A at 100 000 mm/s²) and runs into the frame at 900 mm/s and
+ * 100 000 mm/s².
  */
 import { formatValue, formatRms, formatPeak } from '../format.js';
 import { TUNING } from '../sim/drivers/foc.js';
@@ -129,7 +143,7 @@ export default {
     return {
       motorType: 'stepper', motorPreset: 'stepper', driver: foc ? 'foc' : 'openloop',
       driverMode: foc ? 'position' : 'current', mechanics: 'corexy', axisLength: LEN,
-      start: { x: SQUARE.start[0], y: SQUARE.start[1] }, path: SQUARE,
+      start: { x: SQUARE.start[0], y: SQUARE.start[1] }, path: SQUARE, supplyV: 24,
       runCurrent: st.current, loads: { drag: st.drag, torque: 0 }, bump: BUMP,
       planner: { maxVelocity: st.speed, accel: st.accel, scv: 5, microsteps: 16, fullStepsPerRev: 200 },
     };
@@ -169,9 +183,9 @@ export default {
           value: +(st.current / Math.SQRT2).toFixed(2), format: formatRms, caption: 'run_current',
           title: 'The driver pushes this current all the time, whatever the load',
           onChange: (v, c) => { st.current = v * Math.SQRT2; c.world.set('runCurrent', st.current); } },
-      { type: 'slider', id: 'speed', label: 'Speed', group: 'Motion', min: 50, max: 300, step: 10, value: st.speed,
+      { type: 'slider', id: 'speed', label: 'Speed', group: 'Motion', min: 50, max: 1000, step: 1, sig: 2, log: true, value: st.speed,
         unit: 'mm/s', onChange: (v, c) => { st.speed = v; c.world.set('planner.maxVelocity', v); } },
-      { type: 'slider', id: 'accel', label: 'Acceleration', group: 'Motion', min: 1000, max: 20000, step: 500,
+      { type: 'slider', id: 'accel', label: 'Acceleration', group: 'Motion', min: 1000, max: 100000, step: 1, sig: 2, log: true,
         value: st.accel, unit: 'mm/s²', onChange: (v, c) => { st.accel = v; c.world.set('planner.accel', v); } },
       { type: 'slider', id: 'drag', label: 'Drag', group: 'Motion', min: 0, max: 0.3, step: 0.01, value: st.drag,
         unit: 'N·m', title: 'Friction on both motors, like a stiff carriage',
@@ -184,9 +198,11 @@ export default {
       { name: 'posCmd', motor: 0, label: 'Commanded X', unit: 'mm', color: 'target', dashed: true },
       { name: 'posAct', motor: 0, label: 'Actual X', unit: 'mm', color: 'phase-a' },
       // Symmetric even after a slip leaves the errors one-sided: "5 to 20 mm" after "±20 mm" added a
-      // legend row seconds after Bump (B-006), and an error reads best against the center line.
-      { name: 'posErr', motor: 0, label: 'Position error X', unit: 'mm', scale: 'err', color: 'err', range: 'sym' },
-      { name: 'posErr', motor: 1, label: 'Position error Y', unit: 'mm', scale: 'err', color: 'axis-d', range: 'sym' },
+      // legend row seconds after Bump (B-006), and an error reads best against the center line. Room
+      // for "±100 mm": a shifted print, or the closed loop at 0.5 A and 1000 mm/s (85 mm), passes
+      // ±50 mm while it runs (B-009).
+      { name: 'posErr', motor: 0, label: 'Position error X', unit: 'mm', scale: 'err', color: 'err', range: 'sym', scaleChars: 7 },
+      { name: 'posErr', motor: 1, label: 'Position error Y', unit: 'mm', scale: 'err', color: 'axis-d', range: 'sym', scaleChars: 7 },
       { name: 'iAmp', motor: 0, label: 'Current, motor A', unit: 'A', color: 'phase-b' },
       { name: 'torque', motor: 0, label: 'Torque, motor A', unit: 'N·m', color: 'phase-c' },
     ];
@@ -315,6 +331,7 @@ export default {
     + '<p>Why does the closed loop trail the command while moving? Its position loop asks for a speed of '
     + 'P × error, so moving at 150&nbsp;mm/s takes an error of 150 / P = 150 / (2π × '
     + `${TUNING.fx}&nbsp;Hz) ≈ ${formatValue(150 / (2 * Math.PI * TUNING.fx), 2)}&nbsp;mm here. The lag is the `
-    + 'same on every layer, so nothing shifts; many drives add feed-forward to shrink it. The encoder reads 4000 '
+    + 'same on every layer, so nothing shifts; many drives add feed-forward to shrink it. From about 600&nbsp;mm/s '
+    + 'the motor runs out of voltage on this 24&nbsp;V supply (chapter 5) and lags far more. The encoder reads 4000 '
     + 'counts per turn: 40&nbsp;mm / 4000 = 0.01&nbsp;mm of belt each.</p>',
 };
