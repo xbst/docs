@@ -12,6 +12,19 @@
  * their curves. When the motor preset is not the reference (typical)
  * stepper, the reference family is drawn dashed for comparison.
  *
+ * Labels (B-003). Each voltage label tries points along its own curve (where
+ * it falls to 50%, 62%, 38%, … of its standstill torque, above right or below
+ * left of the point, or at the curve's right end) and takes the one with the
+ * fewest clashes: the plot's edges, the legend, the knee's line and note, the
+ * labels placed before it (the selected voltage first) and, weighted less,
+ * other curves running through it or as near to it as its own. That runs
+ * when the curves, the layout or the selected voltage change. The knee note
+ * stays inside the plot (right of
+ * the line, else left). Each frame the sweep values and the live dot's speed
+ * pick a free side the same way; the dot keeps its side while that stays free.
+ * (The labels sat where each curve fell to half its torque: close knees, as on
+ * the 8 mH motor or a narrow chart, put them on top of each other.)
+ *
  * Options:
  *   voltages          curve voltages (default [12, 24, 36, 48, 60])
  *   maxMmS            speed axis end (default 1500)
@@ -32,6 +45,17 @@ const N = 121;
 const SOLID = [];
 const DASH = [5, 4];
 const DOT = [2, 3];
+/** Torque levels (share of the standstill torque) a curve label tries, in order. */
+const FRACS = [0.5, 0.62, 0.38, 0.75, 0.28, 0.85, 0.2];
+/** Label boxes (x0, y0, x1, y1) the placement keeps, at most. */
+const MAX_BOXES = 48;
+
+/** Overlap area of the boxes (ax0, ay0, ax1, ay1) and (bx0, by0, bx1, by1). */
+function overlapArea(ax0, ay0, ax1, ay1, bx0, by0, bx1, by1) {
+  const w = (ax1 < bx1 ? ax1 : bx1) - (ax0 > bx0 ? ax0 : bx0);
+  const h = (ay1 < by1 ? ay1 : by1) - (ay0 > by0 ? ay0 : by0);
+  return w > 0 && h > 0 ? w * h : 0;
+}
 
 export class ChartView extends CanvasView {
   /** Preferred height / width. */
@@ -57,6 +81,22 @@ export class ChartView extends CanvasView {
     this.preset = null;
     this.refPreset = null;
     this.I = 0;
+    // label placement: boxes (x0, y0, x1, y1), the static ones first (legend, knee, curve
+    // labels), then each frame's sweep and dot labels; the selected voltage they were placed for
+    this.boxes = new Float64Array(4 * MAX_BOXES);
+    this.nBoxes = 0;
+    this.nStatic = 0;
+    this.placedSel = NaN;
+    this.kneeLX = 0;              // knee note's left edge
+    this.charW = 7;               // mono font character width (px)
+    this.dotPick = -1;            // the dot label's last side (candidate index)
+    this.bx0 = 0; this.by0 = 0;   // the last picked floating label's left and bottom
+    // the sweep diamonds (x, y, label left, label bottom, value; placed with the static labels)
+    // and this frame's dot label
+    this.dia = new Float64Array(5 * 16);
+    this.nDia = 0;
+    this.dotLX = 0; this.dotLY = 0;
+    this.placedRes = 0;           // signature of the sweep results the labels were placed with
   }
 
   /** @private (re)compute the curves when the preset, current, voltages or range changed */
@@ -87,10 +127,8 @@ export class ChartView extends CanvasView {
       torqueSpeedPoints(p, V, I, maxMmS, rd, N, this.speeds, ts);
       const c = torqueSpeedCurve(p, V, I);
       const kneeMmS = c.omegaKneeM * rd / TAU;
-      // label position: where the curve falls to half its standstill torque, else the right end
-      let li = N - 1;
-      for (let i = 1; i < N; i++) if (ts[i] < 0.5 * ts[0]) { li = i; break; }
-      return { V, ts, kneeMmS, li };
+      // label: text and its left and bottom edge (placeLabels)
+      return { V, ts, kneeMmS, label: formatValue(V, 0) + ' V', lx: 0, ly: 0, lw: 0 };
     });
     this.curves = make(pr);
     this.refCurves = ref ? make(ref) : [];
@@ -113,6 +151,228 @@ export class ChartView extends CanvasView {
     L.yTop = Math.ceil(top / L.yStep) * L.yStep;
     L.yDec = Math.max(1, stepDecimals(L.yStep));  // 0.25 steps read 0.25, 0.75, not 0.3, 0.8
     this.layoutDirty = false;
+    this.placedSel = NaN;
+  }
+
+  /**
+   * @private Place the knee note and the voltage labels for the selected voltage `selV` (see
+   * "Labels" in the header). Runs when the curves, the layout or the selected voltage change.
+   */
+  placeLabels(selV, res, resSig) {
+    const g = this.g, L = this.lay, sp = this.speeds;
+    const x0 = L.x0, x1 = L.x1, y1 = L.y1;
+    const kx = (x1 - x0) / this.maxMmS, ky = (y1 - L.y0) / L.yTop;
+    const fh = this.fpx(12);
+    this.placedSel = selV;
+    this.placedRes = resSig;
+    this.nBoxes = 0;
+    g.font = this.font.mono;
+    this.charW = g.measureText('0000000000').width / 10;
+    // the legend rows in the top right (drawn at the end of draw)
+    g.font = this.font.ui;
+    const lh = fh + 5, pr = this.preset;
+    let ry = L.y0 + lh / 2 + 2;
+    if (pr) {
+      const lw = g.measureText(`this motor, L ${formatValue(pr.L * 1000, 1)} mH`).width;
+      this.addBox(x1 - lw - 30, ry - lh / 2, x1, ry + lh / 2);
+      if (this.refPreset) {
+        ry += lh;
+        const rw = g.measureText(`typical motor, L ${formatValue(this.refPreset.L * 1000, 1)} mH`).width;
+        this.addBox(x1 - rw - 30, ry - lh / 2, x1, ry + lh / 2);
+      }
+    }
+    // the knee's dotted line and its note, inside the plot: right of the line, else left of it
+    let sel = null;
+    for (const c of this.curves) if (c.V === selV) sel = c;
+    if (sel && sel.kneeMmS > 0 && sel.kneeMmS < this.maxMmS) {
+      const kxp = x0 + sel.kneeMmS * kx;
+      this.addBox(kxp - 3, y1 - sel.ts[0] * ky, kxp + 3, y1);
+      const kw = g.measureText(`falls from ${formatValue(sel.kneeMmS, 0)} mm/s`).width;
+      let lx = kxp + 4;
+      if (lx + kw > x1 - 2) lx = kxp - 4 - kw >= x0 + 2 ? kxp - 4 - kw : Math.max(x0 + 2, x1 - 2 - kw);
+      this.kneeLX = lx;
+      this.addBox(lx - 2, y1 - 4 - fh, lx + kw + 2, y1 - 2);
+    }
+    // the sweep results: diamonds on their curves, each value on a free side
+    g.font = this.font.mono;
+    const dia = this.dia;
+    this.nDia = 0;
+    if (res) {
+      for (const k of Object.keys(res)) {
+        const V = Number(k), v = num(res[k], NaN);
+        if (!(v >= 0) || this.nDia >= 16) continue;
+        const c = this.curves.find((cc) => cc.V === V);
+        if (!c) continue;
+        const px = x0 + Math.min(v, this.maxMmS) * kx, py = y1 - this.valueAt(c.ts, v) * ky;
+        this.addBox(px - 7, py - 7, px + 7, py + 7);
+        this.pickFloating(px, py - 8, py + 8, g.measureText(formatValue(v, 0)).width + 2, fh, true, false, -1);
+        const j = 5 * this.nDia++;
+        dia[j] = px; dia[j + 1] = py; dia[j + 2] = this.bx0; dia[j + 3] = this.by0; dia[j + 4] = v;
+      }
+    }
+    // the voltage labels, the selected one first
+    g.font = this.font.monoBold;
+    for (let pass = 0; pass < 2; pass++) {
+      for (const c of this.curves) {
+        if ((c.V === selV) !== (pass === 0)) continue;
+        const w = g.measureText(c.label).width + 2, t0 = c.ts[0];
+        let best = Infinity, bx = 0, by = 0, rank = 0, end = false;
+        for (let k = 0; k < FRACS.length; k++) {
+          const f = FRACS[k] * t0;
+          let i = 1;
+          while (i < N && c.ts[i] >= f) i++;
+          if (i >= N) { end = true; continue; }
+          const a = c.ts[i - 1], b = c.ts[i];
+          const xa = x0 + (sp[i - 1] + (sp[i] - sp[i - 1]) * (a - f) / ((a - b) || 1)) * kx, ya = y1 - f * ky;
+          // above right of the point (between this curve and the next one up), then below left
+          let s = this.labelScore(xa + 4, ya - 3 - fh, xa + 4 + w, ya - 3, rank++, c);
+          if (s < best) { best = s; bx = xa + 4; by = ya - 3; }
+          s = this.labelScore(xa - 4 - w, ya + 3, xa - 4, ya + 3 + fh, rank++ + 2, c);
+          if (s < best) { best = s; bx = xa - 4 - w; by = ya + 3 + fh; }
+        }
+        if (end) {
+          // the curve stays above some levels to the plot's end: at its end, above or below it,
+          // up to two rows out (curves that end together, flat, on the 0.8 mH motor)
+          const ya = y1 - c.ts[N - 1] * ky;
+          for (let r = 0; r < 3; r++) {
+            const off = r * (fh + 2);
+            let s = this.labelScore(x1 - 2 - w, ya - 3 - fh - off, x1 - 2, ya - 3 - off, rank++ + 4 * r, c);
+            if (s < best) { best = s; bx = x1 - 2 - w; by = ya - 3 - off; }
+            s = this.labelScore(x1 - 2 - w, ya + 3 + off, x1 - 2, ya + 3 + fh + off, rank++ + 2 + 4 * r, c);
+            if (s < best) { best = s; bx = x1 - 2 - w; by = ya + 3 + fh + off; }
+          }
+        }
+        // last resorts: centered above or below the curve at points across the plot where it has
+        // left the flat top all the curves share
+        for (let j = 0; j < 8; j++) {
+          const xc = x0 + (0.25 + 0.1 * j) * (x1 - x0), tc = this.valueAt(c.ts, (xc - x0) / kx);
+          if (tc > 0.95 * t0) continue;
+          const ya = y1 - tc * ky;
+          let s = this.labelScore(xc - w / 2, ya - 3 - fh, xc + w / 2, ya - 3, 20 + j, c);
+          if (s < best) { best = s; bx = xc - w / 2; by = ya - 3; }
+          s = this.labelScore(xc - w / 2, ya + 3, xc + w / 2, ya + 3 + fh, 22 + j, c);
+          if (s < best) { best = s; bx = xc - w / 2; by = ya + 3 + fh; }
+        }
+        c.lx = bx + 1;
+        c.ly = by;
+        c.lw = w;
+        this.addBox(bx, by - fh, bx + w, by);
+      }
+    }
+    this.nStatic = this.nBoxes;
+  }
+
+  /** @private true when a box overlaps this frame's dot label */
+  covered(x0, y0, x1, y1) {
+    const b = this.boxes;
+    for (let k = 4 * this.nStatic; k < 4 * this.nBoxes; k += 4) {
+      if (overlapArea(x0, y0, x1, y1, b[k], b[k + 1], b[k + 2], b[k + 3]) > 0.5) return true;
+    }
+    return false;
+  }
+
+  /** @private keep a label box (x0, y0, x1, y1) */
+  addBox(x0, y0, x1, y1) {
+    if (this.nBoxes >= MAX_BOXES) return;
+    const b = this.boxes, k = 4 * this.nBoxes++;
+    b[k] = x0; b[k + 1] = y0; b[k + 2] = x1; b[k + 3] = y1;
+  }
+
+  /**
+   * @private How badly a label box (x0, y0, x1, y1) sits: outside the plot, over the boxes kept so
+   * far, then for a curve label (`own`, its curve; `rank` its candidate order) over other curves,
+   * as near to another curve as to its own, and far from its own; lower is better.
+   */
+  labelScore(x0, y0, x1, y1, rank, own) {
+    const L = this.lay;
+    const out = (x1 - x0) * (y1 - y0) - overlapArea(x0, y0, x1, y1, L.x0 + 1, L.y0 - 2, L.x1, L.y1 - 1);
+    let hit = 0;
+    const b = this.boxes;
+    for (let k = 0; k < 4 * this.nBoxes; k += 4) hit += overlapArea(x0, y0, x1, y1, b[k], b[k + 1], b[k + 2], b[k + 3]);
+    let s = 1e6 * out + 1000 * hit;
+    if (own) {
+      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, dOwn = this.curveDist(own.ts, cx, cy);
+      for (const c of this.curves) {
+        s += 40 * this.crosses(c.ts, x0, y0, x1, y1);
+        if (c !== own && this.curveDist(c.ts, cx, cy) < dOwn + 1) s += 50;   // as near counts too
+      }
+      for (const c of this.refCurves) s += 15 * this.crosses(c.ts, x0, y0, x1, y1);
+      s += rank + dOwn;
+    }
+    return s;
+  }
+
+  /** @private screen distance from (px, py) to a curve's polyline */
+  curveDist(ts, px, py) {
+    const L = this.lay, sp = this.speeds, kx = (L.x1 - L.x0) / this.maxMmS, ky = (L.y1 - L.y0) / L.yTop;
+    let best = Infinity, ax = L.x0 + sp[0] * kx, ay = L.y1 - ts[0] * ky;
+    for (let i = 1; i < N; i++) {
+      const bx = L.x0 + sp[i] * kx, by = L.y1 - ts[i] * ky;
+      const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+      let u = l2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+      u = u < 0 ? 0 : (u > 1 ? 1 : u);
+      const ex = ax + u * dx - px, ey = ay + u * dy - py, d = ex * ex + ey * ey;
+      if (d < best) best = d;
+      ax = bx; ay = by;
+    }
+    return Math.sqrt(best);
+  }
+
+  /** @private 1 when the curve runs through the box (sampled at its left, middle and right edge) */
+  crosses(ts, x0, y0, x1, y1) {
+    const L = this.lay, kx = (L.x1 - L.x0) / this.maxMmS, ky = (L.y1 - L.y0) / L.yTop;
+    let above = false, below = false;
+    for (let j = 0; j < 3; j++) {
+      const x = j === 0 ? x0 : (j === 1 ? (x0 + x1) / 2 : x1);
+      const y = L.y1 - this.valueAt(ts, (x - L.x0) / kx) * ky;
+      if (y >= y0 - 1 && y <= y1 + 1) return 1;
+      if (y < y0) above = true; else below = true;
+    }
+    return above && below ? 1 : 0;
+  }
+
+  /**
+   * @private Pick a box for a label `w` wide beside a marker at x = `ax` whose top and bottom are
+   * `ayTop` and `ayBot`, against the boxes kept so far, and keep it. Candidates: `diamond` false
+   * (the live dot) 0 above right, 1 above left, 2 below right, 3 below left, tried in that order or,
+   * with `flip`, left before right; `diamond` true 0 centered above, 1 centered below, 2 right,
+   * 3 left; 4 to 7 the same one text row farther out. `keep` (a candidate, or −1) is taken while
+   * it is free. Leaves the label's left and bottom edges in bx0 / by0 and returns the candidate.
+   */
+  pickFloating(ax, ayTop, ayBot, w, fh, diamond, flip, keep) {
+    let best = Infinity, pick = -1;
+    if (keep >= 0) {
+      const s = this.floatingScore(keep, ax, ayTop, ayBot, w, fh, diamond);
+      if (s === 0) pick = keep; else best = Infinity;
+    }
+    if (pick < 0) {
+      for (let n = 0; n < 8; n++) {
+        const q = flip ? n ^ 1 : n;
+        const s = this.floatingScore(q, ax, ayTop, ayBot, w, fh, diamond);
+        if (s < best) { best = s; pick = q; }
+      }
+    }
+    this.floatingBox(pick, ax, ayTop, ayBot, w, fh, diamond);
+    this.addBox(this.bx0, this.by0 - fh, this.bx0 + w, this.by0);
+    return pick;
+  }
+
+  /** @private candidate q's left and bottom edges into bx0 / by0 (see pickFloating) */
+  floatingBox(q, ax, ayTop, ayBot, w, fh, diamond) {
+    const b = q & 3, row = q > 3 ? fh + 2 : 0;
+    if (diamond) {
+      this.bx0 = b < 2 ? ax - w / 2 : (b === 2 ? ax + 9 : ax - 9 - w);
+      this.by0 = b === 0 ? ayTop - row : (b === 1 ? ayBot + fh + row : (ayTop + ayBot + fh) / 2 + row);
+    } else {
+      this.bx0 = b % 2 === 0 ? ax + 9 : ax - 9 - w;
+      this.by0 = b < 2 ? ayTop - row : ayBot + fh + row;
+    }
+  }
+
+  /** @private labelScore of candidate q (see pickFloating) */
+  floatingScore(q, ax, ayTop, ayBot, w, fh, diamond) {
+    this.floatingBox(q, ax, ayTop, ayBot, w, fh, diamond);
+    return this.labelScore(this.bx0, this.by0 - fh, this.bx0 + w, this.by0, -1, null);
   }
 
   draw(snap, ctx) {
@@ -132,6 +392,12 @@ export class ChartView extends CanvasView {
       this.iEma = this.iEma === this.iEma ? this.iEma + (ia - this.iEma) * 0.15 : ia;
     }
     if (this.fresh) this.formatStrings(snap, selV, speed);
+    // the sweep results (the chapter's own table when it passes one), placed with the static labels
+    const res = this.opts.results || (sw && sw.results);
+    let resSig = 0;
+    if (res) for (const k in res) resSig = resSig * 31 + Number(k) * 7919 + num(res[k], -1);
+    if (selV !== this.placedSel || resSig !== this.placedRes) this.placeLabels(selV, res, resSig);
+    this.nBoxes = this.nStatic;     // this frame's dot label comes after the static ones
 
     // grid and axes
     g.strokeStyle = th.scopeGrid;
@@ -215,67 +481,69 @@ export class ChartView extends CanvasView {
     }
     g.restore();
 
-    // curve labels
+    // the dot's speed picks a free side first; a voltage label it still covers (no side was free)
+    // yields for the frame
+    const fh = this.fpx(12);
+    const dia = this.dia;
+    const tMeas = (this.preset.Kt || 0) * (this.iEma === this.iEma ? this.iEma : 0);
+    const sp = Math.min(speed, this.maxMmS);
+    const dpx = X(sp), dpy = selCurve ? Y(this.valueAt(selCurve.ts, sp)) : 0, yr = Y(tMeas);
+    if (selCurve) {
+      // the speed above the dot and ring (toward the plot's middle) or below them, wherever it
+      // is free, staying on its side while that remains free
+      this.dotPick = this.pickFloating(dpx, Math.min(dpy, yr) - 6, Math.max(dpy, yr) + 6,
+        this.str.dot.length * this.charW + 2, fh, false, dpx > (x0 + x1) / 2, this.dotPick);
+      this.dotLX = this.bx0;
+      this.dotLY = this.by0;
+    }
+
+    // curve labels and the knee note, where placeLabels put them
     g.font = this.font.monoBold;
     g.textBaseline = 'bottom';
     g.textAlign = 'left';
     for (const c of this.curves) {
-      const i = c.li;
-      const x = Math.min(X(this.speeds[i]) + 4, x1 - 30), y = Y(c.ts[i]) - 3;
+      if (this.covered(c.lx - 1, c.ly - fh, c.lx - 1 + c.lw, c.ly)) continue;
       g.fillStyle = c.V === selV ? th.text : th.muted;
-      haloText(g, formatValue(c.V, 0) + ' V', x, Math.max(y, y0 + this.fpx(12)), th.tipBg);
+      haloText(g, c.label, c.lx, c.ly, th.tipBg);
     }
     if (selCurve && selCurve.kneeMmS > 0 && selCurve.kneeMmS < this.maxMmS) {
       g.font = this.font.ui;
       g.fillStyle = th.descColor;
-      g.textAlign = selCurve.kneeMmS > this.maxMmS * 0.6 ? 'right' : 'left';
-      g.textBaseline = 'bottom';
-      const kxp = X(selCurve.kneeMmS);
-      haloText(g, this.str.knee, kxp + (g.textAlign === 'left' ? 4 : -4), y1 - 4, th.tipBg);
+      haloText(g, this.str.knee, this.kneeLX, y1 - 4, th.tipBg);
     }
 
-    // sweep results (the chapter's own table when it passes one)
-    const res = this.opts.results || (sw && sw.results);
-    if (res) {
-      for (const k of Object.keys(res)) {
-        const V = Number(k), v = num(res[k], NaN);
-        if (!(v >= 0)) continue;
-        const c = this.curves.find((cc) => cc.V === V);
-        if (!c) continue;
-        const px = X(Math.min(v, this.maxMmS)), py = Y(this.valueAt(c.ts, v));
-        g.fillStyle = th.tipBg;
-        g.strokeStyle = th.text;
-        g.lineWidth = 1.5;
-        g.beginPath();
-        g.moveTo(px, py - 6); g.lineTo(px + 6, py); g.lineTo(px, py + 6); g.lineTo(px - 6, py);
-        g.closePath();
-        g.fill();
-        g.stroke();
-        g.font = this.font.mono;
-        g.fillStyle = th.text;
-        g.textAlign = 'center';
-        g.textBaseline = 'bottom';
-        haloText(g, formatValue(v, 0), px, py - 8, th.tipBg);
-      }
+    // sweep results, where placeLabels put them
+    for (let j = 0; j < 5 * this.nDia; j += 5) {
+      const px = dia[j], py = dia[j + 1];
+      g.fillStyle = th.tipBg;
+      g.strokeStyle = th.text;
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(px, py - 6); g.lineTo(px + 6, py); g.lineTo(px, py + 6); g.lineTo(px - 6, py);
+      g.closePath();
+      g.fill();
+      g.stroke();
+      g.font = this.font.mono;
+      g.fillStyle = th.text;
+      g.textAlign = 'left';
+      g.textBaseline = 'bottom';
+      haloText(g, formatValue(dia[j + 4], 0), dia[j + 2] + 1, dia[j + 3], th.tipBg);
     }
 
     // live dot on the selected curve and the measured ring
     if (selCurve) {
-      const sp = Math.min(speed, this.maxMmS);
-      const px = X(sp), py = Y(this.valueAt(selCurve.ts, sp));
-      const tMeas = (this.preset.Kt || 0) * (this.iEma === this.iEma ? this.iEma : 0);
       g.strokeStyle = th.text;
       g.lineWidth = 1.5;
-      g.beginPath(); g.arc(px, Y(tMeas), 6.5, 0, TAU); g.stroke();
+      g.beginPath(); g.arc(dpx, yr, 6.5, 0, TAU); g.stroke();
       g.fillStyle = th.field;
       g.strokeStyle = th.tipBg;
       g.lineWidth = 2;
-      g.beginPath(); g.arc(px, py, 5, 0, TAU); g.fill(); g.stroke();
+      g.beginPath(); g.arc(dpx, dpy, 5, 0, TAU); g.fill(); g.stroke();
       g.font = this.font.mono;
       g.fillStyle = th.text;
-      g.textAlign = px > (x0 + x1) / 2 ? 'right' : 'left';
+      g.textAlign = 'left';
       g.textBaseline = 'bottom';
-      haloText(g, this.str.dot, px + (g.textAlign === 'left' ? 9 : -9), Math.min(py, Y(tMeas)) - 6, th.tipBg);
+      haloText(g, this.str.dot, this.dotLX + 1, this.dotLY, th.tipBg);
     }
 
     // run current on the title line; the motor families in the empty top right of the plot
@@ -316,7 +584,7 @@ export class ChartView extends CanvasView {
     g.stroke();
   }
 
-  /** @private curve value at a speed (linear between the sample points) */
+  /** @private curve value at a speed (linear between the sample points; held past either end) */
   valueAt(ts, v) {
     const f = clamp(v / this.maxMmS, 0, 1) * (N - 1);
     const i = Math.min(N - 2, Math.floor(f));
