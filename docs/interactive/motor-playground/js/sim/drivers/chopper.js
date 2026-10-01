@@ -28,6 +28,13 @@ const PH_SLOW = 2;
  * another fast decay of `fastFrac/freqHz` starts, as often as needed until the cycle ends. At
  * standstill the current only falls during slow decay, so the sequence stays on, fast, slow.
  *
+ * Trip timing: a sub-step takes one level, so the switch lands on a sub-step boundary. The trip
+ * test adds half of the last sub-step's rise (`sgn·iMeas` minus the previous sample's, when
+ * positive) to the sample, so the fast decay starts at the boundary nearest to the crossing, not
+ * the one after it. Testing the bare sample switched half a sub-step late on average and put the
+ * mean half a sub-step of ramp, ½·dt·(V − R·I)/L, above the target: 15 mA on the 0.8 mH motor at
+ * 48 V, 3% of a 0.35 A RMS run current (B-016). Now it is under 0.5 mA in those cases.
+ *
  * Mean centering: over each cycle the max, min and mean of `sgn·iMeas` are tracked; at the end
  * of a cycle in which the trip happened, `ppLast` (EMA over about 4 cycles of `max − min`) and
  * `offLast` (same EMA of `max − mean`) are updated. Putting the trip `offLast` above the target
@@ -90,6 +97,8 @@ export class Chopper {
     this.nSum = 0;
     /** True once the on-phase tripped in the current cycle. */
     this.tripped = false;
+    /** sgn·iMeas of the previous sub-step (A): its change is the ramp per sub-step. */
+    this.yPrev = 0;
     /** Inputs of stepInputs(): phase current target and measured current (A). */
     this.inStar = 0;
     this.inMeas = 0;
@@ -125,6 +134,7 @@ export class Chopper {
     this.iSum = 0;
     this.nSum = 0;
     this.tripped = false;
+    this.yPrev = 0;
   }
 
   /**
@@ -173,6 +183,7 @@ export class Chopper {
       this.sgn = newSgn;
       this.iMax = newSgn * iMeas;
       this.iMin = this.iMax;
+      this.yPrev = this.iMax;     // no ramp across a cycle start (the polarity may have changed)
       this.iSum = 0;
       this.nSum = 0;
       this.tripped = false;
@@ -187,8 +198,11 @@ export class Chopper {
     // would lift the whole sawtooth above the target); hystA/2 until it has been measured.
     const off = this.offLast > 0 ? this.offLast : 0.5 * this.hystA;
     // Trip from the on-state, or re-enter fast decay from slow decay when the current climbs
-    // back over the trip level.
-    if ((this.phase === PH_ON || this.phase === PH_SLOW) && y >= sgn * iStar + off) {
+    // back over the trip level, at the sub-step boundary nearest to the crossing: a rising
+    // current that will cross within the first half of this sub-step trips now (B-016).
+    const rise = y - this.yPrev;
+    this.yPrev = y;
+    if ((this.phase === PH_ON || this.phase === PH_SLOW) && y + (rise > 0 ? 0.5 * rise : 0) >= sgn * iStar + off) {
       this.phase = PH_FAST;
       this.fastLeft = this.tFast;
       this.tripped = true;
