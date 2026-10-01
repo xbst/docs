@@ -72,7 +72,7 @@ homing_retract_dist: 5
 
 ## Tuning `homing_current`
 
-During homing, the TMC4671's torque/flux current limit is temporarily reduced from `run_current` to `homing_current`. The velocity PI loop tries to maintain the commanded homing speed. As long as the carriage is moving freely, the demanded current is only what's needed to overcome friction and inertia, which is below `homing_current`. When the carriage hits the hard stop, the velocity error spikes, the PI loop demands maximum current immediately — and the moment that demand exceeds `homing_current`, the `STATUS` pin fires.
+During homing, the TMC4671's torque/flux current limit is temporarily reduced from `run_current` to `homing_current`. The velocity PI loop tries to maintain the commanded homing speed. As long as the carriage is moving freely, the demanded current is only what's needed to overcome friction and inertia, which is below `homing_current`. At the hard stop the carriage cannot follow the commanded speed. The speed error grows at once and the loop demands more current. The moment the demand exceeds the limit, a **limit flag** is set and the driver's **status output** goes high. The controller reads that pin as an endstop.
 
 The right value is **just above the peak current the motor needs during a normal free homing move.**
 
