@@ -36,6 +36,9 @@
  *                     chapter can keep results across sweeps and world rebuilds
  *   rms               false (the run current in A peak); true labels it in A RMS (peak / √2),
  *                     as Klipper's run_current for TMC drivers
+ *
+ * The plot transform X/Y is built once and reads the layout, and the y-axis labels are built
+ * with the layout: no closures or tick-label strings per frame.
  */
 import { CanvasView, TAU, haloText, clamp, num, niceStep, stepDecimals, presetOf, mmPerRad } from './view-util.js';
 import { MOTOR_PRESETS, torqueSpeedPoints, torqueSpeedCurve } from '../sim/presets.js';
@@ -76,7 +79,12 @@ export class ChartView extends CanvasView {
     this.speeds = new Float64Array(N);
     this.tMax = 1;
     this.iEma = NaN;
-    this.lay = { key: '', x0: 0, x1: 0, y0: 0, y1: 0, xStep: 250, yStep: 0.2, yDec: 1 };
+    this.lay = { key: '', x0: 0, x1: 0, y0: 0, y1: 0, xStep: 250, yStep: 0.2, yDec: 1, kx: 1, ky: 1, yLabels: [] };
+    // the plot transform, speed (mm/s) → x and torque (N·m) → y in css px; built once (no
+    // per-frame closures), it reads the layout
+    const L = this.lay;
+    this.X = (v) => L.x0 + v * L.kx;
+    this.Y = (t) => L.y1 - t * L.ky;
     this.str = { legend: '', ref: '', dot: '', knee: '', cur: '' };
     this.preset = null;
     this.refPreset = null;
@@ -110,11 +118,18 @@ export class ChartView extends CanvasView {
     const sel = num(snap.supplyV, 24);
     const maxMmS = num(o.maxMmS, 1500) > 10 ? o.maxMmS : 1500;
     const rd = num(snap.rd, 40);
-    // unchanged inputs: nothing to do (checked without allocating, once per frame)
+    // unchanged inputs: nothing to do (checked without allocating, once per frame; the rebuild is
+    // its own method, as its closures would make V8 allocate a context on every call here)
     const c = this.inputs;
     if (c && c.pr === pr && c.ref === ref && Math.abs(c.I - I) < 5e-4 && c.sel === sel && c.volts === o.voltages
       && c.maxMmS === maxMmS && c.rd === rd) return;
     this.inputs = { pr, ref, I, sel, volts: o.voltages, maxMmS, rd };
+    this.buildCurves();
+  }
+
+  /** @private the curves for `this.inputs` */
+  buildCurves() {
+    const o = this.opts, { pr, ref, I, sel, maxMmS, rd } = this.inputs;
     const vs = Array.isArray(o.voltages) && o.voltages.length ? o.voltages.slice() : [24, 48];
     if (!vs.includes(sel)) vs.push(sel);
     vs.sort((a, b) => a - b);
@@ -150,6 +165,11 @@ export class ChartView extends CanvasView {
     L.yStep = niceStep(top / Math.max(2, Math.floor((L.y1 - L.y0) / 40)));
     L.yTop = Math.ceil(top / L.yStep) * L.yStep;
     L.yDec = Math.max(1, stepDecimals(L.yStep));  // 0.25 steps read 0.25, 0.75, not 0.3, 0.8
+    L.kx = (L.x1 - L.x0) / this.maxMmS;
+    L.ky = (L.y1 - L.y0) / L.yTop;
+    // y tick labels by index (no accumulated rounding), as draw's gridlines
+    L.yLabels.length = 0;
+    for (let i = 0; i * L.yStep <= L.yTop + 1e-9; i++) L.yLabels.push(formatValue(i * L.yStep, L.yDec));
     this.layoutDirty = false;
     this.placedSel = NaN;
   }
@@ -381,14 +401,17 @@ export class ChartView extends CanvasView {
     const g = this.g, th = ctx.theme, L = this.lay;
     const x0 = L.x0, x1 = L.x1, y0 = L.y0, y1 = L.y1;
     if (x1 - x0 < 40 || y1 - y0 < 30) return;
-    const kx = (x1 - x0) / this.maxMmS, ky = (y1 - y0) / L.yTop;
-    const X = (v) => x0 + v * kx, Y = (t) => y1 - t * ky;
+    const X = this.X, Y = this.Y;
     const sw = snap.sweep;
     const selV = sw && sw.running && sw.currentV ? sw.currentV : num(snap.supplyV, 24);
     const m = snap.motors[0];
     const speed = Math.abs(num(m && m.omegaM, 0)) * mmPerRad(snap);
     if (this.advanced || this.iEma !== this.iEma) {
-      const ia = num(m && m.iAmp, Math.hypot(num(m && m.iAlpha, 0), num(m && m.iBeta, 0)));
+      let ia = num(m && m.iAmp, NaN);
+      if (ia !== ia) {        // |i| from α/β; Math.sqrt, as Math.hypot allocates on every call
+        const a = num(m && m.iAlpha, 0), b = num(m && m.iBeta, 0);
+        ia = Math.sqrt(a * a + b * b);
+      }
       this.iEma = this.iEma === this.iEma ? this.iEma + (ia - this.iEma) * 0.15 : ia;
     }
     if (this.fresh) this.formatStrings(snap, selV, speed);
@@ -418,7 +441,7 @@ export class ChartView extends CanvasView {
     for (let v = 0; v <= this.maxMmS + 1e-6; v += L.xStep) g.fillText(String(Math.round(v)), X(v), y1 + 4);
     g.textAlign = 'right';
     g.textBaseline = 'middle';
-    for (let i = 0; i * L.yStep <= L.yTop + 1e-9; i++) g.fillText(formatValue(i * L.yStep, L.yDec), x0 - 5, Y(i * L.yStep));
+    for (let i = 0; i < L.yLabels.length; i++) g.fillText(L.yLabels[i], x0 - 5, Y(i * L.yStep));
     g.font = this.font.ui;
     g.textAlign = 'center';
     g.textBaseline = 'bottom';
@@ -437,13 +460,14 @@ export class ChartView extends CanvasView {
       g.strokeStyle = th.muted;
       g.lineWidth = 1;
       g.setLineDash(DASH);
-      for (const c of this.refCurves) this.curve(c.ts, X, Y);
+      for (let j = 0; j < this.refCurves.length; j++) this.curve(this.refCurves[j].ts, X, Y);
       g.setLineDash(SOLID);
     }
     let selCurve = null;
     g.strokeStyle = th.target;
     g.lineWidth = 1.4;
-    for (const c of this.curves) {
+    for (let j = 0; j < this.curves.length; j++) {
+      const c = this.curves[j];
       if (c.V === selV) { selCurve = c; continue; }
       this.curve(c.ts, X, Y);
     }
@@ -501,7 +525,8 @@ export class ChartView extends CanvasView {
     g.font = this.font.monoBold;
     g.textBaseline = 'bottom';
     g.textAlign = 'left';
-    for (const c of this.curves) {
+    for (let j = 0; j < this.curves.length; j++) {
+      const c = this.curves[j];
       if (this.covered(c.lx - 1, c.ly - fh, c.lx - 1 + c.lw, c.ly)) continue;
       g.fillStyle = c.V === selV ? th.text : th.muted;
       haloText(g, c.label, c.lx, c.ly, th.tipBg);
@@ -582,6 +607,13 @@ export class ChartView extends CanvasView {
     g.moveTo(X(sp[0]), Y(ts[0]));
     for (let i = 1; i < N; i++) g.lineTo(X(sp[i]), Y(ts[i]));
     g.stroke();
+  }
+
+  /** @private the curve of bus voltage V, or undefined */
+  curveAt(V) {
+    const cs = this.curves;
+    for (let j = 0; j < cs.length; j++) if (cs[j].V === V) return cs[j];
+    return undefined;
   }
 
   /** @private curve value at a speed (linear between the sample points; held past either end) */

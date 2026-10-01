@@ -11,7 +11,10 @@
  *             0.25 mm (8192 points, about two meters of travel), drawn over
  *             the whole frame.
  * Without trace rings (an older main.js) it falls back to one snapshot point
- * per frame. Nothing here allocates after construction.
+ * per frame. Nothing here allocates after construction: the drawing methods
+ * take their screen transform from setView() or a magnifier object and hand it
+ * to the path functions in a shared scratch object, not in double arguments
+ * (V8 boxes those whenever it does not inline the call).
  */
 
 const FINE_N = 4096;
@@ -38,6 +41,22 @@ export class PathTrail {
     this.rings = [null, null, null, null];
     // last coarse point
     this.pxc = 0; this.pyc = 0; this.pxa = 0; this.pya = 0;
+    // the point pushPt() appends (x cmd, y cmd, x act, y act; mm), handed over here rather than
+    // in double arguments
+    this.pt = new Float64Array(4);
+    // the frame's screen transform for draw() (setView)
+    this.ox = 0; this.oy = 0; this.k = 1;
+  }
+
+  /**
+   * Sets the frame's screen transform for draw(): screen x = ox + x·k, screen y = oy − y·k
+   * (mm → css px). The gantry view sets it from its layout.
+   * @param {number} ox @param {number} oy @param {number} k px per mm
+   */
+  setView(ox, oy, k) {
+    this.ox = ox;
+    this.oy = oy;
+    this.k = k;
   }
 
   /**
@@ -86,9 +105,13 @@ export class PathTrail {
         if (T[p] <= this.lastT) lo = mid + 1; else hi = mid;
       }
       if (lo < n) {
+        const pt = this.pt;
         for (let i = lo; i < n; i++) {
-          const p0 = ringIndex(r[0], i), p1 = ringIndex(r[1], i), p2 = ringIndex(r[2], i), p3 = ringIndex(r[3], i);
-          this.push(r[0].v[p0], r[1].v[p1], r[2].v[p2], r[3].v[p3]);
+          pt[0] = r[0].v[ringIndex(r[0], i)];
+          pt[1] = r[1].v[ringIndex(r[1], i)];
+          pt[2] = r[2].v[ringIndex(r[2], i)];
+          pt[3] = r[3].v[ringIndex(r[3], i)];
+          this.pushPt();
         }
         this.lastT = T[ringIndex(r[0], n - 1)];
         return;
@@ -98,12 +121,21 @@ export class PathTrail {
     // Fallback: one snapshot point per frame.
     if (snap.t === this.lastT) return;
     this.lastT = snap.t;
-    const gt = snap.gantry;
-    this.push(gt.xCmd, gt.yCmd, gt.x, gt.y);
+    const gt = snap.gantry, pt = this.pt;
+    pt[0] = gt.xCmd; pt[1] = gt.yCmd; pt[2] = gt.x; pt[3] = gt.y;
+    this.pushPt();
   }
 
-  /** @private append one point to the fine ring and, when it moved enough, to the coarse ring */
+  /** @private append one point (mm) to the fine ring and, when it moved enough, to the coarse ring */
   push(xc, yc, xa, ya) {
+    const pt = this.pt;
+    pt[0] = xc; pt[1] = yc; pt[2] = xa; pt[3] = ya;
+    this.pushPt();
+  }
+
+  /** @private push() of the point in `pt` (update's per-sample path: no double arguments to box) */
+  pushPt() {
+    const pt = this.pt, xc = pt[0], yc = pt[1], xa = pt[2], ya = pt[3];
     if (xc !== xc || yc !== yc || xa !== xa || ya !== ya) return;
     let p = this.fHead * 4;
     const f = this.fine;
@@ -125,27 +157,28 @@ export class PathTrail {
   }
 
   /**
-   * Draw the coarse trail: error shading, dashed commanded path, solid actual path.
-   * Screen x = ox + x·k, screen y = oy − y·k (mm → css px).
+   * Draw the coarse trail over the frame, in setView's transform: error shading, dashed
+   * commanded path, solid actual path.
    * @param {CanvasRenderingContext2D} g
    * @param {Object} th theme
-   * @param {number} ox @param {number} oy @param {number} k px per mm
    * @param {{x: number, y: number, xCmd: number, yCmd: number}} [tip] the current point, appended to the paths
    */
-  draw(g, th, ox, oy, k, tip) {
-    drawPaths(g, th, this.coarse, this.cHead, this.cLen, COARSE_N, ox, oy, k, 1.5, tip, -Infinity, 0, 0, ALL);
+  draw(g, th, tip) {
+    P.ox = this.ox; P.oy = this.oy; P.k = this.k;
+    P.width = 1.5; P.lim = -Infinity; P.cx = 0; P.cy = 0;
+    drawPaths(g, th, this.coarse, this.cHead, this.cLen, COARSE_N, tip, ALL);
   }
 
   /**
-   * Draw the trail inside a circle of radius `rPx` around (cxMm, cyMm) at `k` px/mm,
-   * centered on screen at (sx, sy). The caller clips. `coarse` draws the long coarse ring
-   * (a loupe held on a fixed point: several laps back) instead of the fine one.
+   * Draw the trail inside a magnifier `M`: a circle of radius M.R css px centered on screen at
+   * (M.cx, M.cy), showing (M.mx, M.my) mm at M.kl px per mm. The caller clips. `coarse` draws the
+   * long coarse ring (a loupe held on a fixed point: several laps back) instead of the fine one.
+   * @param {{cx: number, cy: number, R: number, mx: number, my: number, kl: number}} M
    */
-  drawLoupe(g, th, sx, sy, cxMm, cyMm, k, rPx, tip, coarse) {
-    const ox = sx - cxMm * k, oy = sy + cyMm * k;
-    const lim = (rPx / k) * 1.4;
-    if (coarse) drawPaths(g, th, this.coarse, this.cHead, this.cLen, COARSE_N, ox, oy, k, 2, tip, lim, cxMm, cyMm, ALL);
-    else drawPaths(g, th, this.fine, this.fHead, this.fLen, FINE_N, ox, oy, k, 2, tip, lim, cxMm, cyMm, ALL);
+  drawLoupe(g, th, M, tip, coarse) {
+    magnify(M);
+    if (coarse) drawPaths(g, th, this.coarse, this.cHead, this.cLen, COARSE_N, tip, ALL);
+    else drawPaths(g, th, this.fine, this.fHead, this.fLen, FINE_N, tip, ALL);
   }
 
   /**
@@ -207,16 +240,34 @@ export class PathTrail {
    * two seconds reach, so an overshoot a 0.25 mm step would skip still shows. The commanded path
    * comes from the coarse trail alone: drawn twice, its dashes would fill each other's gaps.
    */
-  drawLens(g, th, sx, sy, cxMm, cyMm, k, rPx, tip) {
-    const ox = sx - cxMm * k, oy = sy + cyMm * k;
-    const lim = (rPx / k) * 1.4;
-    drawPaths(g, th, this.coarse, this.cHead, this.cLen, COARSE_N, ox, oy, k, 2, tip, lim, cxMm, cyMm, ALL);
-    drawPaths(g, th, this.fine, this.fHead, this.fLen, FINE_N, ox, oy, k, 2, tip, lim, cxMm, cyMm, ACTUAL);
+  drawLens(g, th, M, tip) {
+    magnify(M);
+    drawPaths(g, th, this.coarse, this.cHead, this.cLen, COARSE_N, tip, ALL);
+    drawPaths(g, th, this.fine, this.fHead, this.fLen, FINE_N, tip, ACTUAL);
   }
 }
 
 /** drawPaths parts: the error shading, the commanded path, the actual path. */
 const SHADE = 1, COMMANDED = 2, ACTUAL = 4, ALL = SHADE | COMMANDED | ACTUAL;
+
+/**
+ * The path functions' parameters, set by the drawing methods before each drawPaths: the screen
+ * transform (x = ox + mm·k, y = oy − mm·k), the actual path's line width, and the culling window
+ * (lim > 0: only points within lim mm of (cx, cy)). Shared by every trail, like IDX.
+ */
+const P = { ox: 0, oy: 0, k: 1, width: 1.5, lim: -Infinity, cx: 0, cy: 0 };
+
+/** P for magnifier M: its transform, 2 px paths, and the points within 1.4 radii of its center. */
+function magnify(M) {
+  const k = M.kl;
+  P.ox = M.cx - M.mx * k;
+  P.oy = M.cy + M.my * k;
+  P.k = k;
+  P.width = 2;
+  P.lim = (M.R / k) * 1.4;
+  P.cx = M.mx;
+  P.cy = M.my;
+}
 
 /** Physical index of logical sample i (0 = oldest) of a ring buffer. */
 function ringIndex(ring, i) {
@@ -231,14 +282,15 @@ const MIN_PX = 0.8;
 
 /**
  * Picks the points to draw into IDX: points closer than MIN_PX on screen to the last kept one
- * (in both paths) are skipped, and with `lim` > 0 points whose commanded and actual positions
- * are both farther than lim mm from (cx, cy) are dropped, leaving a break (−1).
+ * (in both paths) are skipped, and with P.lim > 0 points whose commanded and actual positions
+ * are both farther than P.lim mm from (P.cx, P.cy) are dropped, leaving a break (−1).
  * @returns {number} entries in IDX
  */
-function pickPoints(buf, head, len, cap, k, lim, cx, cy) {
+function pickPoints(buf, head, len, cap) {
+  const lim = P.lim, cx = P.cx, cy = P.cy;
   const cull = lim > 0 && lim < Infinity;
   const start = head - len;
-  const tol = MIN_PX / k;
+  const tol = MIN_PX / P.k;
   let n = 0, have = false, lxc = 0, lyc = 0, lxa = 0, lya = 0;
   for (let i = 0; i < len; i++) {
     let p = start + i;
@@ -260,12 +312,12 @@ function pickPoints(buf, head, len, cap, k, lim, cx, cy) {
 
 /**
  * Shading between the paths, then the commanded (dashed) and actual (solid) polylines; `parts`
- * picks which (SHADE, COMMANDED, ACTUAL). `lim` > 0 draws only the points within lim mm of
- * (cx, cy) (loupe culling).
+ * picks which (SHADE, COMMANDED, ACTUAL). Transform, line width and culling come from P.
  */
-function drawPaths(g, th, buf, head, len, cap, ox, oy, k, width, tip, lim, cx, cy, parts) {
+function drawPaths(g, th, buf, head, len, cap, tip, parts) {
   if (len < 1) return;
-  const n = pickPoints(buf, head, len, cap, k, lim, cx, cy);
+  const n = pickPoints(buf, head, len, cap);
+  const k = P.k, width = P.width;
   g.lineJoin = 'round';
   g.lineCap = 'butt';
   if (parts & SHADE) {
@@ -285,7 +337,7 @@ function drawPaths(g, th, buf, head, len, cap, ox, oy, k, width, tip, lim, cx, c
         ok = dx * dx + dy * dy > minErr2;
       }
       if (ok) { if (run < 0) run = j; continue; }
-      if (run >= 0 && j - 1 > run) bandPath(g, buf, run, j - 1, ox, oy, k);
+      if (run >= 0 && j - 1 > run) bandPath(g, buf, run, j - 1);
       run = -1;
     }
     g.fill();
@@ -296,13 +348,13 @@ function drawPaths(g, th, buf, head, len, cap, ox, oy, k, width, tip, lim, cx, c
     g.strokeStyle = th.target;
     g.lineWidth = width * 0.85;
     g.setLineDash(DASH);
-    tracePath(g, buf, n, 0, ox, oy, k, tip ? tip.xCmd : NaN, tip ? tip.yCmd : NaN);
+    tracePath(g, buf, n, 0, tip);
     g.stroke();
     g.setLineDash(SOLID);
   }
   if (!(parts & ACTUAL)) return;
   // actual path, solid amber (over a gray rim on the light card, where amber alone is faint)
-  tracePath(g, buf, n, 2, ox, oy, k, tip ? tip.x : NaN, tip ? tip.y : NaN);
+  tracePath(g, buf, n, 2, tip);
   if (!th.dark) {
     g.strokeStyle = th.lineColor;
     g.lineWidth = width + 1.6;
@@ -316,7 +368,8 @@ function drawPaths(g, th, buf, head, len, cap, ox, oy, k, width, tip, lim, cx, c
 }
 
 /** Closed band between IDX[j0..j1]: along the commanded points, back along the actual ones. */
-function bandPath(g, buf, j0, j1, ox, oy, k) {
+function bandPath(g, buf, j0, j1) {
+  const ox = P.ox, oy = P.oy, k = P.k;
   let p = IDX[j0];
   g.moveTo(ox + buf[p] * k, oy - buf[p + 1] * k);
   for (let j = j0 + 1; j <= j1; j++) { p = IDX[j]; g.lineTo(ox + buf[p] * k, oy - buf[p + 1] * k); }
@@ -326,9 +379,10 @@ function bandPath(g, buf, j0, j1, ox, oy, k) {
 
 /**
  * Builds (does not stroke) one polyline through column pair `o` (0 = commanded, 2 = actual)
- * of the picked points, plus the live tip.
+ * of the picked points, plus the live tip (its commanded or actual point).
  */
-function tracePath(g, buf, n, o, ox, oy, k, tx, ty) {
+function tracePath(g, buf, n, o, tip) {
+  const ox = P.ox, oy = P.oy, k = P.k;
   g.beginPath();
   let pen = false;
   for (let j = 0; j < n; j++) {
@@ -337,5 +391,7 @@ function tracePath(g, buf, n, o, ox, oy, k, tx, ty) {
     const sx = ox + buf[p + o] * k, sy = oy - buf[p + o + 1] * k;
     if (pen) g.lineTo(sx, sy); else { g.moveTo(sx, sy); pen = true; }
   }
-  if (pen && tx === tx && ty === ty) g.lineTo(ox + tx * k, oy - ty * k);
+  if (!pen || !tip) return;
+  const tx = o === 0 ? tip.xCmd : tip.x, ty = o === 0 ? tip.yCmd : tip.y;
+  if (tx === tx && ty === ty) g.lineTo(ox + tx * k, oy - ty * k);
 }

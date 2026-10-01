@@ -16,6 +16,11 @@
  * The state is named from the target's sign: driving toward the target is
  * "drive", 0 V is "slow decay", the opposite polarity is "fast decay".
  *
+ * Line widths and sizes that follow the drawing's scale are set with the layout, not recomputed
+ * with Math.max every frame (a call that allocates in V8's mid-tier code), and the draw helpers
+ * read the currents from the snapshot rather than take them as double arguments, which a call
+ * V8 does not inline boxes.
+ *
  * Options:
  *   phase   phase index to show (default 0, phase A)
  */
@@ -55,6 +60,13 @@ export class SchematicView extends CanvasView {
     this.lastNow = 0;
     this.overW = 0;         // css px widths of the 'over target' and 'measured' labels (layout)
     this.measuredW = 0;
+    // css px line widths and sizes at the drawing's scale (layout): wires and parts, switch
+    // levers, the active path's glow, the chevrons and their stroke
+    this.lw = 1.6;
+    this.leverW = 3;
+    this.glowW = 9;
+    this.chevSize = 5;
+    this.chevW = 2.4;
     // th.field, darkened where it is under 3:1 on the glow (onTheme): the chevrons, the 'on' levers,
     // the coil-current arrow and the target box's sine icon and dot (--field is var(--phase-a))
     this.fieldColor = '';
@@ -75,6 +87,12 @@ export class SchematicView extends CanvasView {
     this.s = Math.max(0.3, s);
     this.ox = (this.w - DW * this.s) / 2;
     this.oy = (this.h - DH * this.s) / 2;
+    const sc = this.s;
+    this.lw = Math.max(1.2, 1.6 * sc);
+    this.leverW = Math.max(2, 3 * sc);
+    this.glowW = Math.max(5, 9 * sc);
+    this.chevSize = Math.max(3.5, 5 * sc);
+    this.chevW = Math.max(1.8, 2.4 * sc);
     // widths of the control-side labels, which do not scale with the drawing (drawControl)
     this.g.font = this.font.ui;
     this.overW = this.g.measureText('over target').width;
@@ -111,12 +129,12 @@ export class SchematicView extends CanvasView {
     if (this.advanced) this.flow += dir * FLOW * clamp(Math.abs(i) / Irated, 0, 1.5) * dtReal;
 
     const sc = this.s;
-    const lw = Math.max(1.2, 1.6 * sc);
+    const lw = this.lw;
     // active path glow
     if (Math.abs(i) > 0.01 * Irated) {
       g.strokeStyle = th.field;
       g.globalAlpha = GLOW;
-      g.lineWidth = Math.max(5, 9 * sc);
+      g.lineWidth = this.glowW;
       g.lineJoin = 'round';
       this.poly(path);
       g.globalAlpha = 1;
@@ -142,9 +160,9 @@ export class SchematicView extends CanvasView {
     this.drawSwitch(th, XR, TOP, MID, on3, 'S3', 1);
     this.drawSwitch(th, XR, MID, BOT, on4, 'S4', 1);
     // coil: resistor zigzag and inductor loops
-    this.drawCoil(th, lw);
+    this.drawCoil(th);
     // sense resistor and ground
-    this.drawSense(th, lw);
+    this.drawSense(th);
     // supply terminal
     g.fillStyle = th.text;
     g.beginPath(); g.arc(this.X(XSUP), this.Y(TOP), 3.5, 0, TAU); g.fill();
@@ -153,7 +171,7 @@ export class SchematicView extends CanvasView {
     if (Math.abs(i) > 0.01 * Irated) this.drawChevrons(th, path, dir);
 
     // control side: target, comparator, chopper logic
-    this.drawControl(th, m, i, iStar, pwm, state, lw);
+    this.drawControl(th, m, pwm);
 
     // labels
     g.textBaseline = 'middle';
@@ -212,14 +230,14 @@ export class SchematicView extends CanvasView {
     const ya = y1 + 24, yb = y2 - 24;
     const X = this.X(x);
     g.strokeStyle = th.lineColor;
-    g.lineWidth = Math.max(1.2, 1.6 * sc);
+    g.lineWidth = this.lw;
     g.beginPath();
     g.moveTo(X, this.Y(y1)); g.lineTo(X, this.Y(ya));
     g.moveTo(X, this.Y(yb)); g.lineTo(X, this.Y(y2));
     g.stroke();
     // lever
     g.strokeStyle = on ? this.fieldColor || th.field : th.muted;
-    g.lineWidth = Math.max(2, 3 * sc);
+    g.lineWidth = this.leverW;
     g.lineCap = 'round';
     g.beginPath();
     g.moveTo(X, this.Y(yb));
@@ -243,10 +261,10 @@ export class SchematicView extends CanvasView {
   }
 
   /** @private resistor zigzag (138–184) and inductor loops (196–262) on the MID line */
-  drawCoil(th, lw) {
+  drawCoil(th) {
     const g = this.g, sc = this.s, y = this.Y(MID);
     g.strokeStyle = th.text;
-    g.lineWidth = lw;
+    g.lineWidth = this.lw;
     g.lineJoin = 'miter';
     g.beginPath();
     g.moveTo(this.X(138), y);
@@ -275,11 +293,11 @@ export class SchematicView extends CanvasView {
   }
 
   /** @private sense resistor (vertical) and the ground symbol */
-  drawSense(th, lw) {
+  drawSense(th) {
     const g = this.g, sc = this.s, x = this.X(XS);
     const y0 = this.Y(BOT + 10), y1 = this.Y(GND - 12);
     g.strokeStyle = th.text;
-    g.lineWidth = lw;
+    g.lineWidth = this.lw;
     g.beginPath();
     g.moveTo(x, y0);
     const n = 6, amp = 6 * sc;
@@ -296,23 +314,30 @@ export class SchematicView extends CanvasView {
 
   /** @private chevrons spaced along the path, moving with this.flow */
   drawChevrons(th, pts, dir) {
-    const g = this.g, sc = this.s;
+    const g = this.g;
+    // segment lengths with Math.sqrt: Math.hypot allocates, even in optimized code
     let total = 0;
-    for (let k = 2; k < pts.length; k += 2) total += Math.hypot(pts[k] - pts[k - 2], pts[k + 1] - pts[k - 1]);
+    for (let k = 2; k < pts.length; k += 2) {
+      const dx = pts[k] - pts[k - 2], dy = pts[k + 1] - pts[k - 1];
+      total += Math.sqrt(dx * dx + dy * dy);
+    }
     const off = ((this.flow % CHEV_SPACING) + CHEV_SPACING) % CHEV_SPACING;
-    const size = Math.max(3.5, 5 * sc);
+    const size = this.chevSize;
     g.strokeStyle = this.fieldColor || th.field;
-    g.lineWidth = Math.max(1.8, 2.4 * sc);
+    g.lineWidth = this.chevW;
     g.lineCap = 'round';
     g.lineJoin = 'round';
     g.beginPath();
     let seg = 2, segStart = 0;
-    let segLen = Math.hypot(pts[2] - pts[0], pts[3] - pts[1]);
+    let segDx = pts[2] - pts[0], segDy = pts[3] - pts[1];
+    let segLen = Math.sqrt(segDx * segDx + segDy * segDy);
     for (let s = off; s < total; s += CHEV_SPACING) {
       while (s > segStart + segLen && seg < pts.length - 2) {
         segStart += segLen;
         seg += 2;
-        segLen = Math.hypot(pts[seg] - pts[seg - 2], pts[seg + 1] - pts[seg - 1]);
+        segDx = pts[seg] - pts[seg - 2];
+        segDy = pts[seg + 1] - pts[seg - 1];
+        segLen = Math.sqrt(segDx * segDx + segDy * segDy);
       }
       const t = segLen > 0 ? (s - segStart) / segLen : 0;
       const ux = (pts[seg] - pts[seg - 2]) / (segLen || 1), uy = (pts[seg + 1] - pts[seg - 1]) / (segLen || 1);
@@ -327,9 +352,10 @@ export class SchematicView extends CanvasView {
     g.lineCap = 'butt';
   }
 
-  /** @private target, comparator and chopper logic on the right */
-  drawControl(th, m, i, iStar, pwm, state, lw) {
-    const g = this.g, sc = this.s;
+  /** @private target, comparator and chopper logic on the right (pwm: the shown phase's switch state) */
+  drawControl(th, m, pwm) {
+    const g = this.g, sc = this.s, lw = this.lw, ph = this.opts.phase | 0;
+    const i = num(m.iPhase && m.iPhase[ph], 0), iStar = num(m.iStar && m.iStar[ph], 0);
     // target box (sine table) with a small cosine and a dot at the commanded angle
     const bx = 372, by = 34, bw = 150, bh = 64;
     g.fillStyle = th.tipBg;

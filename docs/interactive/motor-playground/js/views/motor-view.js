@@ -25,6 +25,10 @@
  * Labels that do not fit are shortened, moved or left out, never squeezed below 90% of their
  * width (fitForm): the torque value goes bare or onto a second legend row, the note shortens,
  * and a narrow bottom transforms panel gets short titles and bare currents (one decimal at last).
+ *
+ * The draw helpers read the motor's angle and currents from its snapshot (`m`) and preset
+ * themselves rather than take them as double arguments, which a call V8 does not inline boxes
+ * every frame; the tooth labels and the rotor's font are built once.
  */
 import {
   CanvasView, TAU, arrow, arrowHead, haloText, clamp, num, presetOf, wrapAngle, textColor, rimColor, fitForm,
@@ -39,7 +43,6 @@ const PRIME = '′';
 const SOLID = [];
 const DASH = [6, 4];
 const DASH_FINE = [3, 3];
-const PHASE_NAMES = ['A', 'B', 'C'];
 const SIDE_HOLD_MS = 400;            // wall time δ must stay on the other side before the rotor letters move
 const TORQUE_FORMS = ['torque −0.00 N·m', '−0.00 N·m'];   // the legend's torque entry at its widest, full and bare
 const VALUE_FORMS = ['−0.00 A', '−0.00', '−0.0'];          // a panel current at its widest: in A, bare, one decimal
@@ -70,19 +73,21 @@ export class MotorView extends CanvasView {
       isFoc: false, compact: false, phases: 2, pr: null, cx: 0, cy: 0, R: 0, Ry: 0, Rin: 0, Rr: 0,
       legend: false, legendY: 0, ghost: '', lgX1: 0, tqForm: -1, tqX: 0, tqY: 0,
       note: false, noteY: 0, dial: false, dx: 0, dy: 0, dr: 0,
-      panel: 0, px: 0, py: 0, pw: 0, ph: 0, shortTitles: false, valForm: 0, nameW: 0,
+      panel: 0, px: 0, py: 0, pw: 0, ph: 0, shortTitles: false, valForm: 0, nameW: 0, shaftR: 2.5,
     };
     this.str = {
       delta: '', torque: '', count: '', ph: ['', '', ''], alpha: '', beta: '', d: '', q: '',
     };
     this.noteText = '';
+    this.rotorFont = '';       // the rotor's N and S (onTheme)
     this.stages = null;
     this.nSide = -1;       // rotor letters behind (−1) or ahead (+1) of the pole centers, away from the load-angle label
     this.sideAt = -Infinity;   // wall time (ms) of the last labeled frame that agreed with nSide
   }
 
-  onTheme() {
+  onTheme(th) {
     this.stages = null;
+    this.rotorFont = `700 ${this.fpx(13)}px ${th.fontUi}`;
   }
 
   onOptions(o) {
@@ -93,7 +98,8 @@ export class MotorView extends CanvasView {
   layout(nPh, isFoc, pr) {
     const L = this.lay, o = this.opts, w = this.w, h = this.h;
     // Size, options and font scale set layoutDirty (CanvasView); the motor comes from the snapshot.
-    // (No per-frame key string: it allocated every frame.)
+    // (No per-frame key string: it allocated every frame. No closure in here either: one that
+    // captures a local makes V8 allocate a context on every call, early return or not.)
     if (!this.layoutDirty && nPh === L.phases && isFoc === L.isFoc && pr === L.pr) return;
     this.layoutDirty = false;
     this.fresh = true;     // the label forms may change: rebuild the 10 Hz strings this frame
@@ -129,7 +135,7 @@ export class MotorView extends CanvasView {
       // decimal, rather than squeezed ones (F-73)
       const sw = L.panel === 1 ? L.pw : (L.pw - 28) / 3;
       g.font = this.font.uiBold;
-      L.shortTitles = L.panel === 2 && STAGE_TITLES.full.some((s) => fitForm(g, [s], sw - 12) < 0);
+      L.shortTitles = L.panel === 2 && !allFit(g, STAGE_TITLES.full, sw - 12);
       g.font = this.font.mono;
       L.nameW = g.measureText('A').width;
       const k = fitForm(g, VALUE_FORMS, sw - 24 - L.nameW);
@@ -187,6 +193,7 @@ export class MotorView extends CanvasView {
     L.Ry = R * 0.84;
     L.Rin = R * 0.6;
     L.Rr = L.Rin * 0.66;
+    L.shaftR = Math.max(2.5, L.Rr * 0.08);
   }
 
   /**
@@ -214,7 +221,7 @@ export class MotorView extends CanvasView {
 
     if (this.fresh) this.formatStrings(m, phi, thetaE);
 
-    this.drawStator(th, m, nPh, Irated);
+    this.drawStator(th, m, nPh, pr);
 
     // bore outline
     g.strokeStyle = th.divider;
@@ -237,10 +244,10 @@ export class MotorView extends CanvasView {
       else if (now - this.sideAt >= SIDE_HOLD_MS) { this.nSide = want; this.sideAt = now; }
     }
 
-    if (this.opts.fieldTrail) this.drawTrail(th, snap, iA / Irated, iB / Irated);
-    this.drawRotor(th, thetaE, this.nSide);
-    if (this.opts.showTransforms && !L.compact) this.drawProjections(th, m, thetaE, vScale, iA, iB);
-    this.drawAxes(th, thetaE);
+    if (this.opts.fieldTrail) this.drawTrail(th, snap, m, pr);
+    this.drawRotor(th, m, this.nSide);
+    if (this.opts.showTransforms && !L.compact) this.drawProjections(th, m, pr);
+    this.drawAxes(th, m);
 
     // load-angle arc (between the rotor's d axis and the current vector)
     if (arcShown) {
@@ -262,7 +269,7 @@ export class MotorView extends CanvasView {
       }
     }
 
-    this.drawTorque(th, m, pr, thetaE);
+    this.drawTorque(th, m, pr);
 
     // ghost: commanded field (open loop) or target current (FOC), dashed
     let gAng, gMag;
@@ -303,7 +310,7 @@ export class MotorView extends CanvasView {
     }
     // shaft
     g.beginPath();
-    g.arc(cx, cy, Math.max(2.5, L.Rr * 0.08), 0, TAU);
+    g.arc(cx, cy, L.shaftR, 0, TAU);
     g.fillStyle = th.tipBg;
     g.fill();
     g.strokeStyle = th.lineColor;
@@ -337,8 +344,9 @@ export class MotorView extends CanvasView {
   }
 
   /** @private yoke, teeth and glowing coils */
-  drawStator(th, m, nPh, Irated) {
+  drawStator(th, m, nPh, pr) {
     const g = this.g, L = this.lay, cx = L.cx, cy = L.cy, R = L.R;
+    const Irated = pr.Irated || 1;
     g.beginPath();
     g.arc(cx, cy, R, 0, TAU);
     g.arc(cx, cy, L.Ry, 0, TAU, true);
@@ -356,7 +364,6 @@ export class MotorView extends CanvasView {
     const Rin = L.Rin, Ry = L.Ry;
     const u0 = Rin + sh + 3, u1 = Ry - 3;
     const ip = m.iPhase || [];
-    const colors = [th.phaseA, th.phaseB, th.phaseC];
     const pitch = TAU / nT;
     for (let k = 0; k < nT; k++) {
       const a = k * pitch;
@@ -379,7 +386,7 @@ export class MotorView extends CanvasView {
       g.strokeStyle = th.lineColor;
       g.stroke();
       // coil on both sides of the tooth neck
-      const col = colors[ph.index];
+      const col = ph.index === 0 ? th.phaseA : ph.index === 1 ? th.phaseB : th.phaseC;
       const lvl = Math.min(1, Math.abs(num(ip[ph.index], 0)) / Irated);
       g.fillStyle = col;
       g.globalAlpha = 0.12 + 0.78 * lvl;
@@ -411,16 +418,17 @@ export class MotorView extends CanvasView {
     for (let k = 0; k < nT; k++) {
       const a = k * pitch;
       const ph = toothPhase(k, nPh);
-      g.fillText(PHASE_NAMES[ph.index] + (ph.ret ? PRIME : ''), cx + ul * Math.cos(a), cy - ul * Math.sin(a));
+      g.fillText(ph.name, cx + ul * Math.cos(a), cy - ul * Math.sin(a));
     }
   }
 
   /**
-   * @private two-pole rotor at thetaE: N half toward thetaE
+   * @private two-pole rotor at motor m's electrical angle thetaE: N half toward thetaE
    * @param {number} side −1 or +1: the letters sit that far (0.7 rad) behind or ahead of each pole's center
    */
-  drawRotor(th, thetaE, side) {
+  drawRotor(th, m, side) {
     const g = this.g, L = this.lay, cx = L.cx, cy = L.cy, r = L.Rr;
+    const thetaE = num(m.thetaE, 0);
     const a0 = -thetaE - Math.PI / 2, a1 = -thetaE + Math.PI / 2;
     // N half
     g.beginPath();
@@ -447,7 +455,7 @@ export class MotorView extends CanvasView {
     g.beginPath(); g.arc(cx, cy, r, a1, a0 + TAU); g.stroke();
     if (L.compact && r < 30) return;
     const rl = r * 0.7, off = 0.7 * side;
-    g.font = `700 ${this.fpx(13)}px ${this.theme.fontUi}`;
+    g.font = this.rotorFont;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillStyle = textColor(th, th.rotorN);
@@ -456,9 +464,10 @@ export class MotorView extends CanvasView {
     g.fillText('S', cx + rl * Math.cos(thetaE + Math.PI + off), cy - rl * Math.sin(thetaE + Math.PI + off));
   }
 
-  /** @private d axis (solid) and q axis (dashed) of the rotor frame */
-  drawAxes(th, thetaE) {
+  /** @private d axis (solid) and q axis (dashed) of motor m's rotor frame */
+  drawAxes(th, m) {
     const g = this.g, L = this.lay, cx = L.cx, cy = L.cy;
+    const thetaE = num(m.thetaE, 0);
     const r = L.Rin * 0.97;
     const cd = Math.cos(thetaE), sd = Math.sin(thetaE);
     const cq = -sd, sq = cd;
@@ -492,8 +501,8 @@ export class MotorView extends CanvasView {
   }
 
   /** @private curved arrow around the rotor, span ∝ torque / (Kt · Irated) */
-  drawTorque(th, m, pr, thetaE) {
-    const tq = num(m.torque, 0);
+  drawTorque(th, m, pr) {
+    const tq = num(m.torque, 0), thetaE = num(m.thetaE, 0);
     const tmax = (pr.Kt || 0.2) * (pr.Irated || 1);
     const f = clamp(tq / tmax, -1, 1);
     if (Math.abs(f) < 0.03) return;
@@ -516,9 +525,11 @@ export class MotorView extends CanvasView {
     arrowHead(g, cx + r * Math.cos(a1), cy - r * Math.sin(a1), tx, ty, head);
   }
 
-  /** @private where the current vector's tip has been, fading with age */
-  drawTrail(th, snap, nx, ny) {
+  /** @private where the current vector's tip has been (in rated currents), fading with age */
+  drawTrail(th, snap, m, pr) {
     const tr = this.trail;
+    const Irated = pr.Irated || 1;
+    const nx = num(m.iAlpha, 0) / Irated, ny = num(m.iBeta, 0) / Irated;
     if (snap.t < this.lastT) this.trailLen = 0;
     if (this.advanced || this.trailLen === 0) {
       const h = this.trailHead;
@@ -546,9 +557,11 @@ export class MotorView extends CanvasView {
     g.globalAlpha = 1;
   }
 
-  /** @private Clarke (α, β) and Park (d, q) projections of the current vector */
-  drawProjections(th, m, thetaE, vScale, iA, iB) {
+  /** @private Clarke (α, β) and Park (d, q) projections of motor m's current vector */
+  drawProjections(th, m, pr) {
     const g = this.g, L = this.lay, cx = L.cx, cy = L.cy, r = L.Rin * 1.02;
+    const thetaE = num(m.thetaE, 0), iA = num(m.iAlpha, 0), iB = num(m.iBeta, 0);
+    const vScale = L.Rin * 0.95 / (pr.Irated || 1);           // px per amp, as draw's vectors
     // stator axes α and β
     g.strokeStyle = th.muted;
     g.lineWidth = 1;
@@ -776,16 +789,24 @@ function signed(v, digits = 2) {
   return v > 0 && Number(s) !== 0 ? '+' + s : s;
 }
 
+/** Every label fits `room` css px (fitForm), in the current font. */
+function allFit(g, forms, room) {
+  for (let k = 0; k < forms.length; k++) if (fitForm(g, [forms[k]], room) < 0) return false;
+  return true;
+}
+
+/** A stator tooth: its phase, whether it is that phase's return, and its label ('A', 'B′'). */
+const tooth = (index, ret) => ({ index, ret, name: 'ABC'[index] + (ret ? PRIME : '') });
+
 /**
  * Phase of stator tooth k (teeth every 180°/phases, starting at 0°): the
  * tooth at a phase's spatial angle carries that phase; the one opposite it is
  * the same phase's return (primed).
- * @returns {{index: number, ret: boolean}}
+ * @returns {{index: number, ret: boolean, name: string}}
  */
 const TOOTH = {
-  2: [{ index: 0, ret: false }, { index: 1, ret: false }, { index: 0, ret: true }, { index: 1, ret: true }],
-  3: [{ index: 0, ret: false }, { index: 2, ret: true }, { index: 1, ret: false },
-    { index: 0, ret: true }, { index: 2, ret: false }, { index: 1, ret: true }],
+  2: [tooth(0, false), tooth(1, false), tooth(0, true), tooth(1, true)],
+  3: [tooth(0, false), tooth(2, true), tooth(1, false), tooth(0, true), tooth(2, false), tooth(1, true)],
 };
 function toothPhase(k, nPh) {
   return TOOTH[nPh][k];

@@ -47,6 +47,10 @@
  *              enough), true or false
  *   detailMm   axis mode: half-width of the magnified strip in mm (default 5; homing
  *              reads well at 2 to 3)
+ *
+ * Per frame the view builds no closures, and the helpers V8 may not inline take their geometry
+ * in objects (a motor's `face`, a magnifier's `loupeMag`/`lensMag`, the trail's setView) rather
+ * than in double arguments, which such a call boxes into new heap numbers.
  */
 import { CanvasView, TAU, haloText, roundRect, clamp, num, mechanicsOf, niceStep } from './view-util.js';
 import { PathTrail } from './gantry-trail.js';
@@ -94,9 +98,17 @@ export class GantryView extends CanvasView {
     this.trail = new PathTrail();
     this.mode = '';
     this.lenMm = 350;
+    // Axis layout; `face` is the motor's face (center and size, drawMotorFace) and dA, dK the
+    // magnified strip's window start (mm) and scale (px per mm), set per frame (detailX).
     this.ax = { x0: 0, k: 1, M: 40, rp: 8, cw: 30, ch: 20, stopW: 8, yt: 0, yb: 0, ybt: 0, yr: 0, yRuler: 0,
-      yTop: 0, idlerX: 0, motorX: 0, labelEvery: 50, tickEvery: 10 };
-    this.xy = { fx: 0, fy: 0, S: 100, k: 1, M: 20, hs: 6, labelEvery: 100, loupeR: 60, loupeRef: 60, lx: 0, ly: 0, lensR: 50 };
+      yTop: 0, idlerX: 0, motorX: 0, labelEvery: 50, tickEvery: 10, face: { x: 0, y: 0, M: 40 }, dA: 0, dK: 1 };
+    // CoreXY layout; faceA and faceB are the faces of the rear motors A (right) and B (left)
+    this.xy = { fx: 0, fy: 0, S: 100, k: 1, M: 20, hs: 6, labelEvery: 100, loupeR: 60, loupeRef: 60, lx: 0, ly: 0, lensR: 50,
+      faceA: { x: 0, y: 0, M: 20 }, faceB: { x: 0, y: 0, M: 20 } };
+    // the loupe and the inspect lens as drawLoupe draws them (center and radius in css px, the
+    // point they show in mm, px per mm, grid step in mm), set per frame
+    this.loupeMag = { cx: 0, cy: 0, R: 1, mx: 0, my: 0, kl: 1, bar: 1 };
+    this.lensMag = { cx: 0, cy: 0, R: 1, mx: 0, my: 0, kl: 1, bar: 1 };
     this.bumpAt = -Infinity;
     this.bumpSign = 1;
     // Screen direction the last bump came from (CoreXY icon; a plain bump comes along x).
@@ -286,9 +298,12 @@ export class GantryView extends CanvasView {
     else this.drawAxis(snap, ctx, th, now);
   }
 
-  /** @private NEMA-style motor face */
-  drawMotorFace(th, x, y, M, m) {
-    const g = this.g;
+  /**
+   * @private NEMA-style motor face
+   * @param {{x: number, y: number, M: number}} f center (css px) and size of the face
+   */
+  drawMotorFace(th, f) {
+    const g = this.g, x = f.x, y = f.y, M = f.M;
     g.fillStyle = th.divider;
     g.strokeStyle = th.lineColor;
     g.lineWidth = 1;
@@ -308,9 +323,13 @@ export class GantryView extends CanvasView {
     g.fill();
   }
 
-  /** @private pulley with a marker at the rotor's mechanical angle */
-  drawPulley(th, x, y, r, thetaM) {
-    const g = this.g;
+  /**
+   * @private pulley on face `f` (radius 0.2 of its size) with a marker at motor m's mechanical
+   * angle
+   */
+  drawPulley(th, f, m) {
+    const g = this.g, x = f.x, y = f.y, r = f.M * 0.2;
+    const thetaM = num(m.thetaM, 0);
     g.beginPath();
     g.arc(x, y, r, 0, TAU);
     g.fillStyle = th.tipBg;
@@ -342,6 +361,11 @@ export class GantryView extends CanvasView {
       g.moveTo(hx - 3, y + 5); g.lineTo(hx + 3, y - 1);
     }
     g.stroke();
+  }
+
+  /** @private is the bump icon up (a bump acting, or fading)? The callers skip drawBump otherwise. */
+  bumpShown(now) {
+    return now - this.bumpAt <= BUMP_FADE_MS;
   }
 
   /** @private starburst next to the carriage while a bump acts, then fading */
@@ -394,6 +418,13 @@ export class GantryView extends CanvasView {
     C.ly = at[0] === 't' ? C.fy + C.loupeR + 6 : C.fy + S - C.loupeR - 6;
     if (at === 'tr' && Array.isArray(this.opts.loupeClear)) this.placeLoupe(this.opts.loupeClear);
     C.lensR = clamp(S * 0.24, 44, 90);
+    // rear motors on the frame's top corners (the travel box expanded by the toolhead's half size)
+    const ox = C.fx, oy = C.fy + S;
+    C.faceA.x = ox + Lmm * C.k + C.hs;
+    C.faceB.x = ox - C.hs;
+    C.faceA.y = C.faceB.y = oy - Lmm * C.k - C.hs;
+    C.faceA.M = C.faceB.M = C.M;
+    this.trail.setView(ox, oy, C.k);
     this.half = 0;                       // the loupe's half-width follows the new size at once
     this.layoutDirty = false;
   }
@@ -434,8 +465,7 @@ export class GantryView extends CanvasView {
     if (this.layoutDirty) this.layoutXY();
     const g = this.g, C = this.xy, Lmm = this.lenMm;
     const gt = snap.gantry;
-    const k = C.k, ox = C.fx, oy = C.fy + C.S;          // screen of (0, 0) mm
-    const X = (mm) => ox + mm * k, Y = (mm) => oy - mm * k;
+    const k = C.k, ox = C.fx, oy = C.fy + C.S;          // screen of (0, 0) mm: x = ox + mm·k, y = oy − mm·k
     const x = num(gt.x, 0), y = num(gt.y, 0), xc = num(gt.xCmd, x), yc = num(gt.yCmd, y);
     const tip = this.tip;
     tip.x = x; tip.y = y; tip.xCmd = xc; tip.yCmd = yc;
@@ -444,7 +474,7 @@ export class GantryView extends CanvasView {
     if (this.fresh) this.formatXY(snap, x, y);
 
     // frame: the travel box expanded by the toolhead's half size
-    const fx0 = X(0) - hs, fx1 = X(Lmm) + hs, fy0 = Y(Lmm) - hs, fy1 = Y(0) + hs;
+    const fx0 = ox - hs, fx1 = ox + Lmm * k + hs, fy0 = oy - Lmm * k - hs, fy1 = oy + hs;
     g.fillStyle = th.scopeBg;
     g.fillRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
     g.strokeStyle = th.lineColor;
@@ -455,7 +485,7 @@ export class GantryView extends CanvasView {
     g.lineWidth = 1;
     g.beginPath();
     for (let v = C.labelEvery; v < Lmm - 1e-6; v += C.labelEvery) {
-      const sx = Math.round(X(v)) + 0.5, sy = Math.round(Y(v)) + 0.5;
+      const sx = Math.round(ox + v * k) + 0.5, sy = Math.round(oy - v * k) + 0.5;
       g.moveTo(sx, fy0 + 1); g.lineTo(sx, fy1 - 1);
       g.moveTo(fx0 + 1, sy); g.lineTo(fx1 - 1, sy);
     }
@@ -464,14 +494,14 @@ export class GantryView extends CanvasView {
     g.fillStyle = th.muted;
     g.textBaseline = 'top';
     g.textAlign = 'center';
-    for (let v = 0; v <= Lmm + 1e-6; v += C.labelEvery) g.fillText(String(v), X(v), fy1 + 3);
+    for (let v = 0; v <= Lmm + 1e-6; v += C.labelEvery) g.fillText(String(v), ox + v * k, fy1 + 3);
     g.textAlign = 'right';
     g.textBaseline = 'middle';
     // None under rear motor B, whose face covers the frame's top-left corner (the top label at 50
     // and 25 mm steps); the bottom axis still reads to the end.
     const yMin = fy0 + C.M / 2 + this.fpx(12) * 0.5 + 2;
     for (let v = C.labelEvery; v <= Lmm + 1e-6; v += C.labelEvery) {
-      const ly = Y(v);
+      const ly = oy - v * k;
       if (ly >= yMin) g.fillText(String(v), fx0 - 3, ly);
     }
 
@@ -485,7 +515,7 @@ export class GantryView extends CanvasView {
 
     // X rail (moves in y) and belts from the rear motors (A at the rear right, B at the rear
     // left), under the paths so a move along x does not hide them
-    const sy = Y(y), sx = X(x);
+    const sy = oy - y * k, sx = ox + x * k;
     g.fillStyle = th.divider;
     g.strokeStyle = th.lineColor;
     g.lineWidth = 1;
@@ -507,12 +537,12 @@ export class GantryView extends CanvasView {
       g.beginPath();
       g.rect(fx0, fy0, fx1 - fx0, fy1 - fy0);
       g.clip();
-      this.trail.draw(g, th, ox, oy, k, tip);
+      this.trail.draw(g, th, tip);
       g.restore();
     }
 
     // commanded position (dashed ring) and the toolhead
-    const sxc = X(xc), syc = Y(yc);
+    const sxc = ox + xc * k, syc = oy - yc * k;
     g.strokeStyle = th.target;
     g.lineWidth = 1.5;
     g.setLineDash(DASH_FINE);
@@ -534,11 +564,11 @@ export class GantryView extends CanvasView {
     const drag = snap.loads ? num(snap.loads.drag, 0) : 0;
     if (drag > 0.004) this.drawDrag(th, sx, sy + hs + 3, hs, drag);
     const bo = hs + 12;
-    this.drawBump(th, now, sx + this.bumpFromX * bo, sy + this.bumpFromY * bo, Math.max(8, hs * 1.3));
+    if (this.bumpShown(now)) this.drawBump(th, now, sx + this.bumpFromX * bo, sy + this.bumpFromY * bo, Math.max(8, hs * 1.3));
 
     // motors A (rear right) and B (rear left)
-    if (snap.motors[0]) this.drawXYMotor(th, fx1, fy0, C.M, snap.motors[0], 'A', 1);
-    if (snap.motors[1]) this.drawXYMotor(th, fx0, fy0, C.M, snap.motors[1], 'B', -1);
+    if (snap.motors[0]) this.drawXYMotor(th, C.faceA, snap.motors[0], 'A', 1);
+    if (snap.motors[1]) this.drawXYMotor(th, C.faceB, snap.motors[1], 'B', -1);
 
     // lost steps (open loop): the toolhead shift from both belts
     if (this.shift >= LOST_MIN_MM && snap.motors[0] && snap.motors[0].driver !== 'foc') {
@@ -553,16 +583,29 @@ export class GantryView extends CanvasView {
       const lc = this.opts.loupeCenter;
       const held = !!lc && Number.isFinite(lc.x) && Number.isFinite(lc.y);
       const fit = !held && !!this.opts.loupeFit;
-      const mm = this.loupeHalf(fit ? Math.hypot(xc - x, yc - y) : 0, now);
-      const mx = held ? lc.x : fit ? (xc + x) / 2 : xc, my = held ? lc.y : fit ? (yc + y) / 2 : yc;
-      this.drawLoupe(th, C.lx, C.ly, C.loupeR, mx, my, C.loupeR / mm, held ? 'held' : 'fine', x, y, xc, yc,
-        this.loupeBarMm, this.str.scale, this.str.loupe);
+      this.loupeHalf(fit, now);
+      const M = this.loupeMag;
+      M.cx = C.lx;
+      M.cy = C.ly;
+      M.R = C.loupeR;
+      M.mx = held ? lc.x : fit ? (xc + x) / 2 : xc;
+      M.my = held ? lc.y : fit ? (yc + y) / 2 : yc;
+      M.kl = C.loupeR / this.half;
+      M.bar = this.loupeBarMm;
+      this.drawLoupe(th, M, held ? 'held' : 'fine', this.str.scale, this.str.loupe);
     }
     const L = this.lens;
     if (L.on && this.opts.inspect) {
       // the lens sits on the spot it magnifies
-      this.drawLoupe(th, X(L.x), Y(L.y), C.lensR, L.x, L.y, C.lensR * k / LENS_SPAN_PX, 'lens', x, y, xc, yc,
-        this.lensBarMm, this.str.lensScale, this.str.lens);
+      const M = this.lensMag;
+      M.cx = ox + L.x * k;
+      M.cy = oy - L.y * k;
+      M.R = C.lensR;
+      M.mx = L.x;
+      M.my = L.y;
+      M.kl = C.lensR * k / LENS_SPAN_PX;
+      M.bar = this.lensBarMm;
+      this.drawLoupe(th, M, 'lens', this.str.lensScale, this.str.lens);
     }
   }
 
@@ -572,20 +615,22 @@ export class GantryView extends CanvasView {
   }
 
   /**
-   * @private The loupe's half-width (mm): loupeMm scaled from the reference size to the loupe's
-   * own, so a larger loupe shows more at the same magnification. With loupeFit it widens while
-   * `err` (the commanded point to the toolhead, mm) needs it, so both stay within FIT_SHARE of the
-   * radius around their midpoint: quickly as the error grows, slowly back as it shrinks.
+   * @private Eases the loupe's half-width `this.half` (mm): loupeMm scaled from the reference size
+   * to the loupe's own, so a larger loupe shows more at the same magnification. With `fit` it
+   * widens while the error (the commanded point to the toolhead, `this.tip`, mm) needs it, so both
+   * stay within FIT_SHARE of the radius around their midpoint: quickly as the error grows, slowly
+   * back as it shrinks.
    */
-  loupeHalf(err, now) {
-    const C = this.xy;
+  loupeHalf(fit, now) {
+    const C = this.xy, t = this.tip;
+    const ex = t.xCmd - t.x, ey = t.yCmd - t.y;
+    const err = fit ? Math.sqrt(ex * ex + ey * ey) : 0;   // not Math.hypot: it allocates, even optimized
     const base = this.baseMm() * C.loupeR / C.loupeRef;
     const want = Math.max(base, err / 2 / FIT_SHARE);
     const dt = Math.min(0.25, Math.max(0, (now - this.halfAt) / 1000));
     this.halfAt = now;
     if (!(this.half > 0) || !this.opts.loupeFit) this.half = want;
     else this.half += (want - this.half) * (1 - Math.exp(-dt / (want > this.half ? FIT_GROW_S : FIT_SHRINK_S)));
-    return this.half;
   }
 
   /** @private 10 Hz CoreXY strings */
@@ -610,10 +655,10 @@ export class GantryView extends CanvasView {
     s.lens = '×' + Math.round(C.lensR / LENS_SPAN_PX);
   }
 
-  /** @private rear motor with a pulley marker; encoder disc under FOC */
-  drawXYMotor(th, x, y, M, m, name, side) {
-    const g = this.g;
-    this.drawMotorFace(th, x, y, M, m);
+  /** @private rear motor on face `f` with a pulley marker; encoder disc under FOC */
+  drawXYMotor(th, f, m, name, side) {
+    const g = this.g, x = f.x, y = f.y, M = f.M;
+    this.drawMotorFace(th, f);
     const foc = m.driver === 'foc';
     const a = num(m.thetaM, 0);
     if (foc) {
@@ -628,7 +673,7 @@ export class GantryView extends CanvasView {
       }
       g.stroke();
     }
-    this.drawPulley(th, x, y, M * 0.2, a);
+    this.drawPulley(th, f, m);
     // name inside the frame, beside the motor
     g.font = this.font.uiBold;
     g.fillStyle = th.text;
@@ -638,14 +683,17 @@ export class GantryView extends CanvasView {
   }
 
   /**
-   * @private A magnifier of radius R css px at (cx, cy), showing (mx, my) mm at kl px per mm:
-   * the loupe (`kind` 'fine': the last seconds of the paths around the toolhead; 'held': the
-   * coarse trail of the last laps around a held point, loupeCenter) or the inspect lens ('lens':
-   * both trails, anywhere on the frame). (xc, yc) is the commanded point and (x, y) the actual
-   * toolhead; `bar` the grid and scale-bar step in mm, labeled `scale`; `label` its top line.
+   * @private A magnifier M (`loupeMag` or `lensMag`) of radius M.R css px at (M.cx, M.cy), showing
+   * (M.mx, M.my) mm at M.kl px per mm: the loupe (`kind` 'fine': the last seconds of the paths
+   * around the toolhead; 'held': the coarse trail of the last laps around a held point,
+   * loupeCenter) or the inspect lens ('lens': both trails, anywhere on the frame). The commanded
+   * point and the actual toolhead come from `this.tip`; M.bar is the grid and scale-bar step in
+   * mm, labeled `scale`; `label` is its top line.
    */
-  drawLoupe(th, cx, cy, R, mx, my, kl, kind, x, y, xc, yc, bar, scale, label) {
-    const g = this.g;
+  drawLoupe(th, M, kind, scale, label) {
+    const g = this.g, t = this.tip;
+    const cx = M.cx, cy = M.cy, R = M.R, mx = M.mx, my = M.my, kl = M.kl;
+    let bar = M.bar;
     const mm = R / kl;
     g.save();
     g.beginPath();
@@ -662,10 +710,10 @@ export class GantryView extends CanvasView {
     for (let v = x0; v <= mx + mm; v += bar) { const s = cx + (v - mx) * kl; g.moveTo(s, cy - R); g.lineTo(s, cy + R); }
     for (let v = y0; v <= my + mm; v += bar) { const s = cy - (v - my) * kl; g.moveTo(cx - R, s); g.lineTo(cx + R, s); }
     g.stroke();
-    if (kind === 'lens') this.trail.drawLens(g, th, cx, cy, mx, my, kl, R, this.tip);
-    else this.trail.drawLoupe(g, th, cx, cy, mx, my, kl, R, this.tip, kind === 'held');
+    if (kind === 'lens') this.trail.drawLens(g, th, M, t);
+    else this.trail.drawLoupe(g, th, M, t, kind === 'held');
     // commanded point (crosshair) and actual toolhead (dot), where they fall in the window
-    const px = cx + (xc - mx) * kl, py = cy - (yc - my) * kl;
+    const px = cx + (t.xCmd - mx) * kl, py = cy - (t.yCmd - my) * kl;
     g.strokeStyle = th.target;
     g.lineWidth = 1.2;
     g.beginPath();
@@ -674,7 +722,7 @@ export class GantryView extends CanvasView {
     g.stroke();
     g.fillStyle = th.field;
     g.beginPath();
-    g.arc(cx + (x - mx) * kl, cy - (y - my) * kl, 3.5, 0, TAU);
+    g.arc(cx + (t.x - mx) * kl, cy - (t.y - my) * kl, 3.5, 0, TAU);
     g.fill();
     g.restore();
     g.strokeStyle = th.tipBorder;

@@ -13,6 +13,8 @@
  * With two motors in a comparison world (chapter 7's open-loop stepper next to
  * the FOC motor), the second motor's current vector is drawn in the target
  * color with a label.
+ * Per frame, vector lengths use Math.sqrt: Math.hypot allocates on every call,
+ * even in optimized code.
  *
  * Options:
  *   motor     index of the main motor (default 0)
@@ -116,7 +118,8 @@ export class VectorView extends CanvasView {
     // scale: the circle is the current limit unless the comparison motor needs more room
     let scaleA = typeof this.opts.range === 'number' && this.opts.range > 0 ? this.opts.range : lim;
     if (cm) {
-      const cmAmp = Math.hypot(num(cm.id, 0), num(cm.iq, 0));
+      const cid = num(cm.id, 0), ciq = num(cm.iq, 0);
+      const cmAmp = Math.sqrt(cid * cid + ciq * ciq);
       const cmLim = num(cm.iLimit, 0);
       scaleA = Math.max(scaleA, cmLim, cmAmp);
     }
@@ -184,7 +187,7 @@ export class VectorView extends CanvasView {
 
     // target (dashed)
     const ids = num(m.idStar, 0), iqs = num(m.iqStar, 0);
-    if (Math.hypot(ids, iqs) * k > 3) {
+    if (Math.sqrt(ids * ids + iqs * iqs) * k > 3) {
       g.strokeStyle = th.target;
       g.fillStyle = th.target;
       g.lineWidth = 2;
@@ -212,7 +215,7 @@ export class VectorView extends CanvasView {
     g.moveTo(xd, yq); g.lineTo(cx, yq);
     g.stroke();
     g.setLineDash(SOLID);
-    if (Math.hypot(id, iq) * k > 2) {
+    if (Math.sqrt(id * id + iq * iq) * k > 2) {
       g.strokeStyle = rimColor(th);
       g.fillStyle = rimColor(th);
       g.lineWidth = th.dark ? 6 : 5;
@@ -266,7 +269,7 @@ export class VectorView extends CanvasView {
     g.beginPath(); g.moveTo(x - r, y); g.lineTo(x + r, y); g.moveTo(x, y + r); g.lineTo(x, y - r); g.stroke();
     // direction from (ud, uq), length from uMag / uLimit (open loop reports the larger phase voltage)
     const ud = num(m.ud, 0), uq = num(m.uq, 0);
-    const n = Math.hypot(ud, uq);
+    const n = Math.sqrt(ud * ud + uq * uq);
     if (n > 1e-6 && frac > 0.01) {
       const len = Math.min(1.05, frac) * r;
       g.strokeStyle = th.text;

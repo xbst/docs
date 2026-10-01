@@ -147,6 +147,13 @@ export class CanvasView {
 
 /* ---------------- drawing helpers ---------------- */
 
+// arrow, arrowHead, haloText and led are thin wrappers: they put their numbers into XY and call
+// the drawing body, which takes none. V8's mid-tier compiler inlines a frequent call only to a
+// function under 100 bytes of bytecode, and a call it does not inline boxes each double argument
+// into a new heap number, every frame. The bodies call no other helper, so XY is never
+// overwritten while in use.
+const XY = new Float64Array(5);
+
 /**
  * Straight arrow with a filled head (uses the current strokeStyle/fillStyle and lineWidth).
  * @param {CanvasRenderingContext2D} g
@@ -154,6 +161,13 @@ export class CanvasView {
  * @param {number} head head length in px
  */
 export function arrow(g, x0, y0, x1, y1, head) {
+  XY[0] = x0; XY[1] = y0; XY[2] = x1; XY[3] = y1; XY[4] = head;
+  arrowXY(g);
+}
+
+/** arrow on the numbers in XY (x0, y0, x1, y1, head). */
+function arrowXY(g) {
+  const x0 = XY[0], y0 = XY[1], x1 = XY[2], y1 = XY[3], head = XY[4];
   const dx = x1 - x0, dy = y1 - y0;
   const len = Math.sqrt(dx * dx + dy * dy);
   if (len < 0.5) return;
@@ -177,6 +191,13 @@ export function arrow(g, x0, y0, x1, y1, head) {
  * @param {CanvasRenderingContext2D} g
  */
 export function arrowHead(g, x, y, ux, uy, head) {
+  XY[0] = x; XY[1] = y; XY[2] = ux; XY[3] = uy; XY[4] = head;
+  arrowHeadXY(g);
+}
+
+/** arrowHead on the numbers in XY (x, y, ux, uy, head). */
+function arrowHeadXY(g) {
+  const x = XY[0], y = XY[1], ux = XY[2], uy = XY[3], head = XY[4];
   const hw = head * 0.5;
   const bx = x - ux * head, by = y - uy * head;
   g.beginPath();
@@ -193,6 +214,13 @@ export function arrowHead(g, x, y, ux, uy, head) {
  * @param {CanvasRenderingContext2D} g
  */
 export function haloText(g, text, x, y, halo, maxW) {
+  XY[0] = x; XY[1] = y; XY[2] = maxW || 0;
+  haloTextXY(g, text, halo);
+}
+
+/** haloText on the numbers in XY (x, y, maxW; 0 = none). */
+function haloTextXY(g, text, halo) {
+  const x = XY[0], y = XY[1], maxW = XY[2];
   const fill = g.fillStyle;
   g.lineJoin = 'round';
   g.lineWidth = 3.5;
@@ -221,6 +249,13 @@ export function roundRect(g, x, y, w, h, r) {
  * @param {string} [color] lit color (default the trip color)
  */
 export function led(g, th, x, y, r, lit, color) {
+  XY[0] = x; XY[1] = y; XY[2] = r;
+  ledXY(g, th, lit, color);
+}
+
+/** led on the numbers in XY (x, y, r). */
+function ledXY(g, th, lit, color) {
+  const x = XY[0], y = XY[1], r = XY[2];
   if (lit) {
     const c = color || th.ledTrip;
     g.fillStyle = c;
@@ -405,9 +440,13 @@ export function clamp(v, lo, hi) {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
-/** A finite number or the fallback. */
+/**
+ * A finite number or the fallback. (`v - v === 0` is the finiteness test, false for NaN and
+ * ±Infinity: Number.isFinite boxes its argument in V8's mid-tier code, 16 B a call, and the
+ * views call num() dozens of times a frame.)
+ */
 export function num(v, fallback) {
-  return typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+  return typeof v === 'number' && v - v === 0 ? v : fallback;
 }
 
 /* ---------------- sim facts the views need ---------------- */
