@@ -82,6 +82,12 @@ const app = {
   chapters: CHAPTERS,
   /** Per-frame step caps (SPEC 4.2); lower them from the console to test the "slowed" badge. */
   maxSteps: { averaged: 2000, switching: 20000 },
+  /**
+   * Wall-time budget for one frame's steps (ms, B-007). Past it the frame steps no more and the
+   * sim falls behind real time ("slowed to keep up"), so a slow device keeps drawing and stays
+   * responsive instead of needing more steps every frame because the last frame took longer.
+   */
+  stepBudgetMs: 8,
   get chapter() { return ch; },
   get paused() { return paused; },
   get timeScale() { return timeScale; },
@@ -673,25 +679,30 @@ function frame(now) {
   if (DEBUG) debugStats(now, n, t1 - t0, performance.now() - t1);
 }
 
-/** Step the world by frameDt × timeScale sim seconds, capped per SPEC 4.2. */
+/**
+ * Step the world by frameDt × timeScale sim seconds, capped per SPEC 4.2 and by the wall-time
+ * budget (app.stepBudgetMs, checked every 128 steps). A capped frame drops the rest of its debt.
+ */
 function advance(dt, now) {
   const wdt = world.dt;
   if (!(wdt > 0)) return 0;
   stepDebt += dt * timeScale / wdt;
   let n = Math.floor(stepDebt);
   const capSteps = wdt < 5e-6 ? app.maxSteps.switching : app.maxSteps.averaged;
-  const capped = n > capSteps;
-  if (capped) {
-    n = capSteps;
-    stepDebt = 0;
-  } else {
-    stepDebt -= n;
+  let capped = n > capSteps;
+  if (capped) n = capSteps;
+  const t0 = performance.now(), budget = app.stepBudgetMs;
+  let done = 0;
+  while (done < n) {
+    world.step();
+    if ((++done & 127) === 0 && done < n && performance.now() - t0 > budget) { capped = true; break; }
   }
+  if (capped) stepDebt = 0;
+  else stepDebt -= done;
   // Badge only for sustained capping (about 3 frames in a row), not one long frame.
   capRate = capRate * 0.9 + (capped ? 0.1 : 0);
   if (capRate > 0.25) slowedUntil = now + 1000;
-  for (let i = 0; i < n; i++) world.step();
-  return n;
+  return done;
 }
 
 function draw(now) {

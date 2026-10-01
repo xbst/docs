@@ -45,7 +45,15 @@
  *             denser than one pulse per px fill as a band.
  *
  * Drawing: one path per trace per frame, decimated to the min and max of each
- * css-px column. The render path does not allocate while running; value tags
+ * css-px column, and stroked in pieces of CHUNK segments (B-007). A noisy trace
+ * zigzags in every column, about 2400 vertices across a wide plot, and
+ * Chrome's GPU canvas rasterizes one such round-joined path on the CPU, 5 to
+ * 7 ms per trace per frame: chapter 8 fell from 144 to about 41 fps, the GPU
+ * process stayed busy and the whole page lagged with it (Chrome and Brave
+ * alike; worse on a slower GPU path). Short pieces stay on the GPU's fast
+ * path. Each piece starts one segment back, so every join is drawn, and a
+ * dashed trace's pieces continue its dash pattern (lineDashOffset). The
+ * render path does not allocate while running; value tags
  * are reformatted at most every 100 ms, and the hover box only builds strings
  * while the pointer is over the plot. When paused the scope only redraws when
  * something changes (hover, resize, theme, legend).
@@ -62,6 +70,7 @@ const TAG_H = 16, TAG_GAP = 2;
 const FMT_MS = 100;
 const NONE = -1e9;
 const DASH = [5, 4], HOVER_DASH = [3, 3], SOLID = [];
+const CHUNK = 64;                         // segments per stroked piece of an analog trace (B-007)
 const NICE = [1, 2, 2.5, 5, 10];
 const KEEP_AUTO = 0.4, KEEP_FIT = 0.8;   // share of a held range the data must still ask for
 const MIN_SPAN = {
@@ -162,6 +171,10 @@ export class Scope {
     this.tagY = new Float32Array(MAX_TRACES);
     this.mn = 0; this.mx = 0;
     this.pen = false; this.yPrev = 0;
+    // analog path pieces: last vertex, segments in the piece, path length to the last vertex and
+    // to the one before it (px; tracked for dashed traces only), the piece's dash offset
+    this.px = 0; this.py = 0; this.nSeg = 0; this.len = 0; this.lenPrev = 0; this.dashOff = 0;
+    this.dashed = false;
 
     this.setWindow(2);
     this.canvas.addEventListener('pointerdown', (e) => {
@@ -539,6 +552,7 @@ export class Scope {
       const grp = tr.group;
       g.strokeStyle = tr.color;
       g.setLineDash(tr.dashed ? DASH : SOLID);
+      this.dashed = !!tr.dashed;
       this.strokeAnalog(tr.ring, tL, x0, pps, aBot, grp.lo, ah / ((grp.hi - grp.lo) || 1));
     }
     g.restore();
@@ -731,6 +745,7 @@ export class Scope {
     if (i > 0) i--;                  // start just left of the window so the line reaches the edge
     let col = NONE, cMin = 0, cMax = 0, kMin = 0, kMax = 0;
     this.pen = false;
+    this.nSeg = 0;
     g.beginPath();
     for (; i < len; i++) {
       let p = base + i;
@@ -753,15 +768,46 @@ export class Scope {
     }
     if (col !== NONE) this.emit(x0 + col, cMin, cMax, kMin <= kMax, yb, lo, ys);
     g.stroke();
+    if (this.dashOff !== 0) { this.dashOff = 0; g.lineDashOffset = 0; }
   }
 
   /** @private */
   emit(x, a, b, minFirst, yb, lo, ys) {
-    const g = this.g;
     x += 0.5;
-    const y1 = yb - ((minFirst ? a : b) - lo) * ys;
-    if (this.pen) g.lineTo(x, y1); else { g.moveTo(x, y1); this.pen = true; }
-    if (a !== b) g.lineTo(x, yb - ((minFirst ? b : a) - lo) * ys);
+    this.vertex(x, yb - ((minFirst ? a : b) - lo) * ys);
+    if (a !== b) this.vertex(x, yb - ((minFirst ? b : a) - lo) * ys);
+  }
+
+  /**
+   * @private next vertex of an analog trace: a new subpath when the pen is up (after a gap the
+   * finished one is stroked, so the new one's dashes start at offset 0 as in a single path), else
+   * a segment; every CHUNK segments the piece is stroked and the next one starts at the vertex
+   * before this one, with the dash offset of that vertex.
+   */
+  vertex(x, y) {
+    const g = this.g;
+    if (!this.pen) {
+      if (this.nSeg > 0) { g.stroke(); g.beginPath(); }
+      if (this.dashOff !== 0) { this.dashOff = 0; g.lineDashOffset = 0; }
+      g.moveTo(x, y);
+      this.pen = true; this.nSeg = 0; this.len = 0; this.lenPrev = 0;
+    } else {
+      g.lineTo(x, y);
+      if (this.dashed) {
+        const dx = x - this.px, dy = y - this.py;
+        this.lenPrev = this.len;
+        this.len += Math.sqrt(dx * dx + dy * dy);
+      }
+      if (++this.nSeg >= CHUNK) {
+        g.stroke();
+        g.beginPath();
+        if (this.dashed) { this.dashOff = this.lenPrev; g.lineDashOffset = this.lenPrev; }
+        g.moveTo(this.px, this.py);
+        g.lineTo(x, y);
+        this.nSeg = 1;
+      }
+    }
+    this.px = x; this.py = y;
   }
 
   /** @private held levels with vertical edges; a column with both levels draws a band */
