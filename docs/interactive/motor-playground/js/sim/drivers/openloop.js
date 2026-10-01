@@ -5,12 +5,31 @@
 //     target slowly: dvAmp/dt = (R/τA)·(I − iAmpMeas), τA = 30 ms, clamp [0, Vbus],
 //     iAmpMeas = LPF200(|i|).
 //   current mode (SpreadCycle-like): averaged fidelity uses a per-phase PI with Kp = L·ωc,
-//     Ki = R·ωc, ωc = 2π·currentLoopHz, output clamped to ±Vbus with back-calculation
-//     anti-windup (never past zero, like drivers/foc.js); switching fidelity uses one fixed-frequency Chopper per phase.
+//     Ki = R·ωc, ωc = 2π·currentLoopHz, plus a feed-forward of the back-EMF's slow part (below),
+//     output clamped to ±Vbus with back-calculation anti-windup (never past zero, like
+//     drivers/foc.js); switching fidelity uses one fixed-frequency Chopper per phase.
 //   hybrid: TPWMTHRS-like with hysteresis: switches to current mode once |omegaCmd| ≥
 //     hybridThresholdRadS and back to voltage mode only once |omegaCmd| < 0.9·hybridThresholdRadS,
 //     so ripple on the speed argument cannot make the mode chatter. omegaCmd must be the planner's
 //     commanded speed (mechanical rad/s), not a step-rate estimate.
+//
+// Back-EMF feed-forward (averaged current mode, 2026-10-01). A chopper holds its current against
+// the back-EMF until the supply runs out; a 3 kHz PI alone lets a back-EMF of 1 kHz and more
+// through. At 1000 mm/s the 0.8 mH motor lost 40% of its current with 23 V of a 48 V bus to
+// spare, and its sag speed stopped rising with the voltage (1017 mm/s at 48 and at 60 V, where the
+// switching model gives 1419 mm/s at 48 V and the analytic curve 1527). The driver therefore adds
+// the back-EMF as the commanded field sees it (rotated by −thetaCmd), low-passed with BEMF_FF_TAU,
+// to the PI output. At a steady speed that is the whole back-EMF, so only the voltage limits the
+// current (sag speed 1468 mm/s in that case). The low-pass (30 ms) keeps what changes faster out
+// of it: the rotor's ringing (100 to 300 Hz), a bump (20 to 40 ms) and a fast ramp, where the PI's
+// finite gain answers as before. With 10 ms a 24 V move kept step on ramps where the switching
+// model stalls (to 850 mm/s at 20 000 and 30 000 mm/s², to 1000 mm/s at 30 000 mm/s²); with
+// 30 ms it stalls on the same ones.
+// What the feed-forward does not change: a free motor on 24 V that stays at a speed well past its
+// knee (437 mm/s) falls out of step within a few seconds, from about 725 mm/s here and from
+// 800 mm/s in the switching model (at 900 mm/s after 0.8 s here, after 2.3 s there). The current
+// is voltage-limited there and no longer damps the rotor's swing around the field, which grows
+// until a pole slips (a stepper's mid-band instability). The PI alone did the same.
 //
 // Electrical angles in rad (unwrapped), currents in A, voltages in V, time in s.
 // Two-phase (stepper) only: phase A = α (spatial angle 0), phase B = β (spatial angle π/2).
@@ -30,6 +49,8 @@ const QUANTUM = HALF_PI / 256;
 const RESTART_RATIO = 4;
 /** Hybrid mode returns to voltage mode below this fraction of the threshold (hysteresis). */
 const HYBRID_HYST = 0.9;
+/** Time constant of the back-EMF feed-forward's low-pass in the averaged current loop (s). */
+const BEMF_FF_TAU = 0.03;
 
 /**
  * Open-loop microstepping driver for a two-phase stepper.
@@ -71,9 +92,9 @@ export class OpenLoopDriver {
     /** Motor preset used for R and L at reset (step reads motor.preset). */
     this.preset = null;
     /** Phase resistance from the preset (Ω). */
-    this.R = 1.14;
+    this.R = 1.2;
     /** Phase inductance from the preset (H). */
-    this.L = 3.0e-3;
+    this.L = 1.6e-3;
     /** Sim step (s). */
     this.dt = 40e-6;
     /** Control period of the averaged current PI (s). */
@@ -118,6 +139,9 @@ export class OpenLoopDriver {
     this.iAmpMeas = 0;
     /** Current PI integrators per phase (V). */
     this.integ = new Float64Array(2);
+    /** Back-EMF feed-forward state: the low-passed back-EMF in the commanded field's frame (V). */
+    this.ffD = 0;
+    this.ffQ = 0;
     /** Output voltages. */
     this.vAlpha = 0;
     this.vBeta = 0;
@@ -238,6 +262,8 @@ export class OpenLoopDriver {
     this.ampLpf.reset(0);
     this.integ[0] = 0;
     this.integ[1] = 0;
+    this.ffD = 0;
+    this.ffQ = 0;
     this.vAlpha = 0;
     this.vBeta = 0;
     this.vPhase[0] = 0;
@@ -395,10 +421,21 @@ export class OpenLoopDriver {
         const Kp = L * wc;
         const Ki = R * wc;
         const ip = motor.iPhase;
+        // Back-EMF feed-forward (file header): the back-EMF in the commanded field's frame,
+        // low-passed, turned back into the phases.
+        const be = motor.bemf;
+        let ff0 = 0, ff1 = 0;
+        if (be) {
+          const a = dtc / (BEMF_FF_TAU + dtc);
+          this.ffD += a * (be[0] * c + be[1] * s - this.ffD);
+          this.ffQ += a * (be[1] * c - be[0] * s - this.ffQ);
+          ff0 = this.ffD * c - this.ffQ * s;
+          ff1 = this.ffD * s + this.ffQ * c;
+        }
         for (let k = 0; k < 2; k++) {
           const err = this.iStar[k] - ip[k];
           let integ = this.integ[k] + Ki * err * dtc;
-          const pTerm = Kp * err;
+          const pTerm = Kp * err + (k === 0 ? ff0 : ff1);   // everything but the integrator
           let v = pTerm + integ;
           // Back-calculation anti-windup: pull the integrator back so the output sits on the
           // limit, but never past zero. When the P term alone exceeds the limit (a large target
@@ -446,8 +483,12 @@ export class OpenLoopDriver {
     const v0 = this.vPhase[0];
     const v1 = this.vPhase[1];
     if (this.modeActive === 'current') {
+      // The integrators take over the whole output; the feed-forward starts from zero and the
+      // PI hands the back-EMF's share over to it within a few BEMF_FF_TAU.
       this.integ[0] = v0;
       this.integ[1] = v1;
+      this.ffD = 0;
+      this.ffQ = 0;
       this.controlCount = this.controlEvery;
     } else {
       let va = Math.sqrt(v0 * v0 + v1 * v1);

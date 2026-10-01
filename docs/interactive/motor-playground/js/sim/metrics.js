@@ -111,8 +111,8 @@ export class Metrics {
     this.periodSteps = 2500;
     /** Motor preset (from getMotorPreset) or null before configure. */
     this.preset = null;
-    this.L = 3.0e-3;
-    this.R = 1.14;
+    this.L = 1.6e-3;
+    this.R = 1.2;
     this.Irated = 3.54;
     /** Last world passed to update (used by on-demand publish), or null. */
     this.world = null;

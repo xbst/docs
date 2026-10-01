@@ -38,9 +38,9 @@ const PHASE_C = new Set(['iC', 'iCStar', 'vC', 'pwmC']);
 const SWITCHING_ONLY = new Set(['pwmA', 'pwmB', 'pwmC']);
 
 const PRESETS = {
-  stepper:      { phases: 2, p: 50, R: 1.14, L: 3.0e-3, Kt: 0.22, J: 8.2e-6, Irated: 3.54 },
-  stepperHighL: { phases: 2, p: 50, R: 2.4,  L: 8.0e-3, Kt: 0.22, J: 8.2e-6, Irated: 3.54 },
-  stepperLowL:  { phases: 2, p: 50, R: 0.6,  L: 1.5e-3, Kt: 0.22, J: 8.2e-6, Irated: 3.54 },
+  stepper:      { phases: 2, p: 50, R: 1.2,  L: 1.6e-3, Kt: 0.1556, J: 8.2e-6, Irated: 3.54 },
+  stepperHighL: { phases: 2, p: 50, R: 2.4,  L: 8.0e-3, Kt: 0.1556, J: 8.2e-6, Irated: 3.54 },
+  stepperLowL:  { phases: 2, p: 50, R: 0.6,  L: 0.8e-3, Kt: 0.1556, J: 8.2e-6, Irated: 3.54 },
   bldc:         { phases: 3, p: 7,  R: 0.5,  L: 0.4e-3, Kt: 0.06, J: 1.0e-5, Irated: 5.6 },
 };
 

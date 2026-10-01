@@ -6,10 +6,13 @@
  *
  * Full mode (chapter 8): the cascade from top to bottom, position loop →
  * velocity loop → current loops (torque Iq and flux Id) → inverse Park and
- * PWM → motor, with the targets on the arrows between them, the encoder and
- * current-sensor feedback on the right (filters marked), LEDs on the
- * torque-current limit and the voltage limit, and the status output line.
- * Loops that the driver mode does not use are dimmed ("off").
+ * PWM → motor, with the encoder and current-sensor feedback on the right,
+ * LEDs on the torque-current limit and the voltage limit, and the status
+ * output line. The three filters are chips where they act: the velocity
+ * filter on the speed feedback, the torque filter on the Iq target between
+ * the velocity loop and the torque loop, the flux filter on the flux loop's
+ * target (a chip in its row). The measured currents reach the current loops
+ * unfiltered. Loops that the driver mode does not use are dimmed ("off").
  *
  * Compact mode: one chain of boxes, laid out as a row in a wide host (the
  * stage strip) and as a column in a tall one.
@@ -39,6 +42,7 @@ const ARIA_MS = 1000;
 const FRESH_MS = 100;
 const DEG = 180 / Math.PI;
 const CHAIN_BOX_MIN = 96;      // narrowest chain box (css px) that holds "Iq → 0.00 A"
+const CHIP_GAP = 14;           // arrow left above (5) and below (9, with its head) a chip that sits on it
 
 /** Create an SVG element with attributes, appended to `parent` when given. */
 function mk(tag, attrs, parent) {
@@ -182,8 +186,10 @@ export class BlockDiagram {
   minSize() {
     const f = this.fpx(12);
     if (!this.opts.compact) {
+      // Width: the flux row holds its name and its filter chip. Height: four plain gaps and the
+      // one that holds the torque filter chip.
       const lh = f + 4;
-      return { w: 180, h: 12 + (lh * 2 + 4) * 4 + (lh * 4 + 6) + lh + 5 * 8 };
+      return { w: Math.max(180, f * 18), h: 12 + (lh * 2 + 4) * 4 + (lh * 4 + 6) + lh + 4 * 8 + (f + 6 + CHIP_GAP) };
     }
     const lh = f + 3, n = 5;
     if (this.w >= this.h * 2.2) {
@@ -256,12 +262,14 @@ export class BlockDiagram {
     const bx = pad, bR = Math.max(bx + 110, xI - chipW - 8), bw = bR - bx;
     const lh = f + 4;
     const b2 = lh * 2 + 4, bc = lh * 4 + 6, b1 = lh * 2 + 4;
-    const fixed = b2 * 3 + bc + b1 + lh;                   // P, V, PWM, current block, motor, status row
-    let ag = (h - pad * 2 - fixed - lh) / 5;               // with the input label
+    const chipH = f + 6;
+    const gapT = chipH + CHIP_GAP;                         // velocity → current gap, with the torque filter chip
+    const fixed = b2 * 3 + bc + b1 + lh + gapT;            // P, V, PWM, current block, motor, status row, chip gap
+    let ag = (h - pad * 2 - fixed - lh) / 4;               // with the input label
     const showInput = ag >= 10;
-    if (!showInput) ag = (h - pad * 2 - fixed) / 5;
+    if (!showInput) ag = (h - pad * 2 - fixed) / 4;
     ag = clamp(ag, 8, 26);
-    const total = (showInput ? lh : 0) + fixed + ag * 5;
+    const total = (showInput ? lh : 0) + fixed + ag * 4;
     let y = pad + Math.max(0, (h - pad * 2 - total) / 2);
     const ax = bx + Math.min(24, bw * 0.14);               // x of the down arrows
     const tx = bx + 8, vx = bx + 8;                        // name and value x
@@ -287,8 +295,12 @@ export class BlockDiagram {
     this.text(s, tx, line1(yV), 'Velocity loop', 'text', { weight: 500 });
     this.texts.w = this.text(s, vx, line2(yV), '', 'value', { mono: true });
     y = yV + b2;
-    this.arrowLine(s, ax, y, ax, y + ag);
-    y += ag;
+    // the Iq target passes the torque filter on its way to the torque loop
+    const tcx = Math.max(bx, ax - chipW / 2), tcy = y + 5 + chipH / 2;
+    this.style(mk('line', { x1: ax, y1: y, x2: ax, y2: y + 5, 'stroke-width': 1.5 }, s), 'line');
+    this.arrowLine(s, ax, tcy + chipH / 2, ax, y + gapT);
+    this.chip(s, 'torqueFilter', tcx, tcy, chipW, 'filter');
+    y += gapT;
     // current loops: torque (Iq) and flux (Id), each with a name and a value line
     const yC = y;
     this.box(s, 'current', bx, yC, bw, bc);
@@ -303,6 +315,10 @@ export class BlockDiagram {
     this.ledTitle(this.leds.iqLimit.el, 'Torque-current limit reached: the velocity loop asks for more than the limit');
     this.text(s, tx, line1(yC + half), 'Flux loop (Id)', 'text', { weight: 500 });
     this.texts.id = this.text(s, vx, line2(yC + half), '', 'value', { mono: true });
+    // The flux loop's target (a constant 0) has a filter too: a chip right after its name, clear
+    // of the current feedback's arrow on the right, which it does not filter. The name's width is
+    // estimated (fonts are set after the build): about 6.2 × the font size, here with some spare.
+    this.chip(s, 'fluxFilter', Math.min(tx + f * 6.6 + 6, bR - 6 - chipW), line1(yC + half), chipW, 'filter');
     y = yC + bc;
     this.arrowLine(s, ax, y, ax, y + ag);
     y += ag;
@@ -329,8 +345,8 @@ export class BlockDiagram {
     const cap = this.product && this.product.keys && this.product.keys.statusPin;
     if (cap && w >= 240) this.text(s, bx + 20 + f * 7.6, yS, cap, 'muted', { mono: true });
 
-    // feedback: the encoder lane to the position and velocity loops, the current lane to the
-    // current loops; filters sit on the speed and current feedback
+    // feedback: the encoder lane to the position and velocity loops (the speed through its
+    // filter), the current lane straight to the current loops
     const mR = bx + mw;
     const yEnc = yM + b1 * 0.27, yCur = yM + b1 * 0.73;
     const chipX = bR + 4;
@@ -338,10 +354,8 @@ export class BlockDiagram {
     this.arrowPath(s, [mR, yEnc, xO, yEnc, xO, tapP, bR, tapP]);
     this.arrowPath(s, [xO, tapV, chipX + chipW, tapV]);
     this.arrowLine(s, chipX, tapV, bR, tapV);
-    this.arrowPath(s, [mR, yCur, xI, yCur, xI, tapC, chipX + chipW, tapC]);
-    this.arrowLine(s, chipX, tapC, bR, tapC);
+    this.arrowPath(s, [mR, yCur, xI, yCur, xI, tapC, bR, tapC]);
     this.chip(s, 'velocityFilter', chipX, tapV, chipW, 'filter');
-    this.chip(s, 'currentFilter', chipX, tapC, chipW, 'filters');
     // lane labels on the motor's two feedback lines
     const segW = xI - mR;
     if (segW > f * 4.4) {
@@ -357,7 +371,7 @@ export class BlockDiagram {
     t.textContent = str;
   }
 
-  /** @private filter chip on a feedback path */
+  /** @private filter chip on a feedback or target path */
   chip(parent, id, x, yc, w, label) {
     const h = this.fpx(12) + 6;
     const r = mk('rect', { x, y: yc - h / 2, width: w, height: h, rx: h / 2, 'stroke-width': 1.2 }, parent);
@@ -525,8 +539,7 @@ export class BlockDiagram {
         p.rect.setAttribute('stroke-width', on ? 2 : 1.2);
       }
     }
-    const filt = (id) => hl === 'filters' || hl === id
-      || (id === 'currentFilter' && (hl === 'torqueFilter' || hl === 'fluxFilter'));
+    const filt = (id) => hl === 'filters' || hl === id;
     for (const id of Object.keys(this.chips)) {
       const c = this.chips[id];
       const on = filt(id);
@@ -630,14 +643,17 @@ export class BlockDiagram {
   /** @private filter tooltips with the cutoff frequencies when the chapter passes them */
   updateChips() {
     const f = this.opts.filters;
-    const v = this.chips.velocityFilter, c = this.chips.currentFilter;
-    if (!v || !c) return;
-    const hz = (x) => (x >= 1000 ? formatValue(x / 1000, 2) + ' kHz' : formatValue(x, 0) + ' Hz');
-    const vs = f ? `Velocity filter: low-pass at ${hz(TUNING.fVel * num(f.velocity, 1))}` : 'Velocity filter: a low-pass on the measured speed';
-    const cs = f ? `Current filters: torque ${hz(TUNING.fFilter * num(f.torque, 1))}, flux ${hz(TUNING.fFilter * num(f.flux, 1))}`
-      : 'Current filters: low-passes on the measured Iq and Id';
+    const v = this.chips.velocityFilter, t = this.chips.torqueFilter, x = this.chips.fluxFilter;
+    if (!v || !t || !x) return;
+    const hz = (c) => (c >= 1000 ? formatValue(c / 1000, 2) + ' kHz' : formatValue(c, 0) + ' Hz');
+    const at = (c) => (f ? ' at ' + hz(c) : '');
+    const vs = `Velocity filter: a low-pass on the measured speed${at(TUNING.fVel * num(f && f.velocity, 1))}`;
+    const ts = `Torque filter: a low-pass on the Iq target${at(TUNING.fFilter * num(f && f.torque, 1))}`;
+    const xs = `Flux filter: a low-pass on the Id target${at(TUNING.fFilter * num(f && f.flux, 1))}; that target is a constant 0, `
+      + 'so the filter has nothing to smooth';
     if (v.title.textContent !== vs) v.title.textContent = vs;
-    if (c.title.textContent !== cs) c.title.textContent = cs;
+    if (t.title.textContent !== ts) t.title.textContent = ts;
+    if (x.title.textContent !== xs) x.title.textContent = xs;
   }
 
   /** @returns {string} */

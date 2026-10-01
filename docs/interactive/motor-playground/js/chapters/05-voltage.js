@@ -7,27 +7,58 @@
  * bus voltage by itself (snapshot.supplyV) and follows the motor preset.
  *
  * "Sweep" runs the world's sweep machine at the selected voltage only: it
- * ramps from rest at 2000 mm/s² to 1.35 × the analytic 70 % speed (capped at
+ * ramps from rest at 3000 mm/s² to 1.35 × the analytic 70 % speed (capped at
  * 1500 mm/s) and records the sag speed, where the current amplitude first
  * falls below 70 % of its target (chunk 02: that speed scales with the
- * voltage; the slip speed does not). The chapter keeps its own table of
- * results per motor preset and voltage, so sweeping one voltage after
- * another builds the table and an inductance change (a world rebuild) keeps
- * it; the chart gets the current preset's results through its `results`
- * option.
+ * voltage; the slip speed does not). The ramp keeps a sweep to 1500 mm/s
+ * at 0.55 s of motor time, so the 0.5 s scope window shows nearly all of it
+ * (at 2000 mm/s² it took 0.8 s; the sag speeds agree within 2 %, except 79
+ * against 84 mm/s for the 8 mH motor at 12 V). The chapter keeps its own
+ * table of results per motor preset and voltage, so sweeping one voltage
+ * after another builds the table and an inductance change (a world rebuild)
+ * keeps it; the chart gets the current preset's results through its
+ * `results` option.
  *
  * A stalled stepper only catches the field again well below its stall speed
  * (about 100 mm/s at 24 V), so any speed, voltage, current or motor change
  * made while it is stalled restarts it from rest, the way you would on a
- * printer.
+ * printer: in a fresh world, because a stalled rotor can keep spinning at
+ * hundreds of mm/s, and stopping the field under it before the new jog left
+ * the motor stalled after 37 of 267 stalls (12 to 36 V, drag 0 to 0.3 N·m,
+ * 600 to 1500 mm/s), each time with the rotor still turning at 200 to 1300
+ * mm/s when the change came.
  *
  * Run current is set in A rms, like Klipper's run_current for TMC drivers;
  * the world gets the peak phase current (× √2) and the chart labels rms.
  *
- * Calibration (2026-09-23, 3.54 A peak, unloaded): sag speeds 155, 316, 480,
- * 641, 795 mm/s at 12, 24, 36, 48, 60 V (analytic within 4 %); the 8 mH motor
- * 155 and 316 at 24 and 48 V, the 1.5 mH motor 456 and 876. A steady jog
- * holds up to about 460 mm/s at 24 V and 820 at 48 V.
+ * Calibration (2026-10-01, the datasheet motor, 3.54 A peak, unloaded, with
+ * the back-EMF feed-forward in drivers/openloop.js, BEMF_FF_TAU 30 ms): sag
+ * speeds 259, 534, 809, 1075, 1349 mm/s at 12, 24, 36, 48, 60 V (analytic 2
+ * to 3 % higher); the 8 mH motor 166 and 338 at 24 and 48 V (analytic within
+ * 1 %); the 0.8 mH motor 726 and 1468 at 24 and 48 V (analytic 4 to 5 %
+ * higher), while at 60 V it holds 70 % past the 1500 mm/s cap (1820 in a
+ * sweep to 2600). At 600 mm/s the current reaches about 60 % of its target at
+ * 24 V and 102 % at 48 V; at 48 and 60 V the feed-forward lets it run up to
+ * 3 % over the target (13 % on the 0.8 mH motor at 60 V and 1200 mm/s).
+ *
+ * Stalls (2.5 A rms, from the default jog, 3 s at speed): the chart's curve
+ * is the worst case, the coil's voltage drop adding straight to the
+ * back-EMF, which is what a motor with no load sees, so the sweep matches
+ * it. Under load the rotor lags the field and the two no longer peak
+ * together (past 90° of lag the current even works against the magnet,
+ * field weakening; the More info's last two sentences say the first part), so
+ * a loaded motor can make more torque at speed than the curve says, while
+ * the open-loop stepper's mid-band resonance stalls a lightly loaded one
+ * long before the curve runs out. The 1.6 mH motor at 24 V holds up to 700
+ * mm/s with no load and stalls from 725, where the curve still gives it 40 %
+ * of its current; with drag its first stall comes at 650 mm/s with 0.1 N·m
+ * (the curve crosses the load at 891), 600 with 0.2 (720) and 600 with 0.3
+ * (603). At 48 V it holds to 1350 with no load (2319) and to 1300 with
+ * 0.3 N·m (1210); 60 V holds 1500 with up to 0.3 N·m. The 0.8 mH motor holds
+ * 1400 mm/s at 24 V with 0.3 N·m (815), and the 8 mH motor stalls in bands
+ * from 300 mm/s at 24 V with no load (923). So the chart has no load line:
+ * the curve predicts the stall only for heavy drag on the 1.6 mH motor
+ * (0.3 N·m: the first stall within 1 to 18 % of the crossing at 12 to 48 V).
  */
 import { formatValue, formatRms } from '../format.js';
 import { MOTOR_PRESETS, torqueSpeedCurve } from '../sim/presets.js';
@@ -38,13 +69,13 @@ const TAU = 2 * Math.PI;
 const RD = 40;
 const VOLTAGES = [12, 24, 36, 48, 60];
 const PRESETS = [
-  { value: 'stepperLowL', label: '1.5 mH', title: 'Low inductance: 1.5 mH, 0.6 Ω' },
-  { value: 'stepper', label: '3 mH', title: 'Typical NEMA 17: 3 mH, 1.14 Ω' },
+  { value: 'stepperLowL', label: '0.8 mH', title: 'Low inductance: 0.8 mH, 0.6 Ω' },
+  { value: 'stepper', label: '1.6 mH', title: 'Typical NEMA 17: 1.6 mH, 1.2 Ω' },
   { value: 'stepperHighL', label: '8 mH', title: 'High inductance: 8 mH, 2.4 Ω' },
 ];
-const PRESET_NAME = { stepperLowL: '1.5 mH', stepper: '3 mH', stepperHighL: '8 mH' };
+const PRESET_NAME = { stepperLowL: '0.8 mH', stepper: '1.6 mH', stepperHighL: '8 mH' };
 /** Sweep: ramp acceleration (mm/s²), sag level, scope window (s), end speed margin over the analytic sag speed. */
-const SWEEP = { accel: 2000, sagFrac: 0.7, window: 0.5, margin: 1.35 };
+const SWEEP = { accel: 3000, sagFrac: 0.7, window: 0.5, margin: 1.35 };
 /** Scope windows (s) for steady running: the shortest that holds four electrical cycles. */
 const WINDOWS = [0.005, 0.01, 0.02, 0.03, 0.05, 0.1];
 /** Stall test: the rotor lost at least STALL_MM (two electrical cycles) within STALL_S of sim time. */
@@ -144,14 +175,16 @@ function clearSweepResults(ctx) {
 
 /* ---------------- motion ---------------- */
 
-/** Jog at the reader's speed; from rest when the motor is stalled (it would not catch the field). */
+/**
+ * Jog at the reader's speed. A stalled motor starts over in a fresh world, at rest: its rotor can
+ * still spin at hundreds of mm/s, and it would not catch a field that starts again under it.
+ */
 function drive(ctx) {
-  const w = ctx.world;
   if (st.stalled) {
-    w.command('stop', { immediate: true });
+    ctx.app.reconfigure();               // scenario() reads st: same bus, current, motor and drag
     rebaseStall();
   }
-  w.command('jog', { speedMmS: st.speed });
+  ctx.world.command('jog', { speedMmS: st.speed });
 }
 
 /**
@@ -266,17 +299,18 @@ export default {
   },
 
   traces: [
-    // Legend room for the ranges a sweep leaves behind ("0 to 4 A" after "±5 A", "−20 to 60 V"),
-    // so the end of a sweep moves nothing (B-006).
+    // Legend room for the widest ranges the chapter reaches ("0 to 4 A" after "±5 A"; up to
+    // "−50 to 100 V" for the 37 V back-EMF at 1500 mm/s against a 60 V bus), so a sweep, a stall
+    // or a speed change moves nothing (B-006).
     { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'target', dashed: true, scaleChars: 8 },
     { name: 'iA', label: 'Phase A current', unit: 'A', color: 'phase-a' },
-    { name: 'bemfA', label: 'Back-EMF, phase A', unit: 'V', color: 'axis-q', scaleChars: 11 },
+    { name: 'bemfA', label: 'Back-EMF, phase A', unit: 'V', color: 'axis-q', scaleChars: 12 },
     { name: 'uMag', label: 'Voltage used', unit: 'V', color: 'phase-c' },
     // 'fit' for the volts group: the data extent (−back-EMF up to the bus), not ±2× the bus.
     { name: 'uLimit', label: 'Bus voltage', unit: 'V', color: 'target', dashed: true, range: 'fit' },
-    // Fixed range: the motor makes at most Kt × 3.54 A = 0.78 N·m; auto-zoom would blow the
+    // Fixed range: the motor makes at most Kt × 3.54 A = 0.55 N·m; auto-zoom would blow the
     // no-load ripple up to full height.
-    { name: 'torque', label: 'Torque', unit: 'N·m', color: 'phase-b', range: [-1, 1] },
+    { name: 'torque', label: 'Torque', unit: 'N·m', color: 'phase-b', range: [-0.6, 0.6] },
   ],
 
   readouts(snap, metrics, ctx) {
@@ -359,7 +393,9 @@ export default {
         const now = performance.now();
         if (now - st.stallSaid < 3000) return false;
         st.stallSaid = now;
-        return 'The motor stalled: not enough torque at this speed';
+        // Not "not enough torque": with little load the open-loop stepper's mid-band resonance stalls it
+        // while the chart still gives it about 40 % of its current (see the header).
+        return 'The motor stalled: the rotor lost the field';
       }
       case 'stallDetected':
         return false;                    // StallGuard is chapter 4's topic; at speed it only adds noise here
@@ -381,7 +417,7 @@ export default {
 
   tryThis: [
     'Sweep at 24 V, then at 48 V, and compare the speeds in the table.',
-    'At 24 V, raise the speed to 400 mm/s: the current falls short of the dashed target. Switch to 48 V.',
+    'At 24 V, raise the speed to 600 mm/s: the current falls short of the dashed target. Switch to 48 V.',
     'Switch to the 8 mH motor and sweep again.',
   ],
 
@@ -390,5 +426,6 @@ export default {
     + 'back-EMF λω<sub>e</sub> through the coil. ω<sub>e</sub> is the electrical speed, 50 times the shaft speed '
     + 'on a 1.8° stepper. At speed a chopper holds each bridge on for most of the cycle, so V is the fundamental '
     + 'of a square wave, 4/π times the bus voltage. The sweep records where the current falls below 70% of its '
-    + 'target.</p>',
+    + 'target. The curve is the no-load worst case, where the coil\'s own voltage and the back-EMF peak together. '
+    + 'Under load the rotor lags the field, the two peak apart, and the torque can exceed the curve.</p>',
 };

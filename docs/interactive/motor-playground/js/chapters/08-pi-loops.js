@@ -9,39 +9,48 @@
  * in the block diagram.
  *
  * Presets set the multipliers to one symptom row of the calibration tables
- * (only the rows this model reproduces; the others are listed under "More info"
- * as things you would also see on hardware), pick a fitting test move, size
+ * (only the rows this model shows on the test moves' default speed; the others
+ * are listed under "More info"), pick a fitting test move, size
  * the gantry loupe to the symptom, and name the symptom beside the preset
  * after 3.5 s of sim time or when the reader presses "Reveal". A line under
  * the preset select names the test move the preset sets, and a note in the
  * Test move section says that a preset switches it. The
- * multipliers were measured on the stepper preset (chunk 07, STATUS.md
- * "Preset multipliers"); the BLDC preset shows the same symptoms, mostly
- * stronger, and where it differs (velocity P too low, torque I too high,
- * filters too high) the symptom sentence depends on the motor type. Moving
+ * multipliers were measured on both motor presets (2026-10-01, STATUS.md
+ * "Preset multipliers"); where the motors differ the symptom sentence depends
+ * on the motor type. Moving
  * a slider switches the select to "Custom" (a pending reveal still comes on
  * time, naming the preset the Custom state started from). A motor-type
  * change keeps the preset, or the Custom state and the preset it started
  * from: the framework replays the select, then every slider off its default.
  *
+ * The driver model follows a hardware FOC chip (sim/drivers/foc.js): an I
+ * slider moves its loop's corner frequency and the I gain scales with the
+ * loop's P slider; the torque and flux filters smooth the two current targets
+ * (the flux target is a constant 0, so the flux filter has nothing to do,
+ * which a line under its slider says), the velocity filter the measured speed.
+ *
  * Test moves loop on their own: a path restarts one second after it ends
  * (the stop metrics need 0.3 s, the rest-oscillation metric a few 100 ms
  * periods), the hold moves bump the carriage every 1.5 s or load it with a
  * steady torque. Readout thresholds come from the optimal run: corner error
- * 0.08 mm, no overshoot, 0.03 A of "oscillation" at rest (the noise floor),
- * noise index 0.3 % of the rated current, following error v / Kpx (the
- * position loop is P-only, without feed-forward), heat counted above what the
- * load itself needs (the load hold's 0.15 N·m needs 20% of rated on the BLDC,
- * 4% on the stepper).
+ * 0.06 mm, no overshoot, 0.03 to 0.04 A of "oscillation" at rest (the noise
+ * floor), noise index 0.5 % of the rated current, following error v / Kpx (the
+ * position loop is P-only, without feed-forward), a 0.33 mm dip that heals in
+ * 70 ms after a bump (0.2 mm on the BLDC), heat counted above what the load
+ * itself needs (the load hold's 0.15 N·m needs 22% of rated on the BLDC, 8% on
+ * the stepper).
  *
- * Speed and acceleration (B-009, 2026-10-01): the test move's sliders reach 1000 mm/s and
- * 100 000 mm/s², past what printers run; the supply stays 24 V. From about 600 mm/s the stepper
- * runs out of voltage (its back-EMF) and trails far beyond speed / Kpx: at 1000 mm/s by 26 mm
- * at 20 000 mm/s² and 48 mm at 100 000 mm/s² with the optimal gains (113 mm with flux P too
- * high). The BLDC keeps up (6 and 10 mm). At 48 V three stepper presets (position P too high,
- * position I too high, velocity P too low) run away into the frame with 24 to 26 A at 800 mm/s:
- * the model's current loops have no feed-forward of the d/q cross-coupling (ωL·I), which the
- * voltage limit keeps in check on 24 V.
+ * Speed, acceleration and bus voltage: the test move's sliders reach 1000 mm/s and
+ * 100 000 mm/s², past what printers run, on a 24 or 48 V bus (48 V by default; B-014 kept the
+ * chapter at 24 V until the current loops could follow the stepper's electrical frequency).
+ * With the optimal gains the toolhead trails by speed / Kpx at any speed the supply can hold:
+ * 4.2 mm at 800 mm/s and 5.3 mm at 1000 mm/s on 48 V. On 24 V the stepper follows 800 mm/s
+ * the same way, but at 1000 mm/s it is out of voltage (its back-EMF passes the bus near
+ * 940 mm/s): it trails by 7.8 mm at 20 000 mm/s² and 17 mm at 100 000 mm/s². The BLDC is never
+ * short of voltage, but its 0.34 N·m gives the gantry at most about 60 000 mm/s², so at
+ * 100 000 mm/s² it trails by 10 mm on either supply. No preset loses the path at the top of
+ * the ranges; the farthest behind is flux P too high on the stepper at 24 V (99 mm at
+ * 1000 mm/s and 100 000 mm/s²: its 4 kHz ring uses up the voltage).
  */
 import { formatValue } from '../format.js';
 import { TUNING } from '../sim/drivers/foc.js';
@@ -52,9 +61,12 @@ const LINE = { start: [50, 50], points: [[200, 50], [50, 50]], laps: 1 };
 /**
  * Where the test moves run ([x0, y0, x1, y1] mm, the square and the line with room for lag and
  * overshoot): the gantry loupe takes the largest circle at the view's top right that keeps clear
- * of it (B-010).
+ * of it (B-010). At 1000 mm/s and 100 000 mm/s² the presets that overshoot most (velocity P too
+ * low, position I too high, position P too high on the line) reach x 32 to 213 and y 35 to 171;
+ * the loupe keeps clear of the area widened by the toolhead's half size (at least 5 mm), which
+ * covers the 1.5 mm past it.
  */
-const MOVE_AREA = [35, 35, 215, 165];
+const MOVE_AREA = [30, 30, 215, 169];
 /** Rest between two runs of a path (sim s). */
 const PAUSE_S = 1.0;
 /** Settling time after a stop before a path starts (sim s), so its metrics start clean. */
@@ -66,23 +78,27 @@ const BUMP_WINDOW_S = 1.2;
 const REVEAL_S = 3.5;
 /** Load torque of the "hold against a load" move (N·m). */
 const HOLD_TORQUE = 0.15;
-/** Bump torque per motor type (N·m): the BLDC preset makes at most 0.34 N·m and cannot hold a 0.6 N·m shove. */
-const BUMP_TORQUE = { stepper: 0.6, bldc: 0.25 };
+/** Bump torque per motor type (N·m), under what each motor can make (0.55 and 0.34 N·m at the rated current). */
+const BUMP_TORQUE = { stepper: 0.4, bldc: 0.25 };
 /** Bump dip of the optimal run per motor type (mm), the readout's reference. */
-const DIP_REF = { stepper: 0.52, bldc: 0.2 };
+const DIP_REF = { stepper: 0.33, bldc: 0.2 };
 /** Drag slider maximum per motor type (N·m); the BLDC has little torque to spare. */
 const DRAG_MAX = { stepper: 0.3, bldc: 0.2 };
 /** Speed fraction that counts as cruise for the following-error readout. */
 const CRUISE = 0.9;
 /** Rest-oscillation amplitude below which the readout shows no frequency (the noise floor, A). */
-const OSC_FLOOR = 0.06;
+const OSC_FLOOR = 0.05;
+/** Bus voltages the selector offers, and the one a visit starts with. */
+const BUS_V = [24, 48];
+const BUS_DEFAULT = 48;
 /**
  * Heat readout thresholds, in points of "% of rated" above the heat the load needs (S.loadHeat): a
  * well-tuned axis stays within HEAT_OK of it, and more than HEAT_WARN above it is the tuning's
- * doing. Without drag the optimal run stays within 1.6 points of it on both motors; the presets
- * that heat the motor add 7 (stepper torque P or flux P too high) to over 90 points.
+ * doing. The optimal run stays within two points of it on both motors (the BLDC holding the
+ * 0.15 N·m load reads 22% against the 20% the load needs: its Iq carries the sensor ripple); the
+ * presets that heat the motor add 8 (stepper torque P or flux P too high on 48 V) to over 70 points.
  */
-const HEAT_OK = 2, HEAT_WARN = 10;
+const HEAT_OK = 3, HEAT_WARN = 10;
 /** Time constant of the world's heat reading (s, HEAT_TAU in world.js); the load's heat follows it. */
 const HEAT_TAU_S = 1;
 const LOUPE_DEFAULT = 1.5;
@@ -98,9 +114,10 @@ const GAINS = [
   { id: 'fluxI', label: 'Flux I', loop: 'flux', group: 'Torque and flux loops' },
 ];
 const FILTERS = [
-  { id: 'torque', ctl: 'torqueFilter', label: 'Torque filter', hl: 'torqueFilter' },
-  { id: 'flux', ctl: 'fluxFilter', label: 'Flux filter', hl: 'fluxFilter' },
-  { id: 'velocity', ctl: 'velocityFilter', label: 'Velocity filter', hl: 'velocityFilter' },
+  { id: 'torque', ctl: 'torqueFilter', label: 'Torque filter', hl: 'torqueFilter', on: 'the Iq target' },
+  { id: 'flux', ctl: 'fluxFilter', label: 'Flux filter', hl: 'fluxFilter', on: 'the Id target',
+    help: 'Smooths the flux loop\'s target. That target is a constant zero, so this filter changes nothing here.' },
+  { id: 'velocity', ctl: 'velocityFilter', label: 'Velocity filter', hl: 'velocityFilter', on: 'the measured speed' },
 ];
 
 const MOVES = [
@@ -120,36 +137,36 @@ const MOVES = [
  */
 const PRESETS = [
   { id: 'optimal', label: 'Optimal (×1)', move: 'square', loupeMm: LOUPE_DEFAULT,
-    symptom: 'corners within 0.1 mm, no overshoot, and only sensor noise at rest.' },
-  { id: 'posP-high', label: 'Position P too high', gains: { positionP: 8 }, move: 'line', highlight: 'position', loupeMm: LOUPE_DEFAULT,
-    symptom: 'the axis overshoots its stops and then buzzes there at about 150 Hz with amps of current (see the overshoot and the rest oscillation). On hardware you hear a loud buzz at every stop.' },
+    symptom: 'corners within 0.06 mm, no overshoot, and only sensor noise at rest.' },
+  { id: 'posP-high', label: 'Position P too high', gains: { positionP: 10 }, move: 'line', highlight: 'position', loupeMm: LOUPE_DEFAULT,
+    symptom: (ctx) => 'the position loop now jumps on every single encoder count: amps of current in every move, which on hardware '
+      + 'is a loud buzz and a hot motor (see Heat)'
+      + (ctx.motorType === 'bldc' ? '. The stops stay clean on this motor.' : ', and the axis overshoots its stops by about 0.05 mm.') },
   { id: 'posP-low', label: 'Position P too low', gains: { positionP: 0.25 }, move: 'square', highlight: 'position', loupeMm: 4,
-    symptom: 'the toolhead runs about 3 mm behind the command at 150 mm/s and cuts every corner (corner error 0.6 mm), so prints come out smaller than commanded.' },
+    symptom: 'the toolhead runs about 3.2 mm behind the command at 150 mm/s and cuts every corner (corner error 0.5 mm), so prints come out smaller than commanded.' },
   { id: 'posI-high', label: 'Position I too high', gains: { positionI: 1 }, move: 'square', highlight: 'position', loupeMm: 0.6,
-    symptom: 'integral windup. The toolhead overshoots each corner by about 0.1 mm and hooks back, and after a bump it creeps back to the line instead of snapping to it.' },
-  { id: 'velP-high', label: 'Velocity P too high', gains: { velocityP: 3 }, move: 'square', highlight: 'velocity', loupeMm: LOUPE_DEFAULT,
-    symptom: 'the speed loop hunts at about 150 Hz with amps of current, at rest and after every corner. On hardware you would see ringing-like artifacts on the print.' },
-  { id: 'velP-low', label: 'Velocity P too low', gains: { velocityP: 0.25 }, move: 'square', highlight: 'velocity', loupeMm: 4,
-    symptom: (ctx) => `the axis lags the target speed, rounds every corner by ${ctx.motorType === 'bldc' ? 'about 1' : '2 to 3'} mm `
-      + 'and wobbles (30 to 45 Hz) after each stop.' },
-  { id: 'velI-high', label: 'Velocity I too high', gains: { velocityI: 4 }, move: 'square', highlight: 'velocity', loupeMm: LOUPE_DEFAULT,
-    symptom: 'the speed oscillates at about 100 Hz after every corner and keeps oscillating at rest.' },
+    symptom: 'integral windup. The toolhead overshoots each corner by about 0.1 mm and hooks back, keeps hunting faintly at rest, and after a bump it creeps back to the line instead of snapping to it.' },
+  { id: 'velP-high', label: 'Velocity P too high', gains: { velocityP: 3.5 }, move: 'square', highlight: 'velocity', loupeMm: LOUPE_DEFAULT,
+    symptom: 'the speed loop hunts at about 270 Hz with amps of current, moving or at rest (see Oscillation at rest and Heat). On hardware you would hear it growl and see ringing-like artifacts on the print.' },
+  { id: 'velP-low', label: 'Velocity P too low', gains: { velocityP: 0.1 }, move: 'square', highlight: 'velocity', loupeMm: 4,
+    symptom: 'the axis lags the target speed, rounds every corner by 1 to 2 mm, overshoots its stops and wobbles slowly '
+      + '(20 to 30 Hz) after each one.' },
+  { id: 'velI-high', label: 'Velocity I too high', gains: { velocityI: 10 }, move: 'square', highlight: 'velocity', loupeMm: LOUPE_DEFAULT,
+    symptom: 'the speed oscillates at about 130 Hz with amps of current, moving or at rest: the motor growls and heats up (see Heat).' },
   { id: 'velI-low', label: 'Velocity I too low', gains: { velocityI: 0.1 }, move: 'holdBump', highlight: 'velocity', loupeMm: LOUPE_DEFAULT,
-    symptom: 'a bump dips twice as deep and takes four times longer to heal, and under drag the axis runs a few mm/s slow until the integrator catches up.' },
-  { id: 'torqueP-high', label: 'Torque P too high', gains: { torqueP: 6 }, move: 'square', highlight: 'torque', loupeMm: LOUPE_DEFAULT,
-    symptom: 'the current loop rings at about 1.1 kHz (a high-pitched whine) with more than an amp of current, even at rest. No outer loop can fix this.' },
-  { id: 'torqueI-high', label: 'Torque I too high', gains: { torqueI: 10 }, move: 'square', highlight: 'torque', loupeMm: LOUPE_DEFAULT,
-    symptom: (ctx) => (ctx.motorType === 'bldc'
-      ? 'the current loop is unstable and buzzes at about 800 Hz with amps of current when stationary.'
-      : 'a faint 400 Hz buzz when stationary, three times the normal noise; a little more and the current loop goes unstable.') },
-  { id: 'fluxP-high', label: 'Flux P too high', gains: { fluxP: 5 }, move: 'square', highlight: 'flux', loupeMm: LOUPE_DEFAULT,
-    symptom: 'the flux loop rings at about 1 kHz, so Id, which makes no torque, swings by more than an amp: audible noise and a motor running hot for nothing (see the Heat readout).' },
-  { id: 'filters-low', label: 'Filters too low', filters: { torque: 0.5, flux: 0.5, velocity: 0.33 }, move: 'square', highlight: 'filters', loupeMm: 4,
-    symptom: 'the loops see their measurements late. The corners round off and after each stop the axis hunts at about 65 Hz; push the filters lower and the current loops go unstable.' },
+    symptom: 'a bump dips twice as deep and takes four times longer to heal: the integral part, which should take over the load, builds up too slowly.' },
+  { id: 'torqueP-high', label: 'Torque P too high', gains: { torqueP: 4 }, move: 'square', highlight: 'torque', loupeMm: LOUPE_DEFAULT,
+    symptom: (ctx) => `the current loop rings at about 4 kHz (a high-pitched whine) with ${ctx.motorType === 'bldc' ? 'amps' : 'about an amp'} `
+      + 'of current, even at rest. No outer loop can fix this.' },
+  { id: 'torqueI-high', label: 'Torque I too high', gains: { torqueI: 6 }, move: 'square', highlight: 'torque', loupeMm: LOUPE_DEFAULT,
+    symptom: 'a buzz between 1 and 2 kHz when stationary, several times the normal noise (see the Noise index): the torque loop is close to ringing.' },
+  { id: 'fluxP-high', label: 'Flux P too high', gains: { fluxP: 4 }, move: 'square', highlight: 'flux', loupeMm: LOUPE_DEFAULT,
+    symptom: (ctx) => `the flux loop rings at about 4 kHz, so Id, which makes no torque, swings by ${ctx.motorType === 'bldc' ? 'amps' : 'about an amp'}: `
+      + 'audible noise and heat for nothing (see the Flux current peak and Heat readouts).' },
+  { id: 'filters-low', label: 'Filters too low', filters: { torque: 0.25, flux: 0.25, velocity: 0.25 }, move: 'square', highlight: 'filters', loupeMm: 4,
+    symptom: 'the velocity loop gets its signals late and hunts at about 65 Hz with amps of current, moving or at rest. The corners round off too (corner error 0.5 to 0.8 mm).' },
   { id: 'filters-high', label: 'Filters too high', filters: { torque: 10, flux: 10, velocity: 10 }, move: 'square', highlight: 'filters', loupeMm: LOUPE_DEFAULT,
-    symptom: (ctx) => 'sensor noise passes straight into the current. ' + (ctx.motorType === 'bldc'
-      ? 'The noise index rises by half while moving (a hiss); the motion stays fine.'
-      : 'The noise index more than doubles (a hiss while moving); the motion stays fine.') },
+    symptom: 'the encoder\'s graininess passes straight into the current. The noise index rises more than twentyfold while moving (a loud hiss) and falls back at rest; the path stays fine.' },
 ];
 const PRESET_BY_ID = new Map(PRESETS.map((p) => [p.id, p]));
 
@@ -171,6 +188,7 @@ function resetState() {
   S.move = 'square';
   S.speed = 150;
   S.accel = 5000;
+  S.bus = BUS_DEFAULT;
   S.drag = 0;
   S.doneAt = -1;
   S.startAt = -1;
@@ -206,7 +224,7 @@ function posError(snap) {
 
 /**
  * Decimals of a distance readout (mm), so it stays within four characters up to 999 mm: at
- * 1000 mm/s the stepper, out of voltage on 24 V, trails by up to 113 mm (B-009).
+ * 1000 mm/s on 24 V the stepper with flux P too high trails by up to 99 mm.
  */
 const mmDigits = (v) => (v >= 100 ? 0 : v >= 10 ? 1 : 2);
 
@@ -348,10 +366,10 @@ function symptomHtml(ctx) {
 }
 
 const ROWS = [
-  ['Whine or buzz at rest', 'torque P or I down'],
+  ['Whine at rest', 'torque P or flux P down'],
   ['Speed hunts after corners', 'velocity P or I down'],
   ['Rounded corners, lag', 'velocity P, then position P up'],
-  ['Overshoot and buzz at stops', 'position P down'],
+  ['Buzz in every move', 'position P down'],
   ['Corner overshoot, hook back', 'position I to 0'],
   ['Hiss while moving', 'filters down'],
 ];
@@ -362,21 +380,27 @@ const TEXT = '<p>Chapter 7\'s torque and flux loops are the inner half of a casc
   + '<p>Each is a PI controller: <strong>P</strong> reacts to the error now (too little lags, too much oscillates), '
   + '<strong>I</strong> removes a steady offset (too much winds up). Tune from the inside out: no outer loop can calm '
   + 'a ringing torque loop.</p>'
-  + '<p>The <strong>filters</strong> smooth the measured currents and speed: too high lets sensor noise through '
-  + '(hiss), too low delays the loops until they oscillate.</p>'
+  + '<p>The <strong>filters</strong> smooth the measured speed and Iq target: too high passes the encoder\'s '
+  + 'graininess (hiss), too low delays the velocity loop until it oscillates.</p>'
   + '<table><tr><th>Symptom</th><th>Knob</th></tr>'
   + ROWS.map(([s, k]) => `<tr><td>${s}</td><td>${k}</td></tr>`).join('')
   + '</table>';
 
-const DEEPER = `<p>Loop bandwidths in this model: current loops ${TUNING.fc} Hz with their sense filters at `
-  + `${formatValue(TUNING.fFilter / 1000, 1)} kHz, velocity loop ${TUNING.fv} Hz with its filter at ${TUNING.fVel} Hz, `
-  + `position loop ${TUNING.fx} Hz. The position loop has no feed-forward, so at cruise the toolhead trails the command by `
-  + `speed / P (${formatValue(150 / (2 * Math.PI * TUNING.fx), 2)} mm at 150 mm/s) even when well tuned; the corners `
-  + 'stay sharp because both axes trail alike. From about 600&nbsp;mm/s the stepper runs out of voltage on this '
-  + '24&nbsp;V supply (chapter 5) and trails far more, whatever the tuning; the BLDC keeps up.</p>'
-  + '<p>On hardware you would also see symptoms this model does not reproduce, so they have no preset: torque P too '
-  + 'low (overshoot on fast moves), torque I too low (slow position loss under a static load), flux P too low (less '
-  + 'torque at speed) and position I too low (drift during long prints).</p>';
+/**
+ * "More info". What limits the top of the ranges depends on the motor: the stepper's back-EMF
+ * passes a 24 V bus near 940 mm/s; the BLDC's 0.34 N·m, less friction, accelerates its half of the
+ * gantry (3.5e-5 kg·m²) at 57 000 mm/s² at most.
+ */
+const deeper = (ctx) => `<p>The current loops run at ${TUNING.fc} Hz, the velocity loop at ${TUNING.fv} Hz (its filter at `
+  + `${TUNING.fVel} Hz, the torque filter at ${formatValue(TUNING.fFilter / 1000, 1)} kHz) and the position loop at `
+  + `${TUNING.fx} Hz. An I slider moves its loop's corner frequency; the I gain also scales with that loop's P. With no `
+  + `feed-forward, the toolhead trails the command by speed / P (${formatValue(150 / (2 * Math.PI * TUNING.fx), 2)} mm at `
+  + '150&nbsp;mm/s). '
+  + (ctx.motorType === 'bldc'
+    ? 'The BLDC has voltage to spare, but its torque caps the acceleration near 57,000&nbsp;mm/s².</p>'
+    : 'On 24&nbsp;V the stepper runs out of voltage near 900&nbsp;mm/s and trails more.</p>')
+  + '<p>Torque P or flux P too low shows only on the fastest moves: try ×0.1 at 1000&nbsp;mm/s and 100,000&nbsp;mm/s². On '
+  + 'hardware, torque I or position I too low also show (a sag under load, drift on long prints).</p>';
 
 export default {
   id: 'pi-loops', number: 8, title: 'The four PI loops', short: 'PI loops',
@@ -397,7 +421,7 @@ export default {
   scenario(motorType) {
     return {
       motorType, motorPreset: motorType === 'bldc' ? 'bldc' : 'stepper', driver: 'foc', driverMode: 'position',
-      mechanics: 'corexy', supplyV: 24, path: null, start: { x: 50, y: 50 },
+      mechanics: 'corexy', supplyV: BUS_DEFAULT, path: null, start: { x: 50, y: 50 },
       planner: { maxVelocity: 150, accel: 5000, scv: 5 }, loads: { drag: 0, torque: 0 },
       foc: { gains: 'optimal', filters: { torque: 1, flux: 1, velocity: 1 } },
     };
@@ -422,13 +446,18 @@ export default {
       type: 'slider', id: g.id, label: g.label, group: g.group, value: S.gains[g.id], caption: keys[g.id],
       format: fmtMult, onChange: (v, c) => setGain(c, g, v),
     }, g.id === 'positionI'
-      ? { min: 0, max: 4, step: 0.05, title: 'Multiples of a reference integral gain; 0 is the well-tuned value' }
-      : { min: 0.1, max: 10, step: 0.01, log: true });
-    const filt = (f) => ({
+      ? { min: 0, max: 4, step: 0.05,
+        title: 'Multiples of a reference integral gain; 0 is the well-tuned value. The gain also scales with Position P' }
+      : { min: 0.1, max: 10, step: 0.01, log: true },
+    g.id !== 'positionI' && g.id.endsWith('I')
+      ? { title: `Moves the loop's corner frequency; the integral gain also scales with ${g.label.replace(/ I$/, ' P')}` }
+      : null);
+    // The flux filter's help line: its target never changes, so its slider changes nothing.
+    const filt = (f) => [{
       type: 'slider', id: f.ctl, label: f.label, group: 'Filters', min: 0.25, max: 10, step: 0.01, log: true,
       value: S.filters[f.id], caption: keys[f.ctl], format: fmtMult, onChange: (v, c) => setFilter(c, f, v),
-      title: 'Multiples of the well-tuned cutoff frequency',
-    });
+      title: `A low-pass on ${f.on}, in multiples of its well-tuned cutoff frequency`,
+    }].concat(f.help ? [{ type: 'note', kind: 'help', group: 'Filters', html: f.help }] : []);
     // A product's own tuning advice (notes.pi) takes the place of the generic hardware sentence.
     const pn = ctx.product.notes && ctx.product.notes.pi;
     const note = '×1 is a well-tuned value for this simulated motor. '
@@ -451,12 +480,16 @@ export default {
       { type: 'slider', id: 'accel', label: 'Acceleration', group: 'Test move', min: 1000, max: 100000, step: 1, sig: 2, log: true,
         value: S.accel, unit: 'mm/s²', live: false,
         onChange: (v, c) => { S.accel = v; c.world.set('planner.accel', v); startMove(c); } },
+      { type: 'segmented', id: 'bus', label: 'Bus voltage', group: 'Test move', value: S.bus,
+        options: BUS_V.map((v) => ({ value: v, label: v + ' V' })),
+        title: 'The driver\'s supply: at speed the motor\'s back-EMF uses it up (chapter 5)',
+        onChange: (v, c) => { S.bus = v; c.world.set('supplyV', v); startMove(c); } },
       { type: 'slider', id: 'drag', label: 'Drag', group: 'Test move', min: 0, max: DRAG_MAX[type] || 0.3, step: 0.01, value: S.drag,
         unit: 'N·m', onChange: (v, c) => { S.drag = v; c.world.command('setLoad', { drag: v }); } },
       { type: 'button', id: 'bump', label: 'Bump', group: 'Test move',
-        onClick: (c) => c.world.command('bump', { torque: BUMP_TORQUE[c.motorType] || 0.6 }) },
+        onClick: (c) => c.world.command('bump', { torque: BUMP_TORQUE[c.motorType] || BUMP_TORQUE.stepper }) },
       ...GAINS.map(gain),
-      ...FILTERS.map(filt),
+      ...FILTERS.flatMap(filt),
       { type: 'button', id: 'reset', label: 'Reset to optimal', kind: 'primary', group: 'Reference',
         onClick: (c) => { applyPreset(c, 'optimal'); c.app.setControlValue('preset', 'optimal'); } },
       { type: 'note', group: 'Reference', html: note },
@@ -489,7 +522,7 @@ export default {
     if (S.startAt >= 0 && t >= S.startAt) { S.startAt = -1; runPath(ctx); }
     if (S.doneAt >= 0 && t - S.doneAt >= PAUSE_S) runPath(ctx);
     if (S.move === 'holdBump' && S.nextBump >= 0 && t >= S.nextBump) {
-      w.command('bump', { torque: BUMP_TORQUE[ctx.motorType] || 0.6 });
+      w.command('bump', { torque: BUMP_TORQUE[ctx.motorType] || BUMP_TORQUE.stepper });
       S.nextBump = t + BUMP_EVERY_S;
     }
     if (S.revealAt >= 0 && t >= S.revealAt) reveal(ctx);
@@ -514,8 +547,8 @@ export default {
     S.idPeak = id > S.idPeak ? id : S.idPeak * 0.985;
     // The heat the load needs whatever the tuning (a fraction of rated, like metrics.heat): the load
     // torque's current over the rated current, squared. The load hold holds HOLD_TORQUE, the drag acts
-    // while the gantry moves. The same torque costs the BLDC about 5.4 times the stepper's heat
-    // (Kt·Irated 0.34 against 0.78 N·m). Low-passed like the world's heat reading, so the Heat chip's
+    // while the gantry moves. The same torque costs the BLDC about 2.6 times the stepper's heat
+    // (Kt·Irated 0.34 against 0.55 N·m). Low-passed like the world's heat reading, so the Heat chip's
     // thresholds follow a load switched on or off at the pace of the reading itself.
     const mp = MOTOR_PRESETS[ctx.motorType] || MOTOR_PRESETS.stepper;
     const r = ((S.move === 'holdLoad' ? HOLD_TORQUE : 0) + (pl.mode !== 'idle' ? S.drag : 0)) / (mp.Kt * mp.Irated);
@@ -533,7 +566,7 @@ export default {
     const oscText = osc.amp > OSC_FLOOR && osc.freq > 0
       ? `${formatValue(osc.amp, 2)} A at ${formatValue(osc.freq, 0)} Hz`
       : `${formatValue(osc.amp, 2)} A`;
-    // Every value keeps room for what the worst preset makes of it ("3.77 A at 165 Hz", 10.05%,
+    // Every value keeps room for what the worst preset makes of it ("1.43 A at 4165 Hz", 121.24%,
     // 1200 ms), so the chip rows stay put as a preset's symptom builds up (B-006).
     const items = [];
     if (S.move === 'holdBump') {
@@ -561,9 +594,9 @@ export default {
         title: 'Largest distance behind the commanded point at cruise speed (a P-only position loop trails by speed / Kpx)' });
     }
     items.push({ label: 'Oscillation at rest', value: oscText, warn: osc.amp > 0.1, ok: osc.amp > 0 && osc.amp <= OSC_FLOOR,
-      minChars: 16, title: 'Iq oscillation while the gantry holds still (0.03 A is the sensor-noise floor)' });
+      minChars: 17, title: 'Iq oscillation while the gantry holds still (0.03 A is the sensor-noise floor)' });
     const nz = metrics.noiseIdx * 100;
-    items.push({ label: 'Noise index', value: nz, unit: '%', digits: 2, warn: nz > 0.8, ok: nz <= 0.5, minChars: 6,
+    items.push({ label: 'Noise index', value: nz, unit: '%', digits: 2, warn: nz > 1, ok: nz <= 0.6, minChars: 6,
       title: 'High-frequency content of the torque loop\'s output as a share of the rated current' });
     items.push({ label: 'Flux current peak', value: S.idPeak, unit: 'A', digits: 2, warn: S.idPeak > 0.5, ok: S.idPeak <= 0.2,
       minChars: 4, title: 'Recent peak of |Id|, the current that heats the motor without making torque' });
@@ -579,8 +612,8 @@ export default {
   text: (ctx) => TEXT + symptomHtml(ctx),
   tryThis: [
     'Run each preset and name the symptom before it is revealed.',
-    'Set torque P to ×6, then try to calm the whine with position P or velocity P. You can\'t: fix the inner loop first.',
+    'Set torque P to ×4, then try to calm the whine with position P or velocity P. You can\'t: fix the inner loop first.',
     'Pick a bad preset and tune it back to good with the sliders, checking the readouts against the optimal run.',
   ],
-  deeper: () => DEEPER,
+  deeper,
 };

@@ -14,17 +14,24 @@
  * during Home's move-out, it brakes and homes once from where the carriage
  * comes to rest (not a second pass queued behind the pending one).
  *
- * Default homing currents: 0.5 A on the stepper (free-motion demand peak
- * 0.39 A at 40 mm/s with 0.05 N·m of drag), 1.75 A on the BLDC (Kt is
- * 0.06 N·m/A, so friction alone needs about 1.2 A and the peak is 1.47 A).
- * Measured by chunk 07, see STATUS.md row 07.
+ * Default homing currents: 0.9 A on the stepper, 2.25 A on the BLDC. With
+ * 0.05 N·m of drag, friction alone needs 0.45 A on the stepper and 1.17 A on
+ * the BLDC (Kt 0.156 and 0.06 N·m/A). On top of that the demand ripples with
+ * every encoder count, through the position and velocity gains, most of all
+ * as the carriage starts to move: the free-motion peak is 0.65 to 0.70 A on
+ * the stepper and 1.71 to 1.80 A on the BLDC, the same at every homing speed
+ * and at 24 V or 48 V (the voltage plays no part at these speeds, so the
+ * chapter has no bus voltage control). Limits up to 0.65 A and 1.7 A trip in
+ * free motion; at the defaults, so does a drag of 0.08 N·m. Measured
+ * 2026-10-01 over 64 starts. (A machine with less friction needs less: with no
+ * drag the stepper's peak is 0.35 to 0.56 A.)
  */
 import { formatValue, formatPeak } from '../format.js';
 
 /** Where "Home" starts the approach from (mm). */
 const START_X = 40;
 /** Homing current defaults per motor type (A). */
-const DEFAULT_CURRENT = { stepper: 0.5, bldc: 1.75 };
+const DEFAULT_CURRENT = { stepper: 0.9, bldc: 2.25 };
 /** Drag slider maximum per motor type (N·m). */
 const DRAG_MAX = { stepper: 0.3, bldc: 0.2 };
 /** Sim time at which the chapter homes once by itself after entering (s). */
@@ -36,7 +43,7 @@ const REST_MM_S = 1;
 
 const S = {};
 function resetState(type) {
-  S.current = DEFAULT_CURRENT[type] || 0.5;
+  S.current = DEFAULT_CURRENT[type] || DEFAULT_CURRENT.stepper;
   S.speed = 40;
   S.retract = 5;
   S.drag = 0.05;
@@ -101,8 +108,9 @@ export default {
     return {
       motorType, motorPreset: motorType === 'bldc' ? 'bldc' : 'stepper', driver: 'foc', driverMode: 'position',
       mechanics: 'axis', hardStops: true, start: { x: START_X, y: 50 }, loads: { drag: 0.05, torque: 0 },
+      supplyV: 48,   // the default of chapters 6 to 8; homing reads the same at 24 V
       planner: { maxVelocity: 150, accel: 5000, scv: 5 },
-      foc: { homingCurrent: DEFAULT_CURRENT[motorType] || 0.5, homingSpeedMmS: 40, retractMm: 5 },
+      foc: { homingCurrent: DEFAULT_CURRENT[motorType] || DEFAULT_CURRENT.stepper, homingSpeedMmS: 40, retractMm: 5 },
     };
   },
 
@@ -196,6 +204,7 @@ export default {
         title: `The velocity loop's request, capped at the ${formatValue(m.iLimit, 2)} A limit` },
       { label: 'Free-motion peak', value: h.freeIqPeak, unit: 'A', digits: 2,
         title: 'Largest Iq target while the carriage moved freely in this pass; set the limit just above it. '
+          + 'It is higher than friction alone needs: every encoder count ripples the target, most as the carriage starts to move. '
           + 'After a false trigger it reads the limit itself, since the target is capped there' },
       // Reserve the result and its unit before the first home, so detection cannot add a chip row.
       { label: 'Press-in at detection', value: edge ? h.pressInMm : '–', unit: 'mm', digits: 2, minChars: 4,
@@ -227,20 +236,25 @@ export default {
     + 'the next homing: with no retract, the second pass sees no rising edge.</p>'
     + '<p>Unlike chapter 4, nothing here is guessed from back-EMF: it is a comparison of two currents, and it works at any speed.</p>',
   tryThis: (ctx) => {
-    const i = DEFAULT_CURRENT[ctx.motorType] || 0.5;
+    const i = DEFAULT_CURRENT[ctx.motorType] || DEFAULT_CURRENT.stepper;
     return [
       `Home at ${formatValue(i, 2)} A and watch the Iq target jump to the limit at contact.`,
       'Lower the limit until homing trips before the stop, then put it back and raise the drag until it trips again.',
-      'Raise the limit to 3 A and watch the press-in and the belt force grow. Then set the retract to 0, press Home, '
-        + 'and press Home again.',
+      // On the BLDC the contact kick at 40 mm/s is above the slider's range, so every limit trips at contact:
+      // the press-in only grows with the limit at a slower approach.
+      (ctx.motorType === 'bldc'
+        ? 'Set the homing speed to 10 mm/s and raise the limit to 3.5 A: the press-in and the belt force grow. '
+        : 'Raise the limit to 3 A and watch the press-in and the belt force grow. ')
+        + 'Then set the retract to 0, press Home, and press Home again.',
     ];
   },
-  // Press-in at detection (chunk 10, node), stepper at 40 mm/s: 0.06 / 0.09 / 0.73 / 1.44 mm at 0.5 / 1 / 2 / 3 A;
-  // at 10 mm/s 0.03 / 0.37 / 1.05 / 1.76 mm, so a slower approach presses deeper above ~0.6 A. Above the
-  // contact kick (velocity P × approach speed) the slope is Kt/k: 0.70 mm/A stepper, 0.19 mm/A BLDC.
+  // Press-in at detection (node, 2026-10-01), stepper at 40 mm/s: 0.05 / 0.06 / 0.34 / 0.82 mm at 0.9 / 1 / 2 / 3 A;
+  // at 10 mm/s 0.04 / 0.09 / 0.60 / 1.07 mm, so a slower approach presses deeper above ~0.9 A. Above the contact
+  // kick (velocity P × approach speed, on top of friction: 1.6 A stepper and 4.3 A BLDC at 40 mm/s, 0.75 and 2.0 A
+  // at 10 mm/s) the slope is Kt/k: 0.50 mm/A stepper, 0.19 mm/A BLDC. BLDC at 10 mm/s: 0.02 / 0.27 mm at 2.25 / 3.5 A.
   deeper: (ctx) => '<p>The stop is a stiff spring (belt compliance). At contact the speed error alone makes the loop ask for '
     + 'current in proportion to the approach speed: a limit below that trips right there, a higher one only once the belt has '
-    + `compressed, about ${ctx.motorType === 'bldc' ? '0.2' : '0.7'} mm per extra amp (Kt over the belt stiffness).</p>`
+    + `compressed, about ${ctx.motorType === 'bldc' ? '0.2' : '0.5'} mm per extra amp (Kt over the belt stiffness).</p>`
     + '<p>Detection itself takes a few control cycles of 40 µs once the demand crosses the limit; what takes time is the speed '
     + 'error building up while the belt compresses. A lower limit keeps the press-in small.</p>'
     + '<p>The status output is the OR of the driver\'s limit flags: the torque-current limit used here plus the voltage '

@@ -7,6 +7,16 @@
  * starts off, so 1/4/16 microsteps show their own staircase currents (with it on, every setting
  * becomes a 256-step sine inside the driver).
  *
+ * Speed 8 mm/s (one electrical cycle per 100 ms scope window): at 1 microstep that is 40 full
+ * steps a second, between a half (52 Hz) and a third (34 Hz) of the rotor's ring (about 103 Hz at
+ * 2.5 A RMS), so full steps keep step, through the turnarounds too. At 10 mm/s the 50 full steps a
+ * second are half the ring frequency: each step pumps the ringing up and the rotor slips about
+ * 200 cycles in 10 s (full-step resonance; other currents have such bands too: at 8 mm/s, 1.75
+ * and 2 A RMS). The jog ramps at 3000 mm/s²: at the 0.35 A RMS minimum (0.077 N·m holding torque)
+ * the default 5000 mm/s² ramp to 70 mm/s or more stalls the motor by itself (3000 leaves a 1.6×
+ * torque margin), and a gentler 2000 mm/s² reversal lets full steps at 8 mm/s slip a cycle or two
+ * after each turnaround.
+ *
  * Run current: the slider is in A RMS like Klipper's `run_current`; the sim's runCurrent is the
  * sine's peak (× √2). Readouts: the step rate the controller must send, the field angle and the
  * incremental torque per microstep (sin(90°/n) of the holding torque), the position ripple and
@@ -17,9 +27,10 @@
 import { formatValue, formatRms } from '../format.js';
 import { MOTOR_PRESETS } from '../sim/presets.js';
 
-const SPEED = 10;
+const SPEED = 8;
 const CURRENT_RMS = 2.5;
 const MICRO = 16;
+const ACCEL = 3000;                       // jog ramps (mm/s², header)
 const TURN_HI = 300, TURN_LO = 50;       // jog turnaround points (mm)
 const STATS_S = 0.05;                     // ripple and lag window (s of sim time)
 const MICROSTEPS = [1, 2, 4, 8, 16, 32, 64, 128, 256];
@@ -92,7 +103,7 @@ export default {
     return {
       motorType, motorPreset: 'stepper', driver: 'openloop', driverMode: 'current', mechanics: 'axis',
       microsteps: MICRO, interpolate: false, runCurrent: CURRENT_RMS * Math.SQRT2, start: { x: 100, y: 50 },
-      loads: { drag: 0, torque: 0 },
+      loads: { drag: 0, torque: 0 }, planner: { accel: ACCEL },
     };
   },
 
@@ -175,11 +186,13 @@ export default {
       { label: 'Field per microstep', value: 90 / n, unit: '° electrical' },
       { label: 'Torque per microstep', value: 100 * Math.sin(Math.PI / 2 / n), unit: '% of holding',
         title: 'The pull toward a microstep one step away: holding torque × sin(90°/n)' },
-      // Fixed decimals and room for them ("214.0", "25.60 microsteps (125.0 µm)"): significant
-      // digits grew the text as the lag settled toward zero ("0.000909"), so the chip rows moved (B-006).
+      // Fixed decimals and room for them ("433.3" at 1 microstep; "99.67 microsteps (77.9 µm)" at
+      // 256 microsteps with 0.3 N·m of drag at the default current, more at a lower current, up to
+      // "256.00" before the rotor slips): significant digits grew the text as the lag settled toward
+      // zero ("0.000909"), so the chip rows moved (B-006).
       { label: 'Position ripple', value: ripple, unit: 'µm', digits: 1, minChars: 5,
         title: 'Peak-to-peak wobble of the carriage around the commanded motion (last 50 ms)' },
-      { label: 'Lag', value: lag * spm, unit: `microsteps (${formatValue(lag * 1000, 1)} µm)`, digits: 2, minChars: 5, unitChars: 21,
+      { label: 'Lag', value: lag * spm, unit: `microsteps (${formatValue(lag * 1000, 1)} µm)`, digits: 2, minChars: 6, unitChars: 21,
         title: 'How far the carriage trails the command (mean over the last 50 ms)' },
       { label: 'Ring frequency', value: ringHz(w, peakOf(w)), unit: 'Hz',
         title: '√(Kt·I·p/J)/2π: the rotor on the spring of the field, with this run current and carriage' },
@@ -203,7 +216,7 @@ export default {
   tryThis: [
     'Pick 1 microstep and Stop, then press Single step: the field jumps 90° and the rotor rings.',
     'Move at 16 microsteps with interpolation off, then on: the current staircase becomes a smooth sine.',
-    'At 256 microsteps, press Single step a few times: the rotor waits, then jumps. Add drag while moving and read the lag.',
+    'At 256 microsteps, press Single step several times: the rotor waits, then jumps. Add drag while moving and read the lag.',
   ],
 
   deeper(ctx) {

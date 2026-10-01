@@ -21,7 +21,8 @@
 // Encoder (encoder.js): count = floor(θ·cpr/2π) (cpr 4000), θmeas = (count + 0.5)·2π/cpr (cell
 //   center); ωest is timer based (M/T method): on each edge, counts moved over the time between
 //   edges at least encoder.windowS (0.5 ms) apart, held between edges and bounded by one count
-//   per elapsed time once edges stop; A/B quadrature from count mod 4.
+//   per elapsed time once edges stop (the snapshot's encoder.omegaEst; the FOC measures the
+//   speed itself, from the count change per control period); A/B quadrature from count mod 4.
 // Step generation (stepgen.js): commanded motor angle quantized to 2π/stepsPerRev, STEP/DIR
 //   pulses = change of the quantized position. Open loop: stepsPerRev = 4·p·microsteps
 //   (= 200·microsteps for the 1.8° stepper); FOC: virtual steps fullStepsPerRev·microsteps.
@@ -39,25 +40,35 @@
 //   (a stalled rotor reads about 82: SG_STALL_FLOOR 0.08),
 //   δ = atan2(iq, id) (current vector vs rotor d axis), ωref = 100 mm/s; null while the
 //   planner's commanded speed is below minSpeedMmS; diag = sg < 2·sgthrs.
-// FOC (drivers/foc.js), sampled at 25 kHz (every 40 µs control tick):
+// FOC (drivers/foc.js), sampled at 25 kHz (every 40 µs control tick), laid out like a hardware
+// FOC servo chip:
 //   position ω* = clamp(Kpx·eθ + Kix∫, ±ωLimit), θ* += pulses·2π/virtualSteps, with the error
 //            in whole encoder cells: eθ = (floor(θ*·cpr/2π) − count)·2π/cpr with a one-cell
 //            deadband on each side (0 while the rotor sits in or next to the target's cell, so
 //            the loop does not hunt at rest)
-//   velocity iq* = clamp(Kpv·(ω* − LPF(ωest)) + Kiv∫, ±iLimit)
-//   current  uq = Kpq·(iq* − LPF(iq)) + Kiq∫, ud = Kpd·(0 − LPF(id)) + Kid∫, |u| ≤ Umax
-//   (vα, vβ) = invPark(ud, uq, p·θmeas). Phase current noise σ = 1% Irated.
+//   velocity iq* = clamp(Kpv·(ω* − LPF(ωmeas)) + Kiv∫, ±iLimit), ωmeas = the encoder count
+//            change per control period (one count is 39 rad/s: 250 mm/s of belt)
+//   targets  iqRef = LPF(iq*), idRef = LPF(0): the torque and flux filters smooth the current
+//            loops' targets, not the measured currents (the flux target is a constant 0)
+//   current  uq = Kpq·(iqRef − iq) + Kiq∫, ud = Kpd·(idRef − id) + Kid∫, |u| ≤ Umax
+//   (vα, vβ) = invPark(ud, uq, p·θmeas + 1.5·p·ω·Ts), applied one control period later (the PWM
+//   stage; the angle is that of the middle of the period in which the voltage acts). Phase
+//   current noise σ = 0.4% Irated.
+//   Every PI is P·e + ∫P·I·e: an I multiplier moves the loop's corner frequency, a P multiplier
+//   its whole gain (effective Ki = optimal Ki × P multiplier × I multiplier).
 //   Optimal gains (TUNING in drivers/foc.js, absolute frequencies in Hz: fc current-loop
-//   crossover, fv velocity-loop crossover, alpha places the velocity PI zero at alpha·fv, fx
-//   position-loop crossover, fFilter iq/id sense filter cutoff, fVel velocity feedback filter
-//   cutoff, kixRefRatio position-I slider reference; see that object for the values):
-//   Kpq = Kpd = L·2πfc, Kiq = Kid = R·2πfc; Kpv = Jt·2πfv/Kt, Kiv = Kpv·2πfv·alpha;
+//   crossover, fci current PI zero, fv velocity-loop crossover, alpha places the velocity PI zero
+//   at alpha·fv, fx position-loop crossover, fFilter torque and flux target filter cutoff, fVel
+//   velocity feedback filter cutoff, kixRefRatio position-I slider reference; see that object for
+//   the values and for why the current PI zero is not on the plant pole R/L):
+//   Kpq = Kpd = L·2πfc, Kiq = Kid = Kpq·2πfci; Kpv = Jt·2πfv/Kt, Kiv = Kpv·2πfv·alpha;
 //   Kpx = 2πfx, Kix = 0 (KixRef = Kpx·2πfx·kixRefRatio); filters at fFilter and fVel;
 //   Umax = 0.96·Vlimit (Vbus, or Vbus/√3 three-phase); ωLimit = omegaLimitFactor·maxVelocity
 //   (×√2 on CoreXY: a 45° move at maxVelocity drives one belt at √2·maxVelocity; a maxVelocity
 //   lowered mid-move keeps the planner's speed until the planner has slowed down to it);
 //   iLimit = runCurrent (homingCurrent while homing). scenario.foc.gains holds multipliers.
-//   Values (2026-09-23): fFilter 1200, fc 400, fv 75, alpha 0.25, fVel 225, fx 28, kixRefRatio 2.
+//   Values (2026-10-01): fc 1200, fci 480, fFilter 1000, fv 80, alpha 0.2, fVel 400, fx 30,
+//   kixRefRatio 2.
 //   Status output: snapshot.motors[i].status is latched like the chip's STATUS_FLAGS (set on any
 //   masked flag, cleared once the flags are gone and the carriage has been off every stop for
 //   50 ms); motors[i].flags stay live.
@@ -126,6 +137,8 @@ const DT_SWITCHING = 0.5e-6;
 const RD_MM = 40;
 /** Heat time constant (s). */
 const HEAT_TAU = 1;
+/** FOC current-sense noise per phase and sample, as a fraction of the motor's rated current. */
+const SENSE_NOISE_FRAC = 0.004;
 /** Maximum undrained events kept (older ones are kept, newer dropped). */
 const EVENT_CAP = 256;
 const EMPTY = Object.freeze({});
@@ -824,7 +837,7 @@ export class World {
       homingCurrent: this._homingCurrentOverride > 0 ? this._homingCurrentOverride : num(f.homingCurrent, 0.5),
       gains: normalizeGains(f.gains), filters: normalizeFilters(f.filters),
       mask: Array.isArray(f.mask) ? f.mask.slice() : ['iqTargetLimit', 'uqOutputLimit', 'udOutputLimit'],
-      omegaLimit: this._omegaLimit(), noiseSigmaFrac: 0.01, tuning: TUNING,
+      omegaLimit: this._omegaLimit(), noiseSigmaFrac: SENSE_NOISE_FRAC, tuning: TUNING,
       encoderCpr: num(sc.encoder && sc.encoder.cpr, 4000),
     };
   }

@@ -26,8 +26,15 @@ const SPEED = 100;
 const ACCEL = 2000;
 /**
  * Supply voltage (B-009): the sliders reach past what printers run, 1000 mm/s and 100 000 mm/s².
- * At 24 V this motor (2.5 A RMS) stalls on a long move from about 500 mm/s at 20 000 mm/s²; at
- * 48 V it holds 700 mm/s there and stalls from about 1000 mm/s.
+ * At 24 V this motor (2.5 A RMS) holds every long move up to 800 mm/s at 20 000 mm/s² or less;
+ * at 850 to 1000 mm/s it stalls on and off from 10 000 mm/s², and it loses steps on every move from
+ * 30 000 mm/s² at 750 to 900 mm/s (at 1000 mm/s from 32 000, at 700 from 37 000): the end of the
+ * ramp asks for more torque than the motor has left at that speed. At 48 V it holds every speed
+ * up to 37 000 mm/s². From about 40 000 mm/s² it stalls at either voltage (from 400 mm/s up): the
+ * ramp alone asks for 70% of the holding torque. The two voltages part most clearly at 900 mm/s
+ * and 30 000 to 37 000 mm/s², where the note's example sits: 24 V loses steps on every move of
+ * 40 mm or more (it stalls on the long ones), 48 V holds every move, also moves made right after a
+ * 24 V stall (at 1000 mm/s, 48 V slips on 40 to 60 mm moves).
  */
 const BUS = 48;
 const ZOOM = { window: 0.01, timeScale: 0.01 };
@@ -168,7 +175,8 @@ export default {
         title: 'The driver\'s supply: a faster move needs more voltage (chapter 5)',
         onChange: (v, c) => { st.bus = v; c.world.set('supplyV', v); } },
       { type: 'note', group: 'Motion', html: 'New speed and acceleration values apply from the next move. Push them far enough '
-        + 'and the motor stalls, sooner at 24 V than at 48 V, while the driver still counts every pulse.' },
+        + 'and the motor stalls, sooner at 24 V than at 48 V (try 900 mm/s at 33,000 mm/s²), while the driver still '
+        + 'counts every pulse.' },
       { type: 'toggle', id: 'zoom', label: 'Pulse zoom', value: st.zoom, group: 'Scope',
         onChange: (v, c) => setZoom(c, v) },
       { type: 'note', group: 'Scope',

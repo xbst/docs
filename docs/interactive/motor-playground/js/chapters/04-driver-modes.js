@@ -18,9 +18,10 @@
  *
  * Why the gentle ramp: in voltage mode the current sags while the motor
  * accelerates, and at the planner's 5000 mm/s² that dip alone pulls the
- * StallGuard reading under a mid-range threshold whenever the axis has some
- * drag, from rest or not. At 500 mm/s² the result depends on the threshold
- * and the load, not on what the carriage did before.
+ * StallGuard reading under the threshold once the axis has some drag: from
+ * rest, 0.15 N·m false-triggers at every threshold and 0.1 N·m from 150 up.
+ * At 500 mm/s² the result depends on the threshold and the load, not on what
+ * the carriage did before.
  *
  * The scope shows either the currents or the StallGuard signals (the
  * "Scope" control; homing switches it to StallGuard).
@@ -35,31 +36,41 @@
  * ripples more than the SpreadCycle chopper. Neither can show "StealthChop
  * is quiet", so the text explains the hiss instead.
  *
- * Calibration (2026-09-28, 1.5 A rms = 2.12 A peak, homing from rest at 40
- * mm/s with a 500 mm/s² ramp in voltage mode, fresh axis or after running):
- * with the default drag of 0.02 N·m driver_SGTHRS ≤ 40 never detects the stop
- * (the carriage slams and the motor skips) and 50 to 255 stop at contact (0.6
- * to 0.1 mm into the belt; 100 stops 0.48 mm in); with drag 0.2 N·m 50 to 100
- * still stop at contact while 150 to 255 false-trigger. The model's reading
- * has no noise, so a false trigger needs load. 5 mm/s never detects (below
- * the 10 mm/s minimum). StealthChop on the shuttle (accel 5000) holds up to
- * 115 mm/s once running and falls out of step from 125 mm/s (at 120 it slips
- * cycles and recovers). A start from rest (after Home, or after about 20 ms
- * at rest) holds 85 and slips at 90, but with drag 0.05 it already slips at
- * 75: hence the defaults of 80 mm/s and 0.02 N·m. A start at t = 0 of a fresh
- * world is luckier (it holds 95): the driver's reset leaves the measured
- * current at 0, so the amplitude loop winds the voltage up while the current
- * rises. Hybrid and SpreadCycle hold 200. With 0.1 N·m of drag or more,
- * StealthChop slips a few steps on the shuttle too. The chapter's 0.25 N·m
- * bump pulls the reading down to between about 80 and 510, depending on where
- * in the stroke it lands, without skipping a step.
+ * Calibration (2026-10-01, the datasheet motor: 1.5 A rms = 2.12 A peak makes
+ * 0.33 N·m; homing from rest at 40 mm/s with a 500 mm/s² ramp in voltage
+ * mode, fresh axis, after running, after a homing or from SpreadCycle): with
+ * the default drag of 0.05 N·m driver_SGTHRS ≤ 40 never detects the stop (the
+ * carriage slams and the motor skips) and 50 to 255 stop at contact (0.20 to
+ * 0.06 mm into the belt; 100 stops 0.13 mm in), at any homing speed from 10
+ * to 80 mm/s; with drag 0.15 N·m 50 to 120 still stop at contact while 150 to
+ * 255 false-trigger, also from where a homing parked the carriage. The
+ * model's reading has no noise, so a false trigger needs load. 5 mm/s never
+ * detects (below the 10 mm/s minimum). The default drag is chunk 05's 0.05
+ * N·m again (F-07 had lowered it to 0.02 because the earlier motor's
+ * StealthChop slipped a start from rest at 0.05): at 0.05 DIAG blips once at
+ * every StealthChop reversal, as the More info says; at 0.02 it never does.
+ * StealthChop on the shuttle (accel 5000) swings the current between about
+ * 60 and 175 % of the target with a 50° lag; it holds 120 mm/s from every
+ * start (after Home, after a stop, after a mode switch, at t = 0) and 130
+ * once running, falls out of step from 130 when it starts from rest, and
+ * from 140 once running (at 150 for all 20 raise times tried). Hybrid and
+ * SpreadCycle hold every speed the 60 mm stroke reaches at 5000 mm/s² (about
+ * 390 mm/s). With 0.1 N·m of drag StealthChop slips a start from rest at 80
+ * mm/s; with 0.15 the running shuttle falls out of step too. The chapter's
+ * 0.15 N·m bump pulls the reading down to between about 80 and 670,
+ * depending on where in the stroke it lands, without skipping a step (81
+ * landing points, also at 60 to 120 mm/s); 0.18 N·m skipped at some.
  *
  * The speed and acceleration sliders reach past what printers run, 1000 mm/s
- * and 100 000 mm/s² (B-009, 2026-10-01): SpreadCycle holds the shuttle up to
- * 600 mm/s at 20 000 mm/s² and falls out of step at 1000 mm/s, or at 600 mm/s
- * with 100 000 mm/s²; Hybrid slips a little earlier. The bus stays at 24 V:
- * StealthChop and this StallGuard are TMC2209 features (a driver for up to
- * 29 V), and 48 V changed nothing on the shuttle.
+ * and 100 000 mm/s² (B-009, 2026-10-01): SpreadCycle and Hybrid hold the
+ * shuttle at 10 000 mm/s² up to 1000 mm/s (the stroke tops out near 550
+ * mm/s); at 20 000 mm/s² SpreadCycle falls out of step from about 200 mm/s
+ * and Hybrid from 150, at 100 000 mm/s² even at 80 (unchanged since the
+ * back-EMF feed-forward in drivers/openloop.js's current mode, like every
+ * number above: StealthChop and the homing move run in voltage mode, and the
+ * SpreadCycle limits come from the acceleration, not the speed). The bus
+ * stays at 24 V: StealthChop and this StallGuard are TMC2209 features (a
+ * driver for up to 29 V), and 48 V changed nothing on the shuttle.
  */
 import { formatValue, formatRms } from '../format.js';
 
@@ -77,7 +88,7 @@ const SLOW_HINT_MM = 15;
 /** Lost distance (mm) that counts as a lost position (the gantry view shows it from 0.05 mm). */
 const LOST_MM = 0.05;
 /** Bump for this chapter: a knock StallGuard notices without skipping a step at the default current. */
-const BUMP = { torque: 0.25, durationS: 0.04 };
+const BUMP = { torque: 0.15, durationS: 0.04 };
 /**
  * How long after a homing ends its slam's last stepLost events can still arrive (s of sim time):
  * the world sends at most one per 50 ms, and the last came up to 0.057 s after the end.
@@ -89,7 +100,7 @@ const MODE_NAME = { voltage: 'StealthChop', current: 'SpreadCycle' };
 const MODE_KEY = { voltage: 'stealthchop_threshold: 999999', current: 'stealthchop_threshold: 0' };
 
 const DEFAULTS = Object.freeze({
-  mode: 'voltage', threshold: 60, speed: 80, accel: 5000, rms: 1.5, drag: 0.02,
+  mode: 'voltage', threshold: 60, speed: 80, accel: 5000, rms: 1.5, drag: 0.05,
   sgthrs: 100, homingSpeed: 40, scope: 'current',
 });
 
@@ -239,7 +250,7 @@ const SG_TRACES = [
 
 /* ---------------- readouts ---------------- */
 
-/** The longest homing result, "stopped 0.48 mm into the stop": its room is kept from the start (B-006). */
+/** The longest homing result, "stopped 0.13 mm into the stop": its room is kept from the start (B-006). */
 const RESULT_CHARS = 29;
 
 function resultChip(snap) {
@@ -432,8 +443,8 @@ export default {
         return false;
       case 'stepLost': {
         // A homing reports its own result, and its slam's last stepLost events can still arrive just
-        // after it ended. A later slip, such as one the reader causes with Bump on the parked axis at a
-        // low current, is announced. The Lost chip shows the distance either way.
+        // after it ended. A later slip, such as a knock harder than Bump's throwing the parked axis at
+        // a low current, is announced. The Lost chip shows the distance either way.
         if (st.homing || ev.t - st.homingEndT < SLAM_TRAIL_S) return false;
         const now = performance.now();
         if (now - st.lostAt < 3000) return false;
@@ -465,7 +476,7 @@ export default {
 
   tryThis: [
     'In StealthChop, raise the speed to 150 mm/s until the rotor falls out of step. Switch to SpreadCycle and try again.',
-    'Home toward the stop with <code>driver_SGTHRS</code> at 30, then at 100. Add 0.2 N·m of drag and home at 255.',
+    'Home toward the stop with <code>driver_SGTHRS</code> at 30, then at 100. Add 0.15 N·m of drag and home at 255.',
     'Set the homing speed to 5 mm/s and home again.',
   ],
 

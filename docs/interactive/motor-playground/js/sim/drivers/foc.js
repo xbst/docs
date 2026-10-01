@@ -1,53 +1,95 @@
 // Field-oriented control (FOC) cascade for the motor playground sim.
 //
-// Position P(I) -> velocity PI -> dq current PI -> voltage circle -> inverse Park.
-// Sampled once per control period (default 25 kHz). The controller reads the
-// encoder's measured mechanical angle and speed estimate plus the motor's actual
-// phase currents (it adds its own gaussian measurement noise) and writes the
-// stator-frame voltage command (uAlpha, uBeta) for the plant.
+// Position P(I) -> velocity PI -> target filters -> dq current PI -> voltage circle -> inverse
+// Park. Sampled once per control period (default 25 kHz). The controller reads the encoder
+// (count and measured mechanical angle) plus the motor's actual phase currents (it adds its own
+// gaussian measurement noise) and writes the stator-frame voltage command (uAlpha, uBeta) for
+// the plant. The structure follows a hardware FOC servo chip: every loop is a PI whose integral
+// gain scales with its P gain, the speed is the encoder count change per control period, and the
+// low-pass filters sit on the velocity feedback and on the two current targets, not on the
+// measured currents.
 //
-// Per sample (contract section 13):
-//   thetaE = p * thetaMeasM ; omega = velocityFilter(omegaEst)
+// Per sample (contract section 13, as revised 2026-10-01):
+//   thetaE = p * thetaMeasM
+//   omegaRaw = (count - previous count) * 2pi/cpr * fs   (the speed meter; without a count, the
+//              caller's estimate omegaEst) ; omega = velocityFilter(omegaRaw)
 //   iPhaseMeas[k] = iPhase[k] + sigma * N(0, 1),  sigma = noiseSigmaFrac * Irated
-//   (id, iq) = park(clarke(iPhaseMeas), thetaE) ; idf = fluxFilter(id) ; iqf = torqueFilter(iq)
+//   (id, iq) = park(clarke(iPhaseMeas), thetaE)
 //   position: e = thetaStar - thetaMeasM (or whole encoder cells, see below)
 //             omega* = clamp(Kpx * e + integX, +-omegaLimit)
 //   velocity: iq*    = clamp(Kpv * ev + integV, +-iLimit)
 //   torque:   iq*    = clamp(iqStarCmd, +-iLimit)
-//   current:  uq = Kpq * eq + integQ ; ud = Kpd * ed + integD ; circle |u| <= Umax (d axis first)
-//   (uAlpha, uBeta) = invPark(ud, uq, thetaE)
+//   targets:  iqRef = torqueFilter(iq*) ; idRef = fluxFilter(0)
+//   current:  uq = Kpq * (iqRef - iq) + integQ ; ud = Kpd * (idRef - id) + integD
+//             circle |u| <= Umax (d axis first)
+//   (uAlpha, uBeta) = the previous sample's invPark(ud, uq, thetaE + 1.5 * p * omega / fs)
 //
-// Anti-windup (back-calculation): when a loop output is clamped, the integrator
-// is pulled back so that `Kp*err + integ == clamped output`. The pull-back never
-// drives the integrator past zero: if the proportional term alone already
-// exceeds the limit, the integrator is only reduced to 0 (not to a large value of
-// the opposite sign). That keeps an integrator with Ki = 0 (the default position
-// loop) at exactly 0 and avoids a steady-state offset after a saturated move.
+// Filters. The torque filter low-passes the Iq target on its way from the velocity loop to the
+// torque loop; the flux filter does the same for the Id target, a constant 0 here, so it has
+// nothing to smooth; the velocity filter low-passes the measured speed. The current loops work
+// on the raw measured currents: a low-pass inside a current loop takes its phase margin, and at
+// speed the loops must answer at the motor's electrical frequency (1250 Hz at 1000 mm/s with 50
+// pole pairs), which only a fast, unfiltered loop does. (Until 2026-10-01 the torque and flux
+// filters sat on the measured currents, the current loops had to stay at 400 Hz, and the stepper
+// hunted from about 550 mm/s once a 48 V supply let it get there.)
 //
-// Gain changes: each integrator stores its whole I term (Ki*integral of the error),
-// so a new nonzero I gain keeps it and the output does not jump. An I gain set to
-// 0 clears its integrator in `configure`: nothing could discharge it any more, and
-// a position I set back to 0 while it held the cruise speed (about 0.9 mm of error
-// at 150 mm/s) would keep the axis off target at rest for good.
+// Speed meter. One encoder count per control period is 2pi/cpr*fs (39 rad/s at 4000 counts and
+// 25 kHz: 250 mm/s of belt), so the raw speed is a train of single-count pulses whose average is
+// the speed. The velocity filter and then the torque filter smooth it; what they let through is
+// the hiss the filter sliders change. At rest there are no counts and no hiss.
 //
-// Position error in whole encoder cells: when `encoderCpr > 0` and `step` gets
-// the encoder count, the error is `(floor(thetaStar*cpr/2pi) - count) * 2pi/cpr`,
-// i.e. zero while the rotor sits in the target's cell. A real drive only knows
-// the count, so it does not hunt inside a cell at rest. `deadbandCells` (default 1)
-// widens the zero zone by that many cells on each side, so a rotor resting on a
-// cell edge is not kicked across it by the velocity loop's reaction to each edge
-// (that chatter ran at ~130 Hz with 0.3-0.5 A of iq*). Without a count (or with
-// `encoderCpr = 0`) the error is the continuous `thetaStar - thetaMeasM`.
+// Gains. Each PI is P*e + integral(P*I*e): the I gain scales with the P gain, so a P multiplier
+// moves the whole loop's bandwidth and an I multiplier moves only its corner frequency
+// (effective Ki = Ki_optimal * P multiplier * I multiplier).
 //
-// Tuning (TUNING, absolute frequencies in Hz): the current loops cross over at
-// `fc` (400 Hz, pole-zero cancellation of the RL plant), the velocity loop at
-// `fv` (75 Hz, PI zero at `alpha*fv`, alpha 0.25), the position loop at `fx` (28 Hz). The
-// torque (iq) and flux (id) sense biquads sit inside the current loops at
-// `fFilter` (1200 Hz = 3*fc): a second-order low-pass at the loop's own crossover
-// would remove about 90 degrees of phase margin and make the loop ring. The
-// velocity feedback biquad sits at `fVel` (225 Hz = 3*fv). fv is capped near 75 Hz by
-// the 4000-count encoder: below ~20 mm/s the edge-timed speed estimate lags by about one
-// edge interval, and a 100 Hz velocity loop then oscillates during slow moves and stops.
+// Timing. The voltage computed in one control period is applied during the next one, as a PWM
+// stage does, and the inverse Park turns it ahead by the angle the rotor covers until the middle
+// of that period (1.5 periods of p*omega), so the voltage vector points where it was meant to at
+// any speed. The loop delay of 1.5 periods is what limits the current-loop gain: about 3 times
+// the optimal torque or flux P makes the loop ring near 4 kHz.
+//
+// Anti-windup (back-calculation): when a loop output is clamped, the integrator is pulled back
+// so that `Kp*err + integ == clamped output`. The pull-back never drives the integrator past
+// zero: if the proportional term alone already exceeds the limit, the integrator is only reduced
+// to 0 (not to a large value of the opposite sign). That keeps an integrator with Ki = 0 (the
+// default position loop) at exactly 0 and avoids a steady-state offset after a saturated move.
+//
+// Gain changes: each integrator stores its whole I term (Ki*integral of the error), so a new
+// nonzero I gain keeps it and the output does not jump. An I gain set to 0 clears its integrator
+// in `configure`: nothing could discharge it any more, and a position I set back to 0 while it
+// held the cruise speed would keep the axis off target at rest for good.
+//
+// Position error in whole encoder cells: when `encoderCpr > 0` and `step` gets the encoder
+// count, the error is `(floor(thetaStar*cpr/2pi) - count) * 2pi/cpr`, i.e. zero while the rotor
+// sits in the target's cell. A real drive only knows the count, so it does not hunt inside a
+// cell at rest. `deadbandCells` (default 1) widens the zero zone by that many cells on each
+// side, so a rotor resting on a cell edge is not kicked across it by the velocity loop's
+// reaction to each edge. Without a count (or with `encoderCpr = 0`) the error is the continuous
+// `thetaStar - thetaMeasM`.
+//
+// Tuning (TUNING, absolute frequencies in Hz): the current loops cross over at `fc` (1200 Hz)
+// with their PI zero at `fci` (480 Hz), the velocity loop at `fv` (80 Hz, PI zero at `alpha*fv`,
+// alpha 0.2), the position loop at `fx` (30 Hz). The target filters sit at `fFilter` (1000 Hz),
+// the velocity feedback filter at `fVel` (400 Hz = 5*fv). With these the cascade keeps about 35
+// degrees of phase margin (velocity loop, position loop closed) from rest to 1000 mm/s on the
+// stepper, and the velocity P gain can more than double before the loop hunts.
+//
+// Why the current PI zero is not on the RL plant's pole (R/L, 119 Hz on the stepper), the
+// textbook pole-zero cancellation: the d and q loops are coupled through omegaE*L and the driver,
+// like the chip it follows, has no decoupling feed-forward. With the zero at R/L the coupled pair
+// settles as slowly as about wc*(R/L)/|wc + j*omegaE|, 80 Hz at 1000 mm/s on the stepper (50
+// pole pairs: omegaE = 7850 rad/s), right where the velocity loop crosses over. With the first
+// tune of 2026-10-01 (zero at R/L, 100 and 40 Hz outer loops, about 15 degrees of margin at
+// rest) the stepper hunted from about 850 mm/s on a 48 V supply; with today's outer loops the
+// margin would still fall from 33 to 10 degrees at 1000 mm/s. A zero at 480 Hz keeps that mode
+// above 300 Hz at every speed in range, at the price of a current step that overshoots by about
+// 16 %. (tests/motor-playground/sim-foc-speed.test.mjs keeps the old tune as its control case.)
+//
+// What caps fv is the encoder: each count is a pulse of speed, and the velocity gain turns it
+// into a pulse of Iq target that grows with fv*fVel (about 0.3 A on the stepper for a single
+// count at low speed, more on the BLDC); a count of position error adds Kpx*Kpv (0.06 A). At
+// multiples of 250 mm/s, a whole number of counts per control period, the counts beat with the
+// control rate and the speed ripples by 7 to 9 mm/s instead of 2 to 3.
 //
 // Hot path (`step`) does not allocate. SI units throughout.
 
@@ -58,15 +100,21 @@ import { vLimit } from '../presets.js';
 
 /**
  * Tuning constants for the optimal gains (the x1 reference of chapter 8), all
- * absolute frequencies in Hz: `fFilter` torque/flux sense filter cutoff; `fc`
- * current-loop crossover; `fv` velocity-loop crossover; `alpha` places the
- * velocity PI zero at `alpha*fv`; `fVel` velocity feedback filter cutoff; `fx`
- * position-loop crossover; `kixRefRatio` scales the position I slider reference
- * (`KixRef = Kpx*2*pi*fx*kixRefRatio`).
- * @type {{fFilter: number, fc: number, fv: number, alpha: number, fVel: number, fx: number,
- *         kixRefRatio: number}}
+ * absolute frequencies in Hz: `fc` current-loop crossover; `fci` current PI zero;
+ * `fFilter` cutoff of the torque and flux target filters; `fv` velocity-loop
+ * crossover; `alpha` places the velocity PI zero at `alpha*fv`; `fVel` velocity
+ * feedback filter cutoff; `fx` position-loop crossover; `kixRefRatio` scales the
+ * position I slider reference (`KixRef = Kpx*2*pi*fx*kixRefRatio`).
+ * @type {{fFilter: number, fc: number, fci: number, fv: number, alpha: number, fVel: number,
+ *         fx: number, kixRefRatio: number}}
  */
-export const TUNING = { fFilter: 1200, fc: 400, fv: 75, alpha: 0.25, fVel: 225, fx: 28, kixRefRatio: 2 };
+export const TUNING = { fFilter: 1000, fc: 1200, fci: 480, fv: 80, alpha: 0.2, fVel: 400, fx: 30, kixRefRatio: 2 };
+
+/**
+ * Control periods from the angle sample to the middle of the period in which its voltage is
+ * applied: one period of output delay plus half a period of hold.
+ */
+const ANGLE_ADVANCE = 1.5;
 
 /** Mode codes used internally by the hot path. */
 const MODE_POSITION = 0;
@@ -84,9 +132,9 @@ const MODE_TORQUE = 2;
  * @property {number} Kpx position P gain (1/s)
  * @property {number} Kix position I gain (1/s^2), 0 in the optimal set
  * @property {number} KixRef slider reference for Kix (Kpx*2*pi*fx*kixRefRatio)
- * @property {number} fFilter optimal torque/flux filter cutoff (Hz, TUNING.fFilter)
- * @property {number} fTorque torque (iq) filter cutoff (Hz, 0 = bypass)
- * @property {number} fFlux flux (id) filter cutoff (Hz, 0 = bypass)
+ * @property {number} fFilter optimal torque/flux target filter cutoff (Hz, TUNING.fFilter)
+ * @property {number} fTorque torque (Iq target) filter cutoff (Hz, 0 = bypass)
+ * @property {number} fFlux flux (Id target) filter cutoff (Hz, 0 = bypass)
  * @property {number} fVel velocity feedback filter cutoff (Hz, 0 = bypass)
  * @property {number} Umax voltage circle radius (V)
  * @property {number} omegaLimit position loop output limit (mech rad/s)
@@ -135,7 +183,7 @@ function presetLambda(preset) {
 /**
  * Optimal (x1 reference) cascade gains for a motor preset and total inertia.
  *
- * - `Kpq = Kpd = L*2*pi*fc`, `Kiq = Kid = R*2*pi*fc` (pole-zero cancellation of the RL plant)
+ * - `Kpq = Kpd = L*2*pi*fc`, `Kiq = Kid = Kpq*2*pi*fci` (PI zero at fci, see the file header)
  * - `Kpv = Jt*2*pi*fv/Kt`, `Kiv = Kpv*2*pi*fv*alpha`
  * - `Kpx = 2*pi*fx`, `Kix = 0`, `KixRef = Kpx*2*pi*fx*kixRefRatio`
  * - `fTorque = fFlux = fFilter`, `fVel = tuning.fVel`, `Umax = 0.96*vLimit(preset, Vbus)`
@@ -157,6 +205,7 @@ export function optimalGains(preset, Jt, { tuning = TUNING, Vbus = 24, omegaLimi
   const tv = (key) => (typeof t[key] === 'number' && Number.isFinite(t[key]) ? t[key] : TUNING[key]);
   const fFilter = tv('fFilter');
   const fc = tv('fc');
+  const fci = tv('fci');
   const fv = tv('fv');
   const alpha = tv('alpha');
   const fVel = tv('fVel');
@@ -173,8 +222,9 @@ export function optimalGains(preset, Jt, { tuning = TUNING, Vbus = 24, omegaLimi
     : vl / (presetLambda(preset) * preset.p);
   const iLim = (typeof runCurrent === 'number' && runCurrent >= 0) ? runCurrent : preset.Irated;
   const g = zeroGains();
-  g.Kpq = preset.L * wc; g.Kiq = preset.R * wc;
-  g.Kpd = preset.L * wc; g.Kid = preset.R * wc;
+  const wci = TWO_PI * fci;
+  g.Kpq = preset.L * wc; g.Kiq = g.Kpq * wci;
+  g.Kpd = preset.L * wc; g.Kid = g.Kpd * wci;
   g.Kpv = Kpv; g.Kiv = Kpv * wv * alpha;
   g.Kpx = Kpx; g.Kix = 0; g.KixRef = Kpx * wx * kixRefRatio;
   g.fTorque = fFilter; g.fFlux = fFilter; g.fVel = fVel;
@@ -222,6 +272,12 @@ function mult(obj, key, dflt) {
  * `omegaStar` (mech rad/s), `iqStarCmd` (A). Call `configure` once (and again to
  * push new parameters; it keeps the controller state), `reset` to clear state,
  * then `step` once per control period.
+ *
+ * After each step: `iqStar` is the Iq target the velocity loop (or `iqStarCmd`) asks for,
+ * clamped to the current limit (the value the limit flag compares); `iqRef` and `idRef` are the
+ * low-passed targets the current loops follow; `id`, `iq` the measured currents (with noise);
+ * `omegaRaw` and `omegaFilt` the measured speed before and after the velocity filter; `ud`,
+ * `uq`, `uMag` the voltage just computed, which `uAlpha`, `uBeta` carry one period later.
  */
 export class FocController {
   /** Creates an unconfigured controller with every field initialized. */
@@ -240,15 +296,18 @@ export class FocController {
     this.modeCode = MODE_POSITION;
     this.runCurrent = 0;
     this.homingCurrent = 0.5;
-    this.noiseSigmaFrac = 0.01;
+    this.noiseSigmaFrac = 0.004;
     this.sigma = 0;
-    /** Encoder counts per mechanical revolution for the cell-quantized position error (0 = continuous). */
+    /**
+     * Encoder counts per mechanical revolution, for the speed meter and the cell-quantized
+     * position error (0 = the caller's speed estimate and a continuous error).
+     */
     this.encoderCpr = 0;
     this._radPerCell = 0;
     /**
      * Position-loop deadband in encoder cells (only with `encoderCpr > 0`). With 1, the loop
      * ignores a rotor that sits in the target's cell or in either neighbor, so a rotor resting
-     * on a cell edge is not kicked back and forth (without it the loop chatters at ~130 Hz).
+     * on a cell edge is not kicked back and forth.
      */
     this.deadbandCells = 1;
 
@@ -284,13 +343,14 @@ export class FocController {
     this.thetaMeasE = 0;
     this.cosE = 1;
     this.sinE = 0;
+    this.omegaRaw = 0;
     this.omegaFilt = 0;
     this.id = 0;
     this.iq = 0;
-    this.idf = 0;
-    this.iqf = 0;
     this.idStar = 0;
     this.iqStar = 0;
+    this.idRef = 0;
+    this.iqRef = 0;
     this.omegaStarOut = 0;
     this.ud = 0;
     this.uq = 0;
@@ -321,6 +381,11 @@ export class FocController {
     this._inTheta = 0;
     this._inOmega = 0;
     this._inCount = NaN;
+    /** Encoder count of the previous control period (NaN = none yet): the speed meter's memory. */
+    this._prevCount = NaN;
+    /** The voltage computed in this period, applied in the next one. */
+    this._uaNext = 0;
+    this._ubNext = 0;
   }
 
   /**
@@ -340,13 +405,16 @@ export class FocController {
    * @param {number} [cfg.homingCurrent=0.5] current limit while homing (A)
    * @param {'optimal'|object} [cfg.gains='optimal'] multipliers of the optimal gains
    *   ({ positionP, positionI, velocityP, velocityI, torqueP, torqueI, fluxP, fluxI });
-   *   missing keys are 1, except positionI (multiplies KixRef) which defaults to 0
+   *   missing keys are 1, except positionI (multiplies KixRef) which defaults to 0. An I
+   *   multiplier moves its loop's corner frequency: the effective I gain is the optimal one
+   *   times the I multiplier times the same loop's P multiplier
    * @param {{torque?: number, flux?: number, velocity?: number}} [cfg.filters] multipliers of the optimal cutoffs
    * @param {string[]} [cfg.mask] flag names ORed into `status`
    * @param {number} [cfg.omegaLimit] position loop output limit (mech rad/s)
-   * @param {number} [cfg.noiseSigmaFrac=0.01] current-sense noise sigma as a fraction of Irated
-   * @param {number} [cfg.encoderCpr=0] encoder counts per revolution; > 0 makes the position
-   *   error whole encoder cells when `step` gets a count (0 = continuous error)
+   * @param {number} [cfg.noiseSigmaFrac=0.004] current-sense noise sigma as a fraction of Irated
+   * @param {number} [cfg.encoderCpr=0] encoder counts per revolution; > 0 makes `step` measure
+   *   the speed from the count it gets and count the position error in whole encoder cells
+   *   (0 = the caller's speed estimate and a continuous error)
    * @param {number} [cfg.deadbandCells=1] cells of position error ignored on each side of the
    *   target cell (cell-quantized error only)
    * @param {typeof TUNING} [cfg.tuning=TUNING] tuning constants (passed to optimalGains)
@@ -355,7 +423,7 @@ export class FocController {
   configure(cfg) {
     const {
       preset, Jt, Vbus = 24, fs = 25000, mode = 'position', runCurrent, homingCurrent = 0.5,
-      gains = 'optimal', filters = null, mask = null, omegaLimit, noiseSigmaFrac = 0.01, tuning = TUNING,
+      gains = 'optimal', filters = null, mask = null, omegaLimit, noiseSigmaFrac = 0.004, tuning = TUNING,
       encoderCpr = 0, deadbandCells = 1,
     } = cfg;
     this.deadbandCells = (typeof deadbandCells === 'number' && deadbandCells >= 0) ? Math.round(deadbandCells) : 1;
@@ -401,15 +469,16 @@ export class FocController {
     fm.flux = mult(filters, 'flux', 1);
     fm.velocity = mult(filters, 'velocity', 1);
 
+    // P*e + integral(P*I*e): each I gain scales with its loop's P gain.
     const g = copyGains(this.gains, opt);
     g.Kpx = opt.Kpx * m.positionP;
-    g.Kix = opt.KixRef * m.positionI;
+    g.Kix = opt.KixRef * m.positionI * m.positionP;
     g.Kpv = opt.Kpv * m.velocityP;
-    g.Kiv = opt.Kiv * m.velocityI;
+    g.Kiv = opt.Kiv * m.velocityI * m.velocityP;
     g.Kpq = opt.Kpq * m.torqueP;
-    g.Kiq = opt.Kiq * m.torqueI;
+    g.Kiq = opt.Kiq * m.torqueI * m.torqueP;
     g.Kpd = opt.Kpd * m.fluxP;
-    g.Kid = opt.Kid * m.fluxI;
+    g.Kid = opt.Kid * m.fluxI * m.fluxP;
     // An I gain of 0 can no longer move its integrator: drop the stored term (file header).
     if (g.Kix === 0) this.integX = 0;
     if (g.Kiv === 0) this.integV = 0;
@@ -439,8 +508,8 @@ export class FocController {
 
   /**
    * Clear the controller state: integrators 0, filters reset to 0, thetaStar =
-   * thetaMeasM, omegaStar = 0, iqStarCmd = 0, flags and outputs cleared. The
-   * homing state is kept.
+   * thetaMeasM, omegaStar = 0, iqStarCmd = 0, flags and outputs cleared (the pending
+   * voltage too), the speed meter's previous count forgotten. The homing state is kept.
    * @param {number} [thetaMeasM=0] measured mechanical angle (rad)
    */
   reset(thetaMeasM = 0) {
@@ -454,10 +523,13 @@ export class FocController {
     this.thetaMeasE = thetaMeasM * this.p;
     this.cosE = Math.cos(wrapPi(this.thetaMeasE));
     this.sinE = Math.sin(wrapPi(this.thetaMeasE));
+    this.omegaRaw = 0;
     this.omegaFilt = 0;
-    this.id = 0; this.iq = 0; this.idf = 0; this.iqf = 0;
-    this.idStar = 0; this.iqStar = 0; this.omegaStarOut = 0;
+    this.id = 0; this.iq = 0;
+    this.idStar = 0; this.iqStar = 0; this.idRef = 0; this.iqRef = 0; this.omegaStarOut = 0;
     this.ud = 0; this.uq = 0; this.uMag = 0; this.uAlpha = 0; this.uBeta = 0;
+    this._uaNext = 0; this._ubNext = 0;
+    this._prevCount = NaN;
     this.iPhaseMeas.fill(0);
     this.noiseA = 0;
     const f = this.flags;
@@ -482,12 +554,14 @@ export class FocController {
    * `iqStarCmd`), writes `uAlpha`, `uBeta` and every diagnostic field.
    * Does not allocate.
    * @param {number} thetaMeasM measured mechanical angle (rad, unwrapped)
-   * @param {number} omegaEstRadS encoder speed estimate (mech rad/s, unfiltered)
+   * @param {number} omegaEstRadS speed estimate (mech rad/s, unfiltered), used only when the
+   *   controller cannot measure the speed itself (no count, or `encoderCpr = 0`)
    * @param {ArrayLike<number>} iPhase actual phase currents (A), length = phases
    * @param {{fillGaussian: function(Float64Array, number): void}|null} rng seeded generator for the
    *   sense noise (units.js Rng; null = no noise)
    * @param {number} [count=NaN] encoder count (cells of 2pi/encoderCpr); when finite and
-   *   `encoderCpr > 0` the position error is `(floor(thetaStar*cpr/2pi) - count)*2pi/cpr`
+   *   `encoderCpr > 0` the speed is its change per period and the position error is
+   *   `(floor(thetaStar*cpr/2pi) - count)*2pi/cpr`
    */
   step(thetaMeasM, omegaEstRadS, iPhase, rng, count = NaN) {
     this._inTheta = thetaMeasM;
@@ -516,14 +590,15 @@ export class FocController {
    */
   _run(iPhase, rng) {
     const thetaMeasM = this._inTheta;
-    const omegaEstRadS = this._inOmega;
     const count = this._inCount;
     const g = this.gains;
     const f = this.flags;
     const invFs = this.invFs;
     const iLim = this.iLimit;
+    const cpr = this.encoderCpr;
+    const counted = cpr > 0 && count === count;       // a finite encoder count (NaN = none)
 
-    // Angle and speed feedback.
+    // Angle feedback.
     const thE = thetaMeasM * this.p;
     this.thetaMeasE = thE;
     const w = wrapPi(thE);
@@ -531,7 +606,16 @@ export class FocController {
     const s = Math.sin(w);
     this.cosE = c;
     this.sinE = s;
-    const omega = this.velocityFilter.process(omegaEstRadS);
+
+    // Speed feedback: the encoder count change per control period, low-passed.
+    let omegaRaw = this._inOmega;
+    if (counted) {
+      const prev = this._prevCount;
+      omegaRaw = prev === prev ? (count - prev) * this._radPerCell * this.fs : 0;
+      this._prevCount = count;
+    }
+    this.omegaRaw = omegaRaw;
+    const omega = this.velocityFilter.process(omegaRaw);
     this.omegaFilt = omega;
 
     // Current sensing with noise.
@@ -552,10 +636,6 @@ export class FocController {
     const iq = dq.q;
     this.id = id;
     this.iq = iq;
-    const idf = this.fluxFilter.process(id);
-    const iqf = this.torqueFilter.process(iq);
-    this.idf = idf;
-    this.iqf = iqf;
 
     f.iqTargetLimit = false; f.xOutputLimit = false; f.uqOutputLimit = false; f.udOutputLimit = false;
     f.vErrSumLimit = false;
@@ -573,9 +653,8 @@ export class FocController {
         // Whole encoder cells when a count is given (zero inside the target's cell).
         // Same expression as encoder.js so a target and a rotor at the same angle
         // land in the same cell.
-        const cpr = this.encoderCpr;
         let e;
-        if (cpr > 0 && Number.isFinite(count)) {
+        if (counted) {
           let cells = Math.floor(this.thetaStar * cpr / TWO_PI) - count;
           const db = this.deadbandCells;
           if (cells > db) cells -= db; else if (cells < -db) cells += db; else cells = 0;
@@ -615,9 +694,16 @@ export class FocController {
     this.idStar = 0;
     this.iqStar = iqStar;
 
-    // Current loops.
-    const eq = iqStar - iqf;
-    const ed = -idf;
+    // Target filters: the torque loop follows the low-passed Iq target, the flux loop the
+    // low-passed Id target (a constant 0).
+    const iqRef = this.torqueFilter.process(iqStar);
+    const idRef = this.fluxFilter.process(0);
+    this.iqRef = iqRef;
+    this.idRef = idRef;
+
+    // Current loops, on the raw measured currents.
+    const eq = iqRef - iq;
+    const ed = idRef - id;
     this.integQ += g.Kiq * eq * invFs;
     this.integD += g.Kid * ed * invFs;
     const pq = g.Kpq * eq;
@@ -647,9 +733,15 @@ export class FocController {
     this.uq = uq;
     this.uMag = Math.sqrt(ud * ud + uq * uq);
     this.uLimit = Umax;
-    const uab = invPark(ud, uq, c, s, this._uab);
-    this.uAlpha = uab.alpha;
-    this.uBeta = uab.beta;
+
+    // Inverse Park at the angle the rotor reaches by the middle of the next period, where this
+    // voltage acts; the plant gets the voltage computed one period ago.
+    const wa = wrapPi(thE + ANGLE_ADVANCE * this.p * omega * invFs);
+    const uab = invPark(ud, uq, Math.cos(wa), Math.sin(wa), this._uab);
+    this.uAlpha = this._uaNext;
+    this.uBeta = this._ubNext;
+    this._uaNext = uab.alpha;
+    this._ubNext = uab.beta;
 
     this.status = (this.maskIqTarget && f.iqTargetLimit) || (this.maskXOutput && f.xOutputLimit)
       || (this.maskUqOutput && f.uqOutputLimit) || (this.maskUdOutput && f.udOutputLimit)

@@ -9,15 +9,18 @@
  * Two scope windows: 500 µs (1 s on screen = 0.5 ms) with the current on a fitted range, so the
  * chopper sawtooth fills the plot; and 20 ms (1 s on screen = 20 ms) on the usual symmetric
  * range, where a slow rotation draws the sine (40 mm/s = one electrical cycle per window). The
- * inductance preset is structural, so it re-runs scenario() through app.reconfigure(); every
- * other control sets the running world. "Switch on" resets the world, so the current climbs
- * from zero again. Leaving the chapter needs no cleanup: the next chapter's scenario configures
- * averaged fidelity again.
+ * rotation ramps at 2000 mm/s²: at the 0.35 A RMS minimum (0.077 N·m holding torque) the default
+ * 5000 mm/s² start to 40 mm/s slipped a cycle. The inductance preset is structural, so it re-runs
+ * scenario() through app.reconfigure(); every other control sets the running world. "Switch on"
+ * resets the world, so the current climbs from zero again. Leaving the chapter needs no cleanup:
+ * the next chapter's scenario configures averaged fidelity again.
  *
  * Readouts: the rise time from 0 to the target, (L/R)·ln(V/(V − R·I)); the current ramp with
  * the bridge on, (V − R·I)/L; the chopper ripple (phase A chopper's ppLast, the source of
  * metrics.ripplePp); the chopper frequency; the mean current against the mean target over the
- * last 1 ms.
+ * last 1 ms. At the defaults (24 V, 1.6 mH, 2.5 A RMS, 40 kHz): rise 0.26 ms, ramp 12.3 A/ms,
+ * ripple 94 mA p-p (measured 2026-10-01). The low-inductance motor (0.8 mH, 0.6 Ω) at a bus
+ * voltage behaves exactly like the typical one at twice that voltage (same V/L and R/L).
  */
 import { MOTOR_PRESETS } from '../sim/presets.js';
 import { formatValue, formatRms } from '../format.js';
@@ -27,6 +30,7 @@ const ZOOMS = {
   ms: { window: 0.02, timeScale: 0.02 },
 };
 const ROTATE_MS_VIEW = 40;               // mm/s picked when the 20 ms view opens at standstill
+const ROTATE_ACCEL = 2000;               // mm/s², the rotation's ramps (header)
 const INDUCTANCE = [['stepperLowL', 'Low'], ['stepper', 'Typical'], ['stepperHighL', 'High']];
 const DEFAULTS = { bus: 24, preset: 'stepper', rms: 2.5, chopKHz: 40, zoom: 'us', speed: 0 };
 
@@ -94,7 +98,7 @@ export default {
     return {
       motorType, motorPreset: st.preset, driver: 'openloop', driverMode: 'current', fidelity: 'switching',
       mechanics: 'free', start: { x: 40, y: 50 }, supplyV: st.bus, runCurrent: peakOf(st.rms),
-      chopper: { freqHz: st.chopKHz * 1000 }, microsteps: 16, interpolate: true,
+      chopper: { freqHz: st.chopKHz * 1000 }, microsteps: 16, interpolate: true, planner: { accel: ROTATE_ACCEL },
     };
   },
 
@@ -104,8 +108,9 @@ export default {
 
   // StallGuard is chapter 4's topic; a lagging current at 12 V could otherwise announce a stall.
   onEvent(ev) { return ev.type === 'stallDetected' ? false : undefined; },
-  // A low run current at speed loses steps (main.js's "Steps lost" message), so the readouts row
-  // keeps room for it (B-008).
+  // The gentle rotation ramp keeps step at every run current, bus voltage and inductance (measured
+  // 2026-10-01); the readouts row still keeps room for main.js's "Steps lost" message in case a
+  // rotor slips anyway (B-008).
   announceSample: 'Steps lost: −88.8 mm',
 
   controls() {

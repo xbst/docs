@@ -1,21 +1,29 @@
 // Motor presets and the analytic torque-speed helper (SPEC 5.2, chunk-02 design section 4).
 //
-// Values are illustrative but realistic. All quantities are SI and phase values are peak
-// (amplitude-invariant transforms):
+// All quantities are SI and phase values are peak (amplitude-invariant transforms):
 //   R [ohm] phase resistance, L [H] phase inductance, Kt [N·m/A] torque per peak phase amp,
 //   p pole pairs (a 1.8° stepper has 50), Jrotor [kg·m²], Irated [A peak].
 // Derived by getMotorPreset():
 //   kf = 1 (two-phase) or 1.5 (three-phase, amplitude-invariant Clarke), lambda = Kt/(kf·p)
 //   [V·s/rad electrical], tauE = L/R [s], phaseAngles = spatial phase angles [rad].
 //
-// Check for the stepper: 1000 rpm -> omegaE = 50·104.7 = 5236 rad/s -> lambda·omegaE = 23 V peak
-// back-EMF, which is why a 24 V supply runs out of voltage near 1000 rpm.
+// The stepper is a 48 mm NEMA 17 with a 1000-line encoder, from its datasheet: 2.5 A RMS rated
+// current (3.54 A peak), 1.2 Ω, 1.6 mH, 0.55 N·m holding torque, 82 g·cm² rotor. Holding torque
+// is rated with the rated current in both phases, a current vector of 2.5·√2 = 3.54 A, so
+// Kt = 0.55/3.54 = 0.1556 N·m per peak amp (0.22 N·m per RMS amp, the figure motor data sheets
+// and driver configs usually quote). The low- and high-inductance variants keep its torque
+// constant and change only the winding (L, R), so chapters 3 and 5 can show what inductance
+// does; the BLDC is illustrative.
+//
+// Check for the stepper: 1000 rpm -> omegaE = 50·104.7 = 5236 rad/s -> lambda·omegaE = 16.3 V
+// peak back-EMF; it reaches 24 V at about 1470 rpm (980 mm/s at 40 mm per turn), which is where
+// a 24 V supply runs out of voltage even with no load.
 
 const TWO_PI = 2 * Math.PI;
 const SQRT3 = Math.sqrt(3);
 
 const STEPPER = Object.freeze({
-  key: 'stepper', type: 'stepper', phases: 2, p: 50, R: 1.14, L: 3.0e-3, Kt: 0.22,
+  key: 'stepper', type: 'stepper', phases: 2, p: 50, R: 1.2, L: 1.6e-3, Kt: 0.1556,
   Jrotor: 8.2e-6, Irated: 3.54, name: 'NEMA 17 1.8°',
 });
 
@@ -28,7 +36,7 @@ const STEPPER = Object.freeze({
 export const MOTOR_PRESETS = Object.freeze({
   stepper: STEPPER,
   stepperHighL: Object.freeze({ ...STEPPER, key: 'stepperHighL', L: 8.0e-3, R: 2.4, name: 'NEMA 17, high inductance' }),
-  stepperLowL: Object.freeze({ ...STEPPER, key: 'stepperLowL', L: 1.5e-3, R: 0.6, name: 'NEMA 17, low inductance' }),
+  stepperLowL: Object.freeze({ ...STEPPER, key: 'stepperLowL', L: 0.8e-3, R: 0.6, name: 'NEMA 17, low inductance' }),
   bldc: Object.freeze({
     key: 'bldc', type: 'bldc', phases: 3, p: 7, R: 0.5, L: 0.4e-3, Kt: 0.06,
     Jrotor: 1.0e-5, Irated: 5.6, name: 'NEMA 17-size BLDC servo',

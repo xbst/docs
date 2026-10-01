@@ -360,8 +360,10 @@ function fillFoc(w, i, m) {
   const posMode = w._focMode[i] === FOC_POS;
   const thetaCmd = posMode ? w._p[i] * foc.thetaStar : thE;
   m.thetaCmd = thetaCmd;
-  const ids = foc.idStar;
-  const iqs = foc.iqStar;
+  // The targets the current loops follow, after the target filters (foc.iqStar, the velocity
+  // loop's request before the torque filter, is what the limit flag and the homing compare).
+  const ids = foc.idRef;
+  const iqs = foc.iqRef;
   m.idStar = ids;
   m.iqStar = iqs;
   const a = ids * c - iqs * sn;

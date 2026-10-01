@@ -25,8 +25,8 @@
 // both motors, a y-stop +Tstop to A and −Tstop to B.
 //
 // Default kStop = 2 N·m/rad models a belt-driven carriage pushed into an endstop: the belt
-// compresses (40 N/mm of belt stiffness at rd 40 mm is about 1.6 N·m/rad), so 0.66 N·m
-// (3 A) sinks about 2 mm and 0.11 N·m (0.5 A) about 0.35 mm, visible in chapter 9. A rigid,
+// compresses (40 N/mm of belt stiffness at rd 40 mm is about 1.6 N·m/rad), so 0.47 N·m
+// (3 A on the stepper) sinks about 1.5 mm and 0.14 N·m (0.9 A) about 0.45 mm, visible in chapter 9. A rigid,
 // direct-coupled stop is configure({ kStop: 500 }). Explicit contact is stable for
 // dt·sqrt(kStop/Jt) < 0.2; at the default that is about 0.007 at dt 40 µs and Jt 5.8e-5
 // (about 0.12 at kStop 500).
