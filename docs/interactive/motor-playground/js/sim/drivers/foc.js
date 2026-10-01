@@ -21,7 +21,7 @@
 //   torque:   iq*    = clamp(iqStarCmd, +-iLimit)
 //   targets:  iqRef = torqueFilter(iq*) ; idRef = fluxFilter(0)
 //   current:  uq = Kpq * (iqRef - iq) + integQ ; ud = Kpd * (idRef - id) + integD
-//             circle |u| <= Umax (d axis first)
+//             ud, uq each clamped to +-Umax, then (ud, uq) scaled to |u| <= Umax
 //   (uAlpha, uBeta) = the previous sample's invPark(ud, uq, thetaE + 1.5 * p * omega / fs)
 //
 // Filters. The torque filter low-passes the Iq target on its way from the velocity loop to the
@@ -47,6 +47,19 @@
 // of that period (1.5 periods of p*omega), so the voltage vector points where it was meant to at
 // any speed. The loop delay of 1.5 periods is what limits the current-loop gain: about 3 times
 // the optimal torque or flux P makes the loop ring near 4 kHz.
+//
+// Voltage limit, as in the TMC4671 (datasheet section 4.7 and register 0x5D
+// PIDOUT_UQ_UD_LIMITS): each current PI's output is clipped to +-Umax, then the inverse Park's
+// circular limiter shortens the (ud, uq) vector to Umax along its own direction. Neither axis
+// has priority, and the circle does not pull the integrators back (the chip's status flags tell
+// the PI output clips and the circle apart; here both set uqOutputLimit / udOutputLimit). Until
+// 2026-10-01 the d axis took the voltage first: a motor braking with the circle full then had
+// its uq cut to what the d axis left, the back-EMF drove Iq past the current limit (4 A against
+// 2.5 A on chapter 6's square at 1000 mm/s on 24 V, 5 A at 100 000 mm/s² on 48 V), and the
+// readouts showed it. With the shared circle the d current gives way instead, as in field
+// weakening, and Iq stays within 5% of the limit there. Only deep in the voltage limit, 24 V at
+// 1000 mm/s and 100 000 mm/s² (20% of the time at the limit), do Iq and Id still reach 3 and
+// 3.6 A for a few milliseconds: no voltage is left to oppose the back-EMF.
 //
 // Anti-windup (back-calculation): when a loop output is clamped, the integrator is pulled back
 // so that `Kp*err + integ == clamped output`. The pull-back never drives the integrator past
@@ -711,7 +724,8 @@ export class FocController {
     let uq = pq + this.integQ;
     let ud = pd + this.integD;
 
-    // Voltage circle, d axis has priority.
+    // Each current PI's output is clipped to ±Umax, then the voltage circle shortens the vector
+    // to Umax along its own direction (see "Voltage limit" in the header).
     const Umax = g.Umax;
     if (ud > Umax) {
       ud = Umax; f.udOutputLimit = true;
@@ -720,14 +734,18 @@ export class FocController {
       ud = -Umax; f.udOutputLimit = true;
       this.integD = backCalc(this.integD, -Umax - pd, false);
     }
-    const r2 = Umax * Umax - ud * ud;
-    const uqMax = r2 > 0 ? Math.sqrt(r2) : 0;
-    if (uq > uqMax) {
-      uq = uqMax; f.uqOutputLimit = true;
-      this.integQ = backCalc(this.integQ, uqMax - pq, true);
-    } else if (uq < -uqMax) {
-      uq = -uqMax; f.uqOutputLimit = true;
-      this.integQ = backCalc(this.integQ, -uqMax - pq, false);
+    if (uq > Umax) {
+      uq = Umax; f.uqOutputLimit = true;
+      this.integQ = backCalc(this.integQ, Umax - pq, true);
+    } else if (uq < -Umax) {
+      uq = -Umax; f.uqOutputLimit = true;
+      this.integQ = backCalc(this.integQ, -Umax - pq, false);
+    }
+    const u2 = ud * ud + uq * uq;
+    if (u2 > Umax * Umax) {
+      const k = Umax / Math.sqrt(u2);
+      ud *= k; uq *= k;
+      f.udOutputLimit = true; f.uqOutputLimit = true;
     }
     this.ud = ud;
     this.uq = uq;

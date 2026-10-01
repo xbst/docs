@@ -50,17 +50,19 @@
  * before the FOC retune of 2026-10-01 the stepper hunted at about 100 Hz there, ±7% and Id up
  * to 1.1 A; a regression test checks it). On 24 V it runs short of voltage from about 900 mm/s
  * (at the limit 23% of the time at 940 mm/s and 20 000 mm/s², 32% at 880 mm/s and
- * 100 000 mm/s²) and trails 7.8 mm at 1000 mm/s and 20 000 mm/s², 22 mm at 1000 mm/s and
+ * 100 000 mm/s²) and trails 7.7 mm at 1000 mm/s and 20 000 mm/s², 24 mm at 1000 mm/s and
  * 100 000 mm/s². On 48 V the voltage lasts to 1000 mm/s
  * (5.3 mm, the lag, at 20 000 mm/s²; 6.8 mm at 100 000 mm/s²). At 100 000 mm/s² the default
  * 2.5 A cannot give the 0.54 N·m the commanded acceleration needs, so after each corner the
  * motors catch up, overshoot the speed into the voltage limit for 20 to 30 ms (Id swings up to
- * 2.5 A) and then cruise cleanly; Heat 16% at 1000 mm/s and 100 000 mm/s² on 48 V (2% at
- * 20 000 mm/s²). Wherever the voltage runs out while a motor brakes, the model's current can
- * pass the limit for a few milliseconds (the d axis takes the whole voltage circle first): Iq
- * up to 4 A against 2.5 A at 1000 mm/s on 24 V, up to 5.4 A at 1000 mm/s and 100 000 mm/s² on
- * 48 V (reported as a sim issue). Worst cases over the slider grid (both buses, 720 settings, no
- * frame contact anywhere): at the lowest current limit, 0.5 A peak, and 1000 mm/s the motors
+ * 1.2 A) and then cruise cleanly; Heat 16% at 1000 mm/s and 100 000 mm/s² on 48 V (2% at
+ * 20 000 mm/s²). Where the voltage runs out while a motor brakes, the driver's voltage circle
+ * (shared by d and q, as in the TMC4671; until 2026-10-01 the d axis came first and Iq reached
+ * 4 to 5.4 A, B-017) keeps Iq within 5% of the 2.5 A limit at 1000 mm/s on 24 V and at
+ * 1000 mm/s and 100 000 mm/s² on 48 V; only on 24 V at 1000 mm/s and 100 000 mm/s², deep in the
+ * voltage limit, do Iq and Id reach 3 and 3.6 A for a few milliseconds per corner. Worst cases
+ * over the slider grid (both buses, 720 settings, no frame contact anywhere; measured before
+ * B-017): at the lowest current limit, 0.5 A peak, and 1000 mm/s the motors
  * cannot follow the corners and swing wide of the square on a repeating path that trails by up
  * to 176 mm and on 48 V passes 7.3 mm from the frame (at 30 000 mm/s²; the same over 300 s; 40
  * runs with the settings changed mid-lap came no closer than 10.9 mm); a current limit too weak
