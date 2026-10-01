@@ -121,7 +121,9 @@ export class CanvasView {
     g.setLineDash(SOLID);
     g.globalAlpha = 1;
     this.lastT = snap.t;
-    if (now - this.ariaAt >= ARIA_MS) {
+    // Not while the host has focus (the gantry's inspect lens makes it a keyboard stop): a screen
+    // reader would read the changed label out every second.
+    if (now - this.ariaAt >= ARIA_MS && document.activeElement !== this.host) {
       this.ariaAt = now;
       let text = '';
       try { text = this.describe(snap, ctx); } catch (err) { text = ''; }

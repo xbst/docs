@@ -29,6 +29,7 @@ export class PathTrail {
     this.coarse = new Float32Array(COARSE_N * 4);
     this.cHead = 0;
     this.cLen = 0;
+    this.cTotal = 0;          // coarse points ever pushed (coarseId)
     this.lastT = -Infinity;
     // Snapshot time of the last update: a smaller one means a new world. (Ring times can be
     // Float32, rounded above the snapshot time, so lastT cannot tell.)
@@ -119,6 +120,7 @@ export class PathTrail {
     c[p] = xc; c[p + 1] = yc; c[p + 2] = xa; c[p + 3] = ya;
     this.cHead = (this.cHead + 1) % COARSE_N;
     if (this.cLen < COARSE_N) this.cLen++;
+    this.cTotal++;
     this.pxc = xc; this.pyc = yc; this.pxa = xa; this.pya = ya;
   }
 
@@ -131,7 +133,7 @@ export class PathTrail {
    * @param {{x: number, y: number, xCmd: number, yCmd: number}} [tip] the current point, appended to the paths
    */
   draw(g, th, ox, oy, k, tip) {
-    drawPaths(g, th, this.coarse, this.cHead, this.cLen, COARSE_N, ox, oy, k, 1.5, tip, -Infinity, 0, 0);
+    drawPaths(g, th, this.coarse, this.cHead, this.cLen, COARSE_N, ox, oy, k, 1.5, tip, -Infinity, 0, 0, ALL);
   }
 
   /**
@@ -142,10 +144,79 @@ export class PathTrail {
   drawLoupe(g, th, sx, sy, cxMm, cyMm, k, rPx, tip, coarse) {
     const ox = sx - cxMm * k, oy = sy + cyMm * k;
     const lim = (rPx / k) * 1.4;
-    if (coarse) drawPaths(g, th, this.coarse, this.cHead, this.cLen, COARSE_N, ox, oy, k, 2, tip, lim, cxMm, cyMm);
-    else drawPaths(g, th, this.fine, this.fHead, this.fLen, FINE_N, ox, oy, k, 2, tip, lim, cxMm, cyMm);
+    if (coarse) drawPaths(g, th, this.coarse, this.cHead, this.cLen, COARSE_N, ox, oy, k, 2, tip, lim, cxMm, cyMm, ALL);
+    else drawPaths(g, th, this.fine, this.fHead, this.fLen, FINE_N, ox, oy, k, 2, tip, lim, cxMm, cyMm, ALL);
+  }
+
+  /**
+   * Logical index (0 = oldest) of the coarse point whose commanded position is nearest to
+   * (x, y) mm, no farther than maxMm; −1 when none is. Laps that coincide give the newest.
+   */
+  nearest(x, y, maxMm) {
+    const c = this.coarse, start = this.cHead - this.cLen;
+    let best = -1, bd = maxMm * maxMm;
+    for (let i = this.cLen - 1; i >= 0; i--) {
+      let p = start + i;
+      if (p < 0) p += COARSE_N;
+      p *= 4;
+      const dx = c[p] - x, dy = c[p + 1] - y, d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
+
+  /** Id of logical coarse index i: it stays with its point as the ring moves on. */
+  coarseId(i) {
+    return this.cTotal - this.cLen + i;
+  }
+
+  /** Logical coarse index of an id; −1 once its point has left the ring (or after clear()). */
+  coarseIndex(id) {
+    const i = id - (this.cTotal - this.cLen);
+    return i >= 0 && i < this.cLen ? i : -1;
+  }
+
+  /**
+   * Coarse index `mm` of commanded path away from logical index i, toward the newest points
+   * (dir 1) or the oldest (−1), stopping at either end of the ring.
+   */
+  walk(i, dir, mm) {
+    const c = this.coarse, start = this.cHead - this.cLen;
+    const off = (j) => { let p = start + j; if (p < 0) p += COARSE_N; return p * 4; };
+    let d = 0, j = i;
+    while (d < mm) {
+      const n = j + dir;
+      if (n < 0 || n >= this.cLen) break;
+      const a = off(j), b = off(n);
+      d += Math.hypot(c[b] - c[a], c[b + 1] - c[a + 1]);
+      j = n;
+    }
+    return j;
+  }
+
+  /** Commanded x (k 0) or y (k 1) of logical coarse index i, mm. */
+  cmdAt(i, k) {
+    let p = this.cHead - this.cLen + i;
+    if (p < 0) p += COARSE_N;
+    return this.coarse[p * 4 + k];
+  }
+
+  /**
+   * As drawLoupe, for a magnifier that can sit anywhere on the frame (the gantry view's inspect
+   * lens): the coarse trail (the laps back), then the fine actual path over it where the last
+   * two seconds reach, so an overshoot a 0.25 mm step would skip still shows. The commanded path
+   * comes from the coarse trail alone: drawn twice, its dashes would fill each other's gaps.
+   */
+  drawLens(g, th, sx, sy, cxMm, cyMm, k, rPx, tip) {
+    const ox = sx - cxMm * k, oy = sy + cyMm * k;
+    const lim = (rPx / k) * 1.4;
+    drawPaths(g, th, this.coarse, this.cHead, this.cLen, COARSE_N, ox, oy, k, 2, tip, lim, cxMm, cyMm, ALL);
+    drawPaths(g, th, this.fine, this.fHead, this.fLen, FINE_N, ox, oy, k, 2, tip, lim, cxMm, cyMm, ACTUAL);
   }
 }
+
+/** drawPaths parts: the error shading, the commanded path, the actual path. */
+const SHADE = 1, COMMANDED = 2, ACTUAL = 4, ALL = SHADE | COMMANDED | ACTUAL;
 
 /** Physical index of logical sample i (0 = oldest) of a ring buffer. */
 function ringIndex(ring, i) {
@@ -188,42 +259,48 @@ function pickPoints(buf, head, len, cap, k, lim, cx, cy) {
 }
 
 /**
- * Shading between the paths, then the commanded (dashed) and actual (solid) polylines.
- * `lim` > 0 draws only the points within lim mm of (cx, cy) (loupe culling).
+ * Shading between the paths, then the commanded (dashed) and actual (solid) polylines; `parts`
+ * picks which (SHADE, COMMANDED, ACTUAL). `lim` > 0 draws only the points within lim mm of
+ * (cx, cy) (loupe culling).
  */
-function drawPaths(g, th, buf, head, len, cap, ox, oy, k, width, tip, lim, cx, cy) {
+function drawPaths(g, th, buf, head, len, cap, ox, oy, k, width, tip, lim, cx, cy, parts) {
   if (len < 1) return;
   const n = pickPoints(buf, head, len, cap, k, lim, cx, cy);
-  // Error shading: one polygon per run of points whose error shows (> 0.6 px), out along the
-  // commanded path and back along the actual one. Far fewer edges to raster than a quad per
-  // sample, and the nonzero fill keeps a band whose sides cross as one area.
-  const minErr2 = (0.6 / k) * (0.6 / k);
-  g.fillStyle = th.field;
-  g.globalAlpha = 0.2;
-  g.beginPath();
-  let run = -1;
-  for (let j = 0; j <= n; j++) {
-    let ok = false;
-    const p = j < n ? IDX[j] : -1;
-    if (p >= 0) {
-      const dx = buf[p] - buf[p + 2], dy = buf[p + 1] - buf[p + 3];
-      ok = dx * dx + dy * dy > minErr2;
-    }
-    if (ok) { if (run < 0) run = j; continue; }
-    if (run >= 0 && j - 1 > run) bandPath(g, buf, run, j - 1, ox, oy, k);
-    run = -1;
-  }
-  g.fill();
-  g.globalAlpha = 1;
-  // commanded path, dashed
   g.lineJoin = 'round';
   g.lineCap = 'butt';
-  g.strokeStyle = th.target;
-  g.lineWidth = width * 0.85;
-  g.setLineDash(DASH);
-  tracePath(g, buf, n, 0, ox, oy, k, tip ? tip.xCmd : NaN, tip ? tip.yCmd : NaN);
-  g.stroke();
-  g.setLineDash(SOLID);
+  if (parts & SHADE) {
+    // Error shading: one polygon per run of points whose error shows (> 0.6 px), out along the
+    // commanded path and back along the actual one. Far fewer edges to raster than a quad per
+    // sample, and the nonzero fill keeps a band whose sides cross as one area.
+    const minErr2 = (0.6 / k) * (0.6 / k);
+    g.fillStyle = th.field;
+    g.globalAlpha = 0.2;
+    g.beginPath();
+    let run = -1;
+    for (let j = 0; j <= n; j++) {
+      let ok = false;
+      const p = j < n ? IDX[j] : -1;
+      if (p >= 0) {
+        const dx = buf[p] - buf[p + 2], dy = buf[p + 1] - buf[p + 3];
+        ok = dx * dx + dy * dy > minErr2;
+      }
+      if (ok) { if (run < 0) run = j; continue; }
+      if (run >= 0 && j - 1 > run) bandPath(g, buf, run, j - 1, ox, oy, k);
+      run = -1;
+    }
+    g.fill();
+    g.globalAlpha = 1;
+  }
+  if (parts & COMMANDED) {
+    // commanded path, dashed
+    g.strokeStyle = th.target;
+    g.lineWidth = width * 0.85;
+    g.setLineDash(DASH);
+    tracePath(g, buf, n, 0, ox, oy, k, tip ? tip.xCmd : NaN, tip ? tip.yCmd : NaN);
+    g.stroke();
+    g.setLineDash(SOLID);
+  }
+  if (!(parts & ACTUAL)) return;
   // actual path, solid amber (over a gray rim on the light card, where amber alone is faint)
   tracePath(g, buf, n, 2, ox, oy, k, tip ? tip.x : NaN, tip ? tip.y : NaN);
   if (!th.dark) {

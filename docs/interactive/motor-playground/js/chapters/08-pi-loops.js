@@ -40,6 +40,12 @@ import { MOTOR_PRESETS } from '../sim/presets.js';
 
 const SQUARE = { start: [50, 50], points: [[150, 50], [150, 150], [50, 150], [50, 50]], laps: 1 };
 const LINE = { start: [50, 50], points: [[200, 50], [50, 50]], laps: 1 };
+/**
+ * Where the test moves run ([x0, y0, x1, y1] mm, the square and the line with room for lag and
+ * overshoot): the gantry loupe takes the largest circle at the view's top right that keeps clear
+ * of it (B-010).
+ */
+const MOVE_AREA = [35, 35, 215, 165];
 /** Rest between two runs of a path (sim s). */
 const PAUSE_S = 1.0;
 /** Settling time after a stop before a path starts (sim s), so its metrics start clean. */
@@ -99,7 +105,8 @@ const MOVES = [
  * Presets: one per symptom row of the calibration tables that this model
  * reproduces. `gains` and `filters` are multipliers (missing = ×1, position I
  * missing = 0), `move` the test move, `loupeMm` the gantry loupe half-width
- * that makes the symptom visible, `symptom` the sentence named after the
+ * at its reference size, the magnification that makes the symptom visible (the
+ * larger loupe shows more around it), `symptom` the sentence named after the
  * reader had time to watch (a function of ctx where the motor type matters).
  */
 const PRESETS = [
@@ -362,9 +369,14 @@ export default {
   timeScale: { default: 0.25, min: 0.01, max: 1 },
   traceWindow: 2.0,
   stage: { primary: 'gantry', secondary: 'blocks', split: 0.55 },
-  viewOptions: { gantry: { loupe: true, loupeMm: LOUPE_DEFAULT }, blocks: { filters: { torque: 1, flux: 1, velocity: 1 } } },
+  // The loupe at the top right, clear of the moves and as large as the view allows; it keeps the
+  // toolhead in sight however far it lags; the inspect lens magnifies any point of the paths (B-010).
+  viewOptions: {
+    gantry: { loupe: true, loupeMm: LOUPE_DEFAULT, loupeAt: 'tr', loupeClear: MOVE_AREA, loupeFit: true, inspect: true },
+    blocks: { filters: { torque: 1, flux: 1, velocity: 1 } },
+  },
   hint: `Every slider lights its loop in the block diagram. The Presets controls name the symptom after ${REVEAL_S} s `
-    + 'of motor time, or press Reveal.',
+    + 'of motor time, or press Reveal. Point at the paths on the gantry, or tap them, to magnify them.',
 
   scenario(motorType) {
     return {
