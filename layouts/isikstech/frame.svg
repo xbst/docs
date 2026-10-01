@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
+  <!--
+    Drawn over the photo tile (x 672-1144, y 79-551) of the social cards
+    (isikstech.yml). Layers can't clip images, so the rounded corners are
+    card-colored fillets painted over the photo's square corners.
+  -->
+  <path fill-rule="evenodd" fill="#131313" d="M668 75 H1148 V555 H668 Z M694 79 H1122 A22 22 0 0 1 1144 101 V529 A22 22 0 0 1 1122 551 H694 A22 22 0 0 1 672 529 V101 A22 22 0 0 1 694 79 Z"/>
+  <rect x="672" y="79" width="472" height="472" rx="22" stroke="#ffc105" stroke-width="3" stroke-opacity="0.85"/>
+
+  <!-- silkscreen courtyard corners, as around a part -->
+  <g stroke="#ffc105" stroke-opacity="0.4" stroke-width="2" stroke-linecap="square">
+    <path d="M658 93 V65 H686"/>
+    <path d="M1130 65 H1158 V93"/>
+    <path d="M1158 537 V565 H1130"/>
+    <path d="M686 565 H658 V537"/>
+  </g>
+</svg>

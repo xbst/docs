@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
+  <!--
+    PCB trace artwork behind the social cards (isikstech.yml), after the
+    gutter traces on isikpcb.com, in the docs' amber. The photo tile covers
+    x 672-1144, y 79-551, and traces run into its edges as if it were a part
+    on the board. The text column (x 64-616) stays clear.
+
+    Routing follows the same house rules: 45 degree miters, power traces wider
+    than signals, real footprints, no two traces crossing. Each card is a still
+    frame, so a few traces carry a pulse bead mid-flight instead of animating.
+    Dash lengths are in real path units: the renderer ignores pathLength.
+  -->
+  <defs>
+    <radialGradient id="glow" cx="908" cy="315" r="470" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffc105" stop-opacity="0.13"/>
+      <stop offset="100%" stop-color="#ffc105" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <g stroke="#ffc105" stroke-linejoin="round">
+    <!-- power in from the top edge, mitered into the tile -->
+    <path d="M700 0 V20 L744 64 V79" stroke-width="5" stroke-opacity="0.45"/>
+
+    <!-- three-line bus from the top edge into the tile -->
+    <path d="M1044 0 V24 L1004 64 V79" stroke-width="2.4" stroke-opacity="0.38"/>
+    <path d="M1060 0 V24 L1020 64 V79" stroke-width="2.4" stroke-opacity="0.38"/>
+    <path d="M1076 0 V24 L1036 64 V79" stroke-width="2.4" stroke-opacity="0.38"/>
+
+    <!-- differential pair in from the right edge -->
+    <path d="M1200 206 H1144" stroke-width="2.4" stroke-opacity="0.36"/>
+    <path d="M1200 220 H1144" stroke-width="2.4" stroke-opacity="0.36"/>
+
+    <!-- signal from the right edge, jogging down into the tile -->
+    <path d="M1200 380 H1184 L1166 398 H1144" stroke-width="2.4" stroke-opacity="0.3"/>
+
+    <!-- length-matching serpentine under the description, into the tile -->
+    <path d="M372 606 H468 L480 594 H504 L516 606 H540 L552 594 H576 L588 606 H652 L696 562 V551" stroke-width="2.4" stroke-opacity="0.34"/>
+
+    <!-- power up from the bottom edge -->
+    <path d="M884 630 V604 L860 580 V551" stroke-width="5" stroke-opacity="0.4"/>
+
+    <!-- short run off the tile onto a via -->
+    <path d="M1084 551 V578 L1106 600 H1166" stroke-width="2.4" stroke-opacity="0.3"/>
+
+    <!-- gutter run off the tile into a two-pad passive -->
+    <path d="M672 150 H654 L640 164 V286" stroke-width="2.4" stroke-opacity="0.3"/>
+
+    <!-- stub from the top edge onto a via, beside the header -->
+    <path d="M532 0 V14 L564 46 H600" stroke-width="2.4" stroke-opacity="0.26"/>
+  </g>
+
+  <!-- vias -->
+  <g stroke="#ffc105">
+    <circle cx="372" cy="606" r="8" fill="#131313" stroke-width="2" stroke-opacity="0.45"/>
+    <circle cx="372" cy="606" r="3.2" fill="#ffc105" fill-opacity="0.45" stroke="none"/>
+    <circle cx="1166" cy="600" r="8" fill="#131313" stroke-width="2" stroke-opacity="0.4"/>
+    <circle cx="1166" cy="600" r="3.2" fill="#ffc105" fill-opacity="0.4" stroke="none"/>
+    <circle cx="600" cy="46" r="8" fill="#131313" stroke-width="2" stroke-opacity="0.36"/>
+    <circle cx="600" cy="46" r="3.2" fill="#ffc105" fill-opacity="0.36" stroke="none"/>
+  </g>
+
+  <!-- two-pad passive at the end of the gutter run -->
+  <g fill="#ffc105" fill-opacity="0.16" stroke="#ffc105" stroke-opacity="0.4" stroke-width="1.4">
+    <rect x="631" y="286" width="18" height="16" rx="2"/>
+    <rect x="631" y="312" width="18" height="16" rx="2"/>
+  </g>
+
+  <!-- fiducials -->
+  <circle cx="1172" cy="30" r="4.5" fill="#ffc105" fill-opacity="0.3"/>
+  <circle cx="30" cy="604" r="4.5" fill="#ffc105" fill-opacity="0.22"/>
+
+  <!-- pulse beads: a wide faint glow with a bright core, same as the site -->
+  <g stroke="#ffc105" stroke-linecap="round">
+    <path d="M700 0 V20 L744 64 V79" stroke-dasharray="24 1000" stroke-dashoffset="-34" stroke-width="15" stroke-opacity="0.22"/>
+    <path d="M700 0 V20 L744 64 V79" stroke-dasharray="24 1000" stroke-dashoffset="-34" stroke-width="5" stroke-opacity="0.95"/>
+
+    <path d="M372 606 H468 L480 594 H504 L516 606 H540 L552 594 H576 L588 606 H652 L696 562 V551" stroke-dasharray="30 1000" stroke-dashoffset="-150" stroke-width="8" stroke-opacity="0.22"/>
+    <path d="M372 606 H468 L480 594 H504 L516 606 H540 L552 594 H576 L588 606 H652 L696 562 V551" stroke-dasharray="30 1000" stroke-dashoffset="-150" stroke-width="2.4" stroke-opacity="0.95"/>
+
+    <path d="M1060 0 V24 L1020 64 V79" stroke-dasharray="22 1000" stroke-dashoffset="-34" stroke-width="8" stroke-opacity="0.22"/>
+    <path d="M1060 0 V24 L1020 64 V79" stroke-dasharray="22 1000" stroke-dashoffset="-34" stroke-width="2.4" stroke-opacity="0.95"/>
+
+    <path d="M1200 220 H1144" stroke-dasharray="18 1000" stroke-dashoffset="-16" stroke-width="8" stroke-opacity="0.22"/>
+    <path d="M1200 220 H1144" stroke-dasharray="18 1000" stroke-dashoffset="-16" stroke-width="2.4" stroke-opacity="0.95"/>
+  </g>
+  <!-- the via the serpentine's pulse just left, still lit -->
+  <circle cx="372" cy="606" r="6" fill="#ffc105" fill-opacity="0.5"/>
+</svg>

@@ -3,7 +3,7 @@ title: Nevermore Stealthmax PCB 2
 description: Printed parts, mount and wiring instructions for Stealthmax PCB 2, a controller PCB for the Nevermore Stealthmax air filter.
 social:
   cards_layout_options:
-    image: docs/assets/nevermore/SM2.jpg
+    image: docs/assets/nevermore/SM2-card.jpg
 hide:
   - footer
 ---

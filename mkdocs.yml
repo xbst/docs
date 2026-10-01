@@ -82,7 +82,8 @@ plugins:
   - meta
   # Social cards and Open Graph / Twitter metadata, built from each page's
   # title and description front matter
-  - social
+  - social:
+      cards_layout: isikstech
   - redirects:
       redirect_maps:
         Ouroboros/gibberish.md: ouroboros/plugin-reference.md
