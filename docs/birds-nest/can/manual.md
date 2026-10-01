@@ -1,4 +1,6 @@
 ---
+title: Birds' Nest CAN Manual
+description: Birds' Nest CAN is a USB CAN hub PCB for tool changers with up to 6 CAN toolheads. Klipper firmware flashing, pinout and CAN bus topology.
 hide:
   - footer
 ---

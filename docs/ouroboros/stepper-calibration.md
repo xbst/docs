@@ -1,5 +1,6 @@
 ---
 title: Ouroboros Encoder Stepper Calibration
+description: Set up and tune Ouroboros with closed-loop encoder stepper motors, using the TMC4671 plugin's board and motor profiles and automatic startup tuning.
 hide:
   - footer
 ---

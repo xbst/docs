@@ -1,4 +1,6 @@
 ---
+title: KUSBA Pro Mount Assembly
+description: Tools, parts and steps for assembling the KUSBA Pro accelerometer mount.
 hide:
   - footer
 ---

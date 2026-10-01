@@ -1,5 +1,6 @@
 ---
 title: Ouroboros Wiring & Mount
+description: Ouroboros mounts, pinout, MCU_PWR switch, and motor power, encoder and expansion connector wiring.
 hide:
   - footer
 ---

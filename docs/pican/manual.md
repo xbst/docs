@@ -1,4 +1,6 @@
 ---
+title: PiCAN Manual
+description: PiCAN is a compact, USB-drive-shaped USB to CAN adapter for Klipper 3D printers. Resellers, firmware flashing, wiring and CAN setup.
 hide:
   - footer
 ---

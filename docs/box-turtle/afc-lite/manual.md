@@ -1,4 +1,6 @@
 ---
+title: AFC-Lite Manual
+description: AFC-Lite is a controller PCB for the Box Turtle multi-filament system. Pinout, firmware flashing over CAN or USB, Klipper config and troubleshooting.
 hide:
   - footer
 ---

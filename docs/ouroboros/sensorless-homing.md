@@ -1,5 +1,6 @@
 ---
 title: Ouroboros Sensorless Homing
+description: "How Ouroboros uses the TMC4671 STATUS outputs for sensorless homing: hardware, Klipper config and homing_current tuning."
 hide:
   - footer
 ---

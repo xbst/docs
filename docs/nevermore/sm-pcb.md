@@ -1,4 +1,9 @@
 ---
+title: Nevermore Mini & Stealthmax PCB
+description: Mount and wiring instructions for the Nevermore Mini & Stealthmax PCB, a controller PCB for the Nevermore Mini and Stealthmax air filters.
+social:
+  cards_layout_options:
+    image: docs/assets/nevermore/SM.jpg
 hide:
   - footer
 ---

@@ -1,5 +1,6 @@
 ---
 title: Ouroboros Isik's Tech Encoder Stepper Setup
+description: "Outdated: Ouroboros setup with Isik's Tech encoder stepper motors, using our tested TMC4671 config values."
 hide:
   - footer
 ---

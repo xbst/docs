@@ -1,5 +1,6 @@
 ---
 title: Ouroboros
+description: Ouroboros is a dual TMC4671 FOC motor controller for closed-loop stepper and BLDC motors on Klipper 3D printers.
 hide:
   - footer
 ---

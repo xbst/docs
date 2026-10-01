@@ -1,4 +1,5 @@
 ---
+description: "Manuals, pinouts and setup guides for Isik's Tech 3D printer PCBs: CAN bus adapters and hubs, filament changer controllers, Nevermore controllers and more."
 hide:
   - footer
 ---

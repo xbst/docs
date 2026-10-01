@@ -1,4 +1,6 @@
 ---
+title: Nevermore PCB Firmware & Software Setup
+description: Klipper firmware flashing, SGP40 plugin installation, Klipper config and SGP40 calibration for all Isik's Tech Nevermore PCBs.
 hide:
   - footer
 ---

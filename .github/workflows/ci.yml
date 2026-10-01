@@ -27,7 +27,8 @@ jobs:
           path: .cache
           restore-keys: |
             zensical-
-      - run: pip install zensical
+      # 0.0.67 added the social plugin (social cards)
+      - run: pip install "zensical>=0.0.67"
       - run: pip install "git+https://github.com/xbst/PinConnect.git@master#subdirectory=pinout_gen"
       - run: pip install "git+https://github.com/xbst/PinConnect.git@master#subdirectory=pinout_embed"
       - name: Generate interactive pinouts

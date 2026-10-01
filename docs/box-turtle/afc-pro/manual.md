@@ -1,4 +1,6 @@
 ---
+title: AFC-Pro Manual
+description: AFC-Pro is a Box Turtle AFC controller PCB with 8 stepper and 8 brushed motor drivers. Pinout, motor voltage, firmware flashing and Klipper config.
 hide:
   - footer
 ---

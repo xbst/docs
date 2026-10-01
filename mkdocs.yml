@@ -1,5 +1,6 @@
 site_name: Isik's Tech Documentation
 site_url: https://docs.isiks.tech
+site_description: Manuals, pinouts, firmware flashing and Klipper setup guides for Isik's Tech 3D printer electronics.
 site_author: XBST LLC
 copyright: Copyright &copy; 2026 XBST LLC
 repo_url: https://github.com/xbst
@@ -77,6 +78,11 @@ markdown_extensions:
   - pinout_embed
 
 plugins:
+  # Applies each folder's .meta.yml to every page in it and its subfolders
+  - meta
+  # Social cards and Open Graph / Twitter metadata, built from each page's
+  # title and description front matter
+  - social
   - redirects:
       redirect_maps:
         Ouroboros/gibberish.md: ouroboros/plugin-reference.md

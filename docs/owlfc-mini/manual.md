@@ -1,4 +1,6 @@
 ---
+title: OwlFC-Mini Manual
+description: OwlFC-Mini is a 2-lane filament changer controller PCB for NightOwl. Pinout, firmware flashing over CAN or USB, software setup and printed parts.
 hide:
   - footer
 ---
