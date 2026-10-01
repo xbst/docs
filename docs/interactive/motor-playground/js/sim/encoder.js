@@ -27,6 +27,9 @@ const EDGE_RING = 32;
  * `windowSteps` (int, windowS/dt rounded; informational), `t` (s since reset),
  * `edgeT`/`edgeC` (ring of the last 32 edge times and counts), `head` (newest slot),
  * `len` (edges stored), `lastInterval` (s between the two newest edges, 0 if unknown).
+ * The per-step path passes no double arguments (a call V8 does not inline boxes them): the
+ * world writes the shaft angle into `inThetaM` and calls updateInputs(), which hands the angle
+ * to _setCount and the edge time to _pushEdge in fields too (`inThetaM`, `tEdge`).
  */
 export class Encoder {
   constructor() {
@@ -48,6 +51,8 @@ export class Encoder {
     /** @type {number} slot of the newest edge */ this.head = 0;
     /** @type {number} edges stored (0..32) */ this.len = 0;
     /** @type {number} time between the two newest edges [s]; 0 if unknown */ this.lastInterval = 0;
+    /** @type {number} shaft angle for updateInputs()/_setCount() [rad] */ this.inThetaM = 0;
+    /** @type {number} time of the edge _pushEdge stores [s] */ this.tEdge = 0;
     this._derive();
   }
 
@@ -77,7 +82,8 @@ export class Encoder {
    * @param {number} [thetaM=0] mechanical angle [rad]
    */
   reset(thetaM = 0) {
-    this._setCount(thetaM);
+    this.inThetaM = thetaM;
+    this._setCount();
     this.t = 0;
     this.thetaPrev = thetaM;
     this.countPrev = this.count;
@@ -94,10 +100,17 @@ export class Encoder {
    * @param {number} thetaM mechanical angle [rad]
    */
   update(thetaM) {
+    this.inThetaM = thetaM;
+    this.updateInputs();
+  }
+
+  /** update() on the angle already in `inThetaM`: the world's per-step path. Does not allocate. */
+  updateInputs() {
+    const thetaM = this.inThetaM;
     const tPrev = this.t;
     const t = tPrev + this.dt;
     this.t = t;
-    this._setCount(thetaM);
+    this._setCount();
     const c0 = this.countPrev, c1 = this.count;
     const rpc = this.radPerCount;
     if (c1 !== c0) {
@@ -109,7 +122,8 @@ export class Encoder {
       let tEdge = dTh !== 0 ? tPrev + this.dt * (thEdge - this.thetaPrev) / dTh : t;
       if (!(tEdge >= tPrev)) tEdge = tPrev;
       else if (tEdge > t) tEdge = t;
-      this._pushEdge(tEdge, c1);
+      this.tEdge = tEdge;
+      this._pushEdge(c1);
     } else if (this.len > 0 && this.omegaEst !== 0) {
       // Standstill bound: no edge for longer than expected → at most one count per elapsed time.
       const elapsed = t - this.edgeT[this.head];
@@ -124,8 +138,13 @@ export class Encoder {
     this.countPrev = c1;
   }
 
-  /** Stores an edge and recomputes omegaEst from the ring (bounded walk, no allocation). */
-  _pushEdge(tEdge, c) {
+  /**
+   * Stores an edge at time `this.tEdge` and recomputes omegaEst from the ring (bounded walk,
+   * no allocation).
+   * @param {number} c count after the edge
+   */
+  _pushEdge(c) {
+    const tEdge = this.tEdge;
     const T = this.edgeT, C = this.edgeC;
     const h = this.len === 0 ? this.head : (this.head + 1) % EDGE_RING;
     T[h] = tEdge;
@@ -148,9 +167,9 @@ export class Encoder {
     this.omegaEst = span > 0 ? (c - C[r]) * this.radPerCount / span : 0;
   }
 
-  /** count, A/B and thetaMeas (cell center) from an angle. */
-  _setCount(thetaM) {
-    const count = Math.floor(thetaM * this.cpr / TWO_PI);
+  /** count, A/B and thetaMeas (cell center) from the angle in `inThetaM`. */
+  _setCount() {
+    const count = Math.floor(this.inThetaM * this.cpr / TWO_PI);
     this.count = count;
     const q = ((count % 4) + 4) % 4;
     this.a = (q === 1 || q === 2) ? 1 : 0;

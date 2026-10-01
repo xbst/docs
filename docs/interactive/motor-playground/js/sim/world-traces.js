@@ -36,7 +36,7 @@ export function traceDecimation(traceWindow, dt) {
  * full resolution), values in a Float32Array.
  * `head` is the index of the next write, `len` the number of valid samples (≤ cap). Logical
  * sample i (0 = oldest) lives at `(head − len + i + cap) % cap`; the newest at
- * `(head − 1 + cap) % cap`. NaN values mark gaps (e.g. `sg = null`).
+ * `(head − 1 + cap) % cap`. NaN values mark gaps (e.g. `sg` with no reading).
  */
 export class RingBuffer {
   /**
@@ -185,7 +185,7 @@ export function buildTraces(world) {
 /**
  * Pushes one sample of every trace at the world's time (called every `decimation` steps).
  * `step` is 1 for the first sample after one or more pulses and alternates 1/0 while pulses
- * come faster than the sample rate (dense band on the scope); `sg = null` is written as NaN.
+ * come faster than the sample rate (dense band on the scope); `sg` is NaN (a gap) with no reading.
  * Does not allocate.
  * @param {object} w World (reads `_traceBufs`, `_traceCodes`, `_traceMotors`, `snapshot`, ...)
  */
@@ -253,7 +253,7 @@ export function pushTraces(w) {
       case T_POSERR: out[h] = (w.cmdTheta[i] - m.thetaM) * k; break;
       case T_VELCMD: out[h] = w.cmdOmega[i] * k; break;
       case T_VELACT: out[h] = m.omegaM * k; break;
-      case T_SG: out[h] = m.sg === null ? NaN : m.sg; break;
+      case T_SG: out[h] = m.sg; break;
       case T_SGTHR: {
         const sgd = w.stallguards[i];
         out[h] = sgd !== null ? sgd.threshold : NaN;

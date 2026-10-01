@@ -280,9 +280,9 @@ function resultChip(snap) {
 
 function sgChip(snap, m) {
   const thr = 2 * st.sgthrs;
-  if (m.sg == null) {
-    // A homing move below the minimum speed; the shuttle passes through it at every reversal, and the
-    // carriage while it stops before a homing (neither flagged).
+  if (m.sg !== m.sg) {
+    // No reading (NaN): a homing move below the minimum speed; the shuttle passes through it at every
+    // reversal, and the carriage while it stops before a homing (neither flagged).
     const slow = st.homing && !st.pending && st.homeSpeed < MIN_SPEED && snap.planner.mode !== 'idle';
     return { label: 'StallGuard', value: slow ? 'too slow' : '–', warn: slow, minChars: 8,
       title: `No reading below ${MIN_SPEED} mm/s (the driver needs the motor's back-EMF to measure).`,

@@ -1,8 +1,8 @@
 // StallGuard-like load estimator (a behavior model, not the chip's circuit).
 //
 //   sg   = 1023·(1 − min(1 − SG_STALL_FLOOR, |sin δ|·(1 + 0.3·|ωm|/ωref)))
-//          when |omegaCmd| ≥ minSpeed, else null
-//   diag = sg !== null && sg < 2·sgthrs
+//          when |omegaCmd| ≥ minSpeed, else NaN (no reading)
+//   diag = sg < 2·sgthrs (false while there is no reading)
 //
 // δ is the load angle (current vector vs rotor d axis, rad), ωm the mechanical speed (rad/s),
 // ωref the mechanical speed of 100 mm/s. The result is continuous (not rounded to an integer).
@@ -10,6 +10,9 @@
 // stalled rotor, including one that slips and rebounds against a compliant stop, never reads
 // 0 and a too-dull threshold (2·sgthrs < 82, sgthrs below ~41) never detects the stall.
 // Unloaded readings are unchanged (the floor only clips the low end).
+// "No reading" is NaN, not null: a field that only ever holds doubles keeps V8's double
+// representation and is updated in place, while a null-or-number field boxes every reading into
+// a new HeapNumber (16 B per motor per step). Readers test `sg !== sg`.
 
 import { mmSToRadS } from '../units.js';
 
@@ -19,7 +22,7 @@ export const SG_STALL_FLOOR = 0.08;
 /**
  * StallGuard-like estimator for one motor.
  *
- * Fields: `sg` (0..1023, or null below the minimum speed), `diag` (bool), `threshold`
+ * Fields: `sg` (0..1023, or NaN below the minimum speed), `diag` (bool), `threshold`
  * (= 2·sgthrs, the value sg is compared against), `sgthrs`, `minSpeedRadS`, `omegaRefRadS`.
  */
 export class StallGuard {
@@ -32,10 +35,12 @@ export class StallGuard {
     this.minSpeedRadS = mmSToRadS(10, 40);
     /** Reference speed, the mechanical speed of 100 mm/s (rad/s). */
     this.omegaRefRadS = mmSToRadS(100, 40);
-    /** Load estimate (0..1023) or null below the minimum speed. */
-    this.sg = null;
+    /** Load estimate (0..1023) or NaN below the minimum speed. */
+    this.sg = NaN;
     /** DIAG output. */
     this.diag = false;
+    /** Inputs for updateInputs(): load angle δ (rad), commanded and actual mechanical speed (rad/s). */
+    this.inLoadAngle = 0; this.inOmegaCmd = 0; this.inOmegaM = 0;
   }
 
   /**
@@ -50,9 +55,9 @@ export class StallGuard {
     this.omegaRefRadS = omegaRefRadS > 0 ? omegaRefRadS : 1;
   }
 
-  /** Clear the result (sg = null, diag = false). */
+  /** Clear the result (sg = NaN, diag = false). */
   reset() {
-    this.sg = null;
+    this.sg = NaN;
     this.diag = false;
   }
 
@@ -63,13 +68,23 @@ export class StallGuard {
    * @param {number} omegaM actual mechanical speed (rad/s)
    */
   update(loadAngleRad, omegaCmdRadS, omegaM) {
+    this.inLoadAngle = loadAngleRad; this.inOmegaCmd = omegaCmdRadS; this.inOmegaM = omegaM;
+    this.updateInputs();
+  }
+
+  /**
+   * update() on inputs already in `inLoadAngle`, `inOmegaCmd` and `inOmegaM`: the world's
+   * per-step path, without double arguments (boxed when a call is not inlined).
+   */
+  updateInputs() {
+    const omegaCmdRadS = this.inOmegaCmd, omegaM = this.inOmegaM;
     const wc = omegaCmdRadS < 0 ? -omegaCmdRadS : omegaCmdRadS;
     if (wc < this.minSpeedRadS) {
-      this.sg = null;
+      this.sg = NaN;
       this.diag = false;
       return;
     }
-    let sn = Math.sin(loadAngleRad);
+    let sn = Math.sin(this.inLoadAngle);
     if (sn < 0) sn = -sn;
     const wm = omegaM < 0 ? -omegaM : omegaM;
     let load = sn * (1 + 0.3 * wm / this.omegaRefRadS);

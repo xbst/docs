@@ -38,7 +38,7 @@
 //   (an open-loop compare motor on a BLDC scenario is the stepper: 3.54 A, not 5.6 A).
 // StallGuard (drivers/stallguard.js): sg = 1023·clamp(1 − 0.92·|sin δ|·(1 + 0.3|ωm|/ωref), 0, 1)
 //   (a stalled rotor reads about 82: SG_STALL_FLOOR 0.08),
-//   δ = atan2(iq, id) (current vector vs rotor d axis), ωref = 100 mm/s; null while the
+//   δ = atan2(iq, id) (current vector vs rotor d axis), ωref = 100 mm/s; NaN while the
 //   planner's commanded speed is below minSpeedMmS; diag = sg < 2·sgthrs.
 // FOC (drivers/foc.js), sampled at 25 kHz (every 40 µs control tick), laid out like a hardware
 // FOC servo chip:

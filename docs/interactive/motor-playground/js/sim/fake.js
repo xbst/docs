@@ -12,7 +12,7 @@
  * traces absent where they make no sense (no sg/diag for FOC, no status/flags/
  * iLimit for open loop, no phase C on a stepper, pwmA/B/C only when switching),
  * `snapshot.events === world.events`, metrics mutated in place, loadAngle = atan2(iq, id)
- * in rad.
+ * in rad, `motors[i].sg` NaN (not null) with no reading.
  */
 
 const TWO_PI = Math.PI * 2;
@@ -299,7 +299,7 @@ export class FakeWorld {
       thetaM: 0, omegaM: 0, thetaE: 0, iPhase: new Array(ph).fill(0), vPhase: new Array(ph).fill(0),
       iStar: new Array(ph).fill(0), bemf: new Array(ph).fill(0), iAlpha: 0, iBeta: 0, id: 0, iq: 0,
       idStar: 0, iqStar: 0, ud: 0, uq: 0, uMag: 0, uLimit: 0, torque: 0, loadTorque: 0, loadAngle: 0,
-      thetaCmd: 0, vAmp: 0, pwmState: new Array(ph).fill(0), sg: null, diag: false,
+      thetaCmd: 0, vAmp: 0, pwmState: new Array(ph).fill(0), sg: NaN, diag: false,
       flags: { iqTargetLimit: false, xOutputLimit: false, uqOutputLimit: false, udOutputLimit: false, vErrSumLimit: false },
       status: false, heat: 0, iAmp: 0, iLimit: 0, driver: this.sc.driver, mode: 'current', lostCycles: 0,
       stepgen: { level: 0, dir: 1, rate: 0, count: 0 },
@@ -596,7 +596,7 @@ export class FakeWorld {
       }
       o.bemf[0] = e.bemfA;
       o.heat = this.heat[m];
-      o.sg = this.foc ? null : 900;
+      o.sg = this.foc ? NaN : 900;
       o.diag = false;
       o.status = !!(this.bumpT >= 0 && this.t - this.bumpT < 0.05);
       o.flags.iqTargetLimit = o.status;

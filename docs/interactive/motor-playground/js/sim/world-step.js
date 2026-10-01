@@ -73,6 +73,8 @@ export class EventGates {
  * motor turn) and `loads` ({ drag, torque, bump } in N·m, bump = the bump torque right now);
  * per motor `thetaStar` (position target, mech rad), `omegaStar` (velocity-loop target, mech
  * rad/s) and `omegaFilt` (the speed the velocity loop sees, mech rad/s), see fillMotor/fillFoc.
+ * `motors[i].sg` is NaN while there is no reading (below StallGuard's minimum speed, and always
+ * for a FOC motor), not SPEC 5.7's null: a field that only holds doubles is not boxed per step.
  * @param {object} w World
  * @returns {object} snapshot
  */
@@ -88,7 +90,7 @@ export function buildSnapshot(w) {
       iPhase: new Float64Array(ph), vPhase: new Float64Array(ph), iStar: new Float64Array(ph), bemf: new Float64Array(ph),
       iAlpha: 0, iBeta: 0, id: 0, iq: 0, idStar: 0, iqStar: 0, ud: 0, uq: 0, uMag: 0, uLimit: 0,
       torque: 0, loadTorque: 0, loadAngle: 0, thetaCmd: 0, vAmp: 0, pwmState: new Int8Array(isFoc ? ph : 2),
-      sg: null, diag: false,
+      sg: NaN, diag: false,
       flags: { iqTargetLimit: false, xOutputLimit: false, uqOutputLimit: false, udOutputLimit: false, vErrSumLimit: false },
       status: false, heat: 0,
       encoder: { count: 0, a: 0, b: 0, thetaMeas: 0, omegaEst: 0 },
@@ -218,13 +220,23 @@ function stepMotor(w, i) {
  */
 function sense(w, i) {
   const mech = w.mechanics;
-  w.encoders[i].update(mech.theta[i]);
+  // enc.update(θ) and sgd.update(δ, ωcmd, ωm) through fields: whether V8 inlines them into
+  // stepWorld depends on what else it inlined first, and a call it does not inline boxes its
+  // double arguments.
+  const enc = w.encoders[i];
+  enc.inThetaM = mech.theta[i];
+  enc.updateInputs();
   const motor = w.motors[i];
   const la = Math.atan2(motor.iq, motor.id);
   w._loadAngle[i] = la;
   const sgd = w.stallguards[i];
   // Minimum-speed gate on the planner's commanded speed (same rad/s as FOC velocity mode).
-  if (sgd !== null) sgd.update(la, w.cmdOmega[i], mech.omega[i]);
+  if (sgd !== null) {
+    sgd.inLoadAngle = la;
+    sgd.inOmegaCmd = w.cmdOmega[i];
+    sgd.inOmegaM = mech.omega[i];
+    sgd.updateInputs();
+  }
 }
 
 /**
@@ -340,7 +352,9 @@ function fillOpenLoop(w, i, m) {
   m.mode = ol.modeActive;
   const err = thetaCmd - thE;
   m.cmdAngleErr = wrapPi(err);
-  return Math.round(err / TWO_PI);
+  // `| 0`: Math.round gives −0 for −π < err < 0 (a rotor trailing any reverse move), and a −0
+  // returned from a call V8 does not inline is a new HeapNumber every step (an int32 is not).
+  return Math.round(err / TWO_PI) | 0;
 }
 
 /**
@@ -421,7 +435,7 @@ function fillFoc(w, i, m) {
   }
   w._prevStatus[i] = latched ? 1 : 0;
   m.iLimit = foc.iLimit;
-  m.sg = null;
+  m.sg = NaN;
   m.diag = false;
   m.mode = foc.mode;
   m.cmdAngleErr = posMode ? wrapPi(thetaCmd - thE) : 0;
