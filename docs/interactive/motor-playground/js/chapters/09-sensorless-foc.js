@@ -148,6 +148,9 @@ export default {
     ];
   },
 
+  // The longest announcement, so the readouts row keeps room for it (B-008).
+  announceSample: 'False trigger 888.8 mm before the stop: the demand exceeded the limit in free motion',
+
   onEvent(ev) {
     if (ev.type === 'homingDone') {
       const d = ev.data || {};

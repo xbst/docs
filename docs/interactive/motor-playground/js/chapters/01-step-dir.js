@@ -129,6 +129,10 @@ export default {
     st.moving = false;
   },
 
+  // The longest announcement (a move with its braking and the way back), so the readouts row keeps
+  // room for it (B-008).
+  announceSample: 'Move done: 88888 pulses for 888.888 mm',
+
   onEvent(ev, ctx) {
     if (ev.type === 'stallDetected') return false;
     if (ev.type !== 'pathDone' || !st.moving) return undefined;

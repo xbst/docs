@@ -401,6 +401,9 @@ export default {
     }
   },
 
+  // The longest announcement, so the readouts row keeps room for it (B-008).
+  announceSample: 'No stall detected: the carriage hit the stop and the motor skipped',
+
   onEvent(ev, ctx) {
     const d = ev.data || {};
     switch (ev.type) {

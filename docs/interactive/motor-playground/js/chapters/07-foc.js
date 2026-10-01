@@ -191,6 +191,9 @@ export default {
     return items;
   },
 
+  // The only announcement, so the readouts row keeps room for it (B-008).
+  announceSample: 'The open-loop stepper slipped under the load, so both motors start again',
+
   onEvent(ev, ctx) {
     if (ev.type === 'stallDetected') return false;     // the open-loop comparison motor's StallGuard
     if (ev.type === 'stepLost' && ev.data && ev.data.motor === 1) {

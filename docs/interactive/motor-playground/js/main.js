@@ -407,6 +407,7 @@ function enterChapter(index) {
   syncTimeSlider();
   updateToolbar();
   updateReadouts();
+  readouts.setSample(announceSample());
   updateUrl();
   updateFitStage();
   schedulePost();
@@ -425,6 +426,7 @@ function setMotorType(type) {
   renderControls(true);
   updateToolbar();
   updateReadouts();
+  readouts.setSample(announceSample());
   updateUrl();
   scope.invalidate();
   schedulePost();
@@ -605,6 +607,15 @@ const EVENT_TEXT = {
   sweepDone: () => 'Sweep done',
 };
 let lastAnnounce = '', lastAnnounceT = -Infinity;
+
+/**
+ * The chapter's longest announcement (announceSample: a string, or a function of ctx), for which
+ * the readouts row keeps room (B-008). None: no room until the chapter's first message.
+ */
+function announceSample() {
+  const s = typeof ch.announceSample === 'function' ? hook('announceSample', ctx) : ch.announceSample;
+  return typeof s === 'string' ? s : '';
+}
 
 function announce(text) {
   if (!text) return;

@@ -335,6 +335,9 @@ export default {
     }
   },
 
+  // The longest announcement, so the readouts row keeps room for it (B-008).
+  announceSample: 'Sweep at 88 V: the current held 70% up to 8888 mm/s',
+
   onEvent(ev, ctx) {
     switch (ev.type) {
       case 'sweepDone': {

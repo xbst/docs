@@ -1,7 +1,9 @@
 /**
  * Readout chips and LEDs (SPEC 4.7), styled like the CAN widget's `.stat`
  * chips, plus one polite live region that announces events (stall detected,
- * steps lost, homing done) and shows them briefly as a pill.
+ * steps lost, homing done) and shows them briefly as a pill in a slot after
+ * the chips. The slot keeps the size of the chapter's longest message
+ * (setSample), so a message coming and going covers nothing and moves nothing.
  *
  * Item: { label, value, unit, warn, ok, led: 'on'|'off'|'trip', title, digits, minChars, unitChars, bar }
  *   value: number (formatted to ~3 significant digits, or `digits` decimals) or string.
@@ -37,11 +39,21 @@ export class Readouts {
     this.host = host;
     this.list = document.createElement('div');
     this.list.className = 'chips';
+    // The message slot (B-008): on the chips' last line when it has room, else on a line of its own
+    // (playground.css .msg). An invisible copy of the chapter's longest message shares its grid
+    // cell, so the slot is that message's size at any width and font size. Out of the flow
+    // (.none) until a chapter has a message.
+    this.msg = document.createElement('div');
+    this.msg.className = 'msg none';
+    this.sample = document.createElement('span');
+    this.sample.className = 'msg-sample';
+    this.sample.setAttribute('aria-hidden', 'true');
     this.live = document.createElement('div');
     this.live.className = 'live idle';
     this.live.setAttribute('role', 'status');
     this.live.setAttribute('aria-live', 'polite');
-    host.append(this.list, this.live);
+    this.msg.append(this.sample, this.live);
+    host.append(this.list, this.msg);
     this.chips = [];
     this.showTimer = 0;
     this.fadeTimer = 0;
@@ -183,11 +195,25 @@ export class Readouts {
   }
 
   /**
+   * Reserve the message slot for the chapter's longest message (main.js: the chapter's
+   * announceSample). Empty: no slot until the first message.
+   * @param {string} text
+   */
+  setSample(text) {
+    const s = text ? String(text) : '';
+    if (this.sample.textContent !== s) this.sample.textContent = s;
+    this.msg.classList.toggle('none', !s);
+  }
+
+  /**
    * Announce a short event message to screen readers and show it briefly.
    * @param {string} text
    */
   announce(text) {
     if (!text) return;
+    // A message longer than the reserved one takes over the reservation, so the slot grows once
+    // and keeps that size for the visit instead of shrinking back as each such message fades.
+    if (text.length > this.sample.textContent.length) this.setSample(text);
     clearTimeout(this.showTimer);
     clearTimeout(this.fadeTimer);
     clearTimeout(this.clearTimer);
@@ -199,7 +225,10 @@ export class Readouts {
     this.clearTimer = setTimeout(() => { this.live.textContent = ''; }, SHOW_MS + 600);
   }
 
-  /** Hide all chips and the message (chapter change), including one still due to appear; forget their widths. */
+  /**
+   * Hide all chips and the message (chapter change), including one still due to appear; forget
+   * their widths and the message slot's reservation.
+   */
   clear() {
     this.update([]);
     this.resetWidths();
@@ -208,6 +237,7 @@ export class Readouts {
     clearTimeout(this.clearTimer);
     this.live.textContent = '';
     this.live.classList.add('idle');
+    this.setSample('');
   }
 
   destroy() {

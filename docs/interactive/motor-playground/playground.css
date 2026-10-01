@@ -308,8 +308,8 @@ a{color:inherit}
 @media(hover:hover){.lg:hover{background:var(--hs-hover)}}
 
 /* ---------------- readouts (views/readouts.js) ---------------- */
-.ro{position:relative;display:flex;align-items:center;gap:8px;flex-shrink:0;min-height:26px;min-width:0}
-.chips{display:flex;gap:6px;flex-wrap:wrap;flex:1 1 auto;min-width:0}
+.ro{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;flex-shrink:0;min-height:26px;min-width:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap;flex:0 1 auto;min-width:0}
 /* flex:none: readouts.js holds each chip's widest width as a min-width, and a flex item that may
    shrink would be squeezed down to that minimum in the phone layout's overflowing row */
 .chip{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;color:var(--desc-color);flex:none;
@@ -330,14 +330,20 @@ a{color:inherit}
 .chip .bar .m{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;border-radius:1px;background:var(--text)}
 .chip .bar.low .f{background:var(--err)}
 .chip .bar.off .f{display:none}
-/* The announcement pill floats over the scope card's bottom-right corner (the end of its
-   legend row), so the chip rows never reflow when a message comes and goes; it needs a solid
-   backdrop under the translucent tint. On mobile it stays in the strip beside the chip scroller. */
-.live{position:absolute;right:0;bottom:calc(100% + 4px);z-index:2;pointer-events:none;
-  font-size:.75rem;font-weight:500;color:var(--text);border:1px solid var(--hs-stroke);
-  background:linear-gradient(var(--hs-active),var(--hs-active)),var(--tip-bg);
-  box-shadow:0 2px 8px var(--tip-shadow);border-radius:10px;padding:3px 10px;white-space:nowrap;
-  max-width:min(70%,560px);overflow:hidden;text-overflow:ellipsis;transition:opacity .4s}
+/* The announcement pill (.live) sits in a slot after the chips: on their last line when the line
+   has room, else on a line of its own. An invisible copy of the chapter's longest message shares
+   the slot's grid cell, so the slot keeps that message's size at any width and font size, and a
+   message coming and going covers nothing and moves nothing (B-008; F-18 had the rows reflow, F-65
+   the floating pill cover the scope card). Out of the flow while a chapter has no message. The
+   pill wraps rather than cutting a long message short; a solid backdrop under the translucent
+   tint, like the chips' own. */
+.msg{display:grid;flex:1 0 auto;min-width:0;max-width:100%}
+.msg.none{position:absolute;left:0;top:0;pointer-events:none}
+.msg>*{grid-area:1/1;justify-self:start;align-self:start;max-width:100%;font-size:.75rem;font-weight:500;line-height:1.35;
+  border:1px solid transparent;border-radius:10px;padding:3px 10px}
+.msg-sample{visibility:hidden}
+.live{color:var(--text);border-color:var(--hs-stroke);
+  background:linear-gradient(var(--hs-active),var(--hs-active)),var(--tip-bg);transition:opacity .4s}
 .live.idle{opacity:0}
 
 /* ---------------- debug overlay (?debug=1) ---------------- */
@@ -418,7 +424,6 @@ html.is-fs .app:has(.p-learn[open]) .main{flex:1 0 var(--fit-stage,280px)}
   .p-deep{border-top:0;padding-top:0}
   .scope-plot{height:160px}
   .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
-  .live{position:static;flex:none;max-width:45%;box-shadow:none}
   /* fullscreen keeps the one-column page scrolling (the desktop rules lock the viewport); the
      toolbar stays on top, across the side gutters, so exit fullscreen stays in reach, and a
      content control focused from below scrolls clear of it (the toolbar is at most about

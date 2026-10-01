@@ -104,6 +104,9 @@ export default {
 
   // StallGuard is chapter 4's topic; a lagging current at 12 V could otherwise announce a stall.
   onEvent(ev) { return ev.type === 'stallDetected' ? false : undefined; },
+  // A low run current at speed loses steps (main.js's "Steps lost" message), so the readouts row
+  // keeps room for it (B-008).
+  announceSample: 'Steps lost: −88.8 mm',
 
   controls() {
     return [

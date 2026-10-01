@@ -225,6 +225,9 @@ export default {
     return items;
   },
 
+  // The longest announcement (onFrame's bump result), so the readouts row keeps room for it (B-008).
+  announceSample: 'Bump: pushed 8.8 mm off the path, back on it after 888 ms',
+
   onEvent(ev, ctx) {
     switch (ev.type) {
       case 'pathDone':

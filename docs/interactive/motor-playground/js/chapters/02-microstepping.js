@@ -101,6 +101,10 @@ export default {
     jog(ctx);
   },
 
+  // A low run current under drag loses steps (main.js's "Steps lost" message), so the readouts row
+  // keeps room for it (B-008).
+  announceSample: 'Steps lost: −88.8 mm',
+
   onEvent(ev) {
     return ev.type === 'stallDetected' ? false : undefined;
   },
