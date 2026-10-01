@@ -392,8 +392,7 @@ function enterChapter(index) {
   buildStage();
   readouts.clear();
   controls.reset();
-  el.pDeep.open = false;
-  el.pLearn.open = false;
+  el.pDeep.open = false;     // "More info" starts closed; the explanation keeps the reader's choice (open in index.html)
   el.panel.scrollTop = 0;   // phones scroll the page: in fullscreen, where Next is sticky, open at the title
   if (MOBILE.matches && document.documentElement.classList.contains('is-fs')) window.scrollTo(0, 0);
   hook('onEnter', ctx);
@@ -404,6 +403,7 @@ function enterChapter(index) {
   updateToolbar();
   updateReadouts();
   updateUrl();
+  updateFitStage();
   schedulePost();
   requestFrame();
 }
@@ -719,10 +719,11 @@ new ResizeObserver(() => {
   requestFrame();
   fitTabs();
   holdHint();   // the root is the shallowest element: changes below it cause no observer loop
+  updateFitStage();
   schedulePost();
 }).observe(document.documentElement);
 // Desktop .app fills the iframe and the stage absorbs row changes: watch the rows idealHeight() sums.
-const heightObs = new ResizeObserver(() => schedulePost());
+const heightObs = new ResizeObserver(() => { scheduleFit(); schedulePost(); });
 for (const row of [el.app, el.tb, el.pHead, el.scope, el.ro, el.pLearn]) heightObs.observe(row);
 
 /* ---------------- debug overlay (?debug=1) ---------------- */
@@ -780,6 +781,7 @@ onFullscreenChange((fs) => {
   el.fs.title = fs ? 'Exit fullscreen' : 'Fullscreen';
   applyTheme();
   fitTabs();
+  updateFitStage();
   if (!fs) { poster.reset(); schedulePost(); }
 });
 
@@ -803,6 +805,41 @@ function idealHeight() {
     rows++;
   }
   return Math.ceil(h + gap * (rows - 1));
+}
+
+/*
+ * Standalone and fullscreen desktop pages: the stage height the layout gives with the
+ * explanation closed (the viewport less the padding, the other rows and the gaps). The
+ * explanation is open by default, and playground.css keeps the stage at this height while it
+ * is open, so its text extends the page below the fold instead of squeezing the views.
+ */
+let fitTimer = 0;
+function updateFitStage() {
+  if (MOBILE.matches || (EMBEDDED && !document.documentElement.classList.contains('is-fs'))) return;
+  const cs = getComputedStyle(el.app);
+  const gap = parseFloat(cs.rowGap) || 0;
+  let h = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+  let rows = 1;
+  for (const part of [el.tb, el.pHead, el.scope, el.ro, el.pLearn]) {
+    if (getComputedStyle(part).display === 'none') continue;
+    h += part === el.pLearn ? closedLearnHeight() : part.getBoundingClientRect().height;
+    rows++;
+  }
+  const fit = Math.max(0, document.documentElement.clientHeight - h - gap * (rows - 1));
+  el.app.style.setProperty('--fit-stage', `${fit}px`);
+}
+
+/** For the row observers: set inside their callback, --fit-stage could resize .app, a shallower element (an observer loop). */
+function scheduleFit() {
+  if (!fitTimer) fitTimer = setTimeout(() => { fitTimer = 0; updateFitStage(); }, 0);
+}
+
+/** The explanation's height when closed: its summary line plus the card's padding and border. */
+function closedLearnHeight() {
+  const cs = getComputedStyle(el.pLearn), summary = el.pLearn.querySelector('summary');
+  return (summary ? summary.getBoundingClientRect().height : 0)
+    + (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0)
+    + (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
 }
 
 /* ---------------- theme ---------------- */

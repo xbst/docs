@@ -9,7 +9,7 @@
  * in the block diagram.
  *
  * Presets set the multipliers to one symptom row of the calibration tables
- * (only the rows this model reproduces; the others are listed under "Deeper"
+ * (only the rows this model reproduces; the others are listed under "More info"
  * as things you would also see on hardware), pick a fitting test move, size
  * the gantry loupe to the symptom, and name the symptom beside the preset
  * after 3.5 s of sim time or when the reader presses "Reveal". The

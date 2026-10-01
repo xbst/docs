@@ -349,6 +349,10 @@ html.is-standalone:not(.is-fs) .main{flex:1 0 256px}
    floor: at 256 its motor and vector canvases are 156 px, under the motor view's 180 px compact
    threshold and the vector view's voltage inset; browsers without :has keep 256 */
 html.is-standalone:not(.is-fs) .main:has(> .stage > .vh.strip:not([hidden])){flex-basis:280px}
+/* the explanation is open by default: open, its text extends the page below the fold, and the
+   stage keeps the height the closed layout gives it (--fit-stage, main.js updateFitStage) */
+html.is-standalone:not(.is-fs) .app:has(.p-learn[open]) .main{flex-basis:max(256px,var(--fit-stage,0px))}
+html.is-standalone:not(.is-fs) .app:has(.p-learn[open]) .main:has(> .stage > .vh.strip:not([hidden])){flex-basis:max(280px,var(--fit-stage,0px))}
 
 /* ---------------- fullscreen (class set by main.js on fullscreenchange) ---------------- */
 html.is-fs{font-size:115%;--font-scale:1.15}
@@ -360,9 +364,10 @@ html.is-fs .app{height:100%;min-height:0}
 /* taller than the embedded scope, but short viewports (a 1280×800 laptop) keep room for the views */
 html.is-fs .scope-plot{height:clamp(180px,calc(30vh - 40px),400px)}
 html.is-fs .vh.strip{flex-basis:104px}
+/* the open explanation scrolls the page; the stage keeps its closed height, as on the standalone page */
 html.is-fs:has(.p-learn[open]) body{overflow-y:auto}
 html.is-fs .app:has(.p-learn[open]){height:auto;min-height:100%}
-html.is-fs .app:has(.p-learn[open]) .main{flex:1 0 280px}
+html.is-fs .app:has(.p-learn[open]) .main{flex:1 0 var(--fit-stage,280px)}
 /* short viewports (a phone in landscape or a small tablet): keep the embedded stage floor
    (STAGE_MIN in main.js) and the embedded scope height, and let the page scroll instead of
    collapsing the views */
@@ -370,6 +375,7 @@ html.is-fs .app:has(.p-learn[open]) .main{flex:1 0 280px}
   html.is-fs body{overflow-y:auto}
   html.is-fs .app{height:auto;min-height:100%}
   html.is-fs .main{flex:1 0 280px}
+  html.is-fs .app:has(.p-learn[open]) .main{flex-basis:max(280px,var(--fit-stage,0px))}
   html.is-fs .scope-plot{height:162px}
 }
 
