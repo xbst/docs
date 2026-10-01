@@ -18,7 +18,7 @@
  * Trace descriptor:
  *   { name, motor = 0, label, short, unit, group: 'analog' | 'digital',
  *     color: token name ('phase-a', 'target', …) or CSS color,
- *     dashed, range: 'auto' | 'fit' | [min, max], scale, minSpan, pulses }
+ *     dashed, range: 'auto' | 'fit' | 'sym' | [min, max], scale, minSpan, pulses }
  *   `color`   drawn darker in the light theme where it is under 3:1 on the
  *             plot (view-util strokeOn: amber and green); the tokens stay.
  *   `short`   lane label for digital traces (default: label).
@@ -33,6 +33,9 @@
  *   small ripple on a large value fills the plot (one trace sets it for its
  *   whole scale group); it holds a range only while the data asks for at
  *   least 80 % of it (auto: 40 %).
+ *   'sym' auto, but symmetric around 0 also while the data stays positive: an
+ *   error reads against the center line, and its legend keeps the short "±m"
+ *   instead of turning into a longer "lo to hi" (chapter 6, B-006).
  *   `scaleChars` legend room for the scale text from the start, in characters,
  *             for a range that settles to a longer text than it starts with
  *             (chapter 3's fitted current); the room only grows (B-006).
@@ -297,12 +300,13 @@ export class Scope {
         const gk = d.scale || d.unit || d.name;
         let grp = byKey.get(gk);
         if (!grp) {
-          grp = { key: gk, unit: d.unit || '', fixed: null, fit: false, lo: -1, hi: 1, init: false, active: false,
+          grp = { key: gk, unit: d.unit || '', fixed: null, fit: false, sym: false, lo: -1, hi: 1, init: false, active: false,
             minSpan: 0, members: [], scaleStr: d.unit || '', scaleDirty: true, step: 0, holdCh: 0 };
           byKey.set(gk, grp);
           this.groups.push(grp);
         }
         if (d.range === 'fit') grp.fit = true;
+        if (d.range === 'sym') grp.sym = true;
         if (tr.fixed && !grp.fixed) {
           grp.fixed = tr.fixed;
           grp.lo = tr.fixed[0]; grp.hi = tr.fixed[1]; grp.init = true;
@@ -687,11 +691,11 @@ export class Scope {
     for (let j = 0; j < grp.members.length; j++) grp.members[j].scaleEl.style.minWidth = `${n}ch`;
   }
 
-  /** @private auto range with 10 % padding, nice steps and hysteresis ('fit' groups: never symmetric, tighter hysteresis) */
+  /** @private auto range with 10 % padding, nice steps and hysteresis ('fit' groups: never symmetric, tighter hysteresis; 'sym' groups: always) */
   updateRange(grp, mn, mx) {
     if (grp.fixed) return;
     let lo, hi, step;
-    if (mn < 0 && !grp.fit) {
+    if ((mn < 0 || grp.sym) && !grp.fit) {
       const m = niceCeil(Math.max(-mn, mx, grp.minSpan / 2, 1e-12) * 1.1);
       lo = -m; hi = m; step = m / 2;
     } else {

@@ -135,11 +135,12 @@ export default {
   traces() {
     const range = st.zoom === 'us' ? 'fit' : 'auto';
     // The fitted range settles at quarter amps ("2.75 to 3.75 A") after the switch-on's whole
-    // amps: reserve that room, or the legend gains a row a second into the chapter (B-006).
+    // amps, and at a low run current on 0.05 A steps below zero ("−0.25 to −0.05 A"): reserve that
+    // room, or the legend gains a row seconds into the chapter (B-006).
     return [
       { name: 'pwmA', group: 'digital', label: 'Bridge A: +V, 0 or −V', short: 'Bridge A', color: 'phase-a', range: [-1, 1] },
-      { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'target', dashed: true, range, minSpan: 0.1, scaleChars: 14 },
-      { name: 'iA', label: 'Phase A current', unit: 'A', color: 'phase-a', range, scaleChars: 14 },
+      { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'target', dashed: true, range, minSpan: 0.1, scaleChars: 16 },
+      { name: 'iA', label: 'Phase A current', unit: 'A', color: 'phase-a', range, scaleChars: 16 },
     ];
   },
 

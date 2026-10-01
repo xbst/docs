@@ -372,11 +372,11 @@ export default {
       { label: 'DIAG', value: m.diag ? 'high' : 'low', led: m.diag ? 'trip' : 'off', minChars: 4 },
       resultChip(snap),
     ];
-    const lost = lostMm(w);
-    if (Math.abs(lost) >= LOST_MM) {
-      items.push({ label: 'Lost', value: Math.abs(lost), digits: 1, unit: 'mm', warn: true,
-        title: 'Distance the rotor fell behind the commanded position (open loop never finds it again)' });
-    }
+    // Shown from the start, like chapter 6's: a chip that appeared at a stall, a moment after the
+    // reader's action, could add a chip row by itself (B-006).
+    const lost = Math.abs(lostMm(w));
+    items.push({ label: 'Lost', value: lost, digits: 1, unit: 'mm', warn: lost >= LOST_MM, minChars: 5,
+      title: 'Distance the rotor fell behind the commanded position (open loop never finds it again)' });
     return items;
   },
 

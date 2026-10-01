@@ -183,8 +183,10 @@ export default {
     const t = [
       { name: 'posCmd', motor: 0, label: 'Commanded X', unit: 'mm', color: 'target', dashed: true },
       { name: 'posAct', motor: 0, label: 'Actual X', unit: 'mm', color: 'phase-a' },
-      { name: 'posErr', motor: 0, label: 'Position error X', unit: 'mm', scale: 'err', color: 'err' },
-      { name: 'posErr', motor: 1, label: 'Position error Y', unit: 'mm', scale: 'err', color: 'axis-d' },
+      // Symmetric even after a slip leaves the errors one-sided: "5 to 20 mm" after "±20 mm" added a
+      // legend row seconds after Bump (B-006), and an error reads best against the center line.
+      { name: 'posErr', motor: 0, label: 'Position error X', unit: 'mm', scale: 'err', color: 'err', range: 'sym' },
+      { name: 'posErr', motor: 1, label: 'Position error Y', unit: 'mm', scale: 'err', color: 'axis-d', range: 'sym' },
       { name: 'iAmp', motor: 0, label: 'Current, motor A', unit: 'A', color: 'phase-b' },
       { name: 'torque', motor: 0, label: 'Torque, motor A', unit: 'N·m', color: 'phase-c' },
     ];

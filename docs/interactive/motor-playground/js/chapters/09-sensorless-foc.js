@@ -206,8 +206,9 @@ export default {
       // moves freely (a dash until contact would change the chip's width twice per Home).
       { label: 'Belt force', value: forceN, unit: 'N', digits: 0, minChars: 3,
         title: 'Motor torque as belt force, Kt·Iq·2π/rd: friction and acceleration in free motion, the push into the stop at contact' },
+      // Room for the longest state ("running, pass 2", 15), or a false trigger widens it after Home (B-006).
       { label: 'Homing', value: result, warn: !h.active && (h.result === 'false-trigger' || h.result === 'no-edge'),
-        ok: !h.active && h.result === 'ok' },
+        ok: !h.active && h.result === 'ok', minChars: 15 },
       { label: keys.flag || 'Limit flag', value: flag ? 'on' : 'off', led: flag ? 'trip' : 'off',
         title: 'Set while the velocity loop asks for more current than the limit allows' },
       { label: keys.statusPin || 'Status output', value: status ? 'high' : 'low', minChars: 4, led: status ? 'trip' : 'off',
