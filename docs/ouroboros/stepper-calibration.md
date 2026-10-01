@@ -248,7 +248,7 @@ You can also use the plugin's tuning commands by hand — see the [Plugin Refere
 
 ### Live biquad tuning
 
-Biquad filter frequencies smooth out the measured currents and velocity. The autotune sets them to reasonable values, but you can experiment live (no restart required) with `SET_TMC_BIQUAD_FILTER`. See the [Plugin Reference](./plugin-reference/) for details. Rough guidance:
+Biquad filters smooth out the torque and flux targets and the measured velocity. The autotune sets them to reasonable values, but you can experiment live (no restart required) with `SET_TMC_BIQUAD_FILTER`. See the [Plugin Reference](./plugin-reference/) for details. Rough guidance:
 
 - `biquad_flux_frequency`: around 800 Hz for typical NEMA-17.
 - `biquad_torque_frequency`: around 1600 Hz.
