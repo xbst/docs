@@ -78,10 +78,7 @@ markdown_extensions:
   - pinout_embed
 
 plugins:
-  # Applies each folder's .meta.yml to every page in it and its subfolders
   - meta
-  # Social cards and Open Graph / Twitter metadata, built from each page's
-  # title and description front matter
   - social:
       cards_layout: isikstech
   - redirects:
