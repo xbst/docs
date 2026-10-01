@@ -48,9 +48,9 @@ const el = {
   motor: $('motor'), play: $('play'), time: $('time'), timeH: $('time-h'), slowed: $('slowed'),
   sound: $('sound'), openfull: $('openfull'), fs: $('fs'), fsOn: $('fs-on'), fsOff: $('fs-off'),
   stage: $('stage'), views: $('views'), viewsel: $('viewsel'), vhP: $('vh-primary'), vhS: $('vh-secondary'), vhStrip: $('vh-strip'),
-  panel: $('panel'), pHead: $('p-head'), pLearn: $('p-learn'), pNum: $('p-num'), pTitle: $('p-title'), pTake: $('p-take'), pText: $('p-text'),
-  pTry: $('p-try'), pTryList: $('p-try-list'), pCtl: $('p-ctl'), pDeep: $('p-deep'), pDeepBody: $('p-deep-body'),
-  scope: $('scope'), ro: $('ro'), bb: $('bb'),
+  panel: $('panel'), pHead: $('p-head'), pLearn: $('p-learn'), pNum: $('p-num'), pTitle: $('p-title'), pTake: $('p-take'), pHint: $('p-hint'),
+  pText: $('p-text'), pTry: $('p-try'), pTryList: $('p-try-list'), pCtl: $('p-ctl'), pDeep: $('p-deep'), pDeepBody: $('p-deep-body'),
+  scope: $('scope'), ro: $('ro'),
 };
 
 /* ---------------- state ---------------- */
@@ -62,6 +62,7 @@ let paused = params.get('paused') === '1' || matchMedia('(prefers-reduced-motion
 let timeScale = 1, tsRange = { min: 1, max: 1 }, tsSteps = [1];
 let traceWindow = 2;
 let hintOverride = null;
+let hintHold = null;       // { w, h }: the hint's tallest height at width w in this chapter visit
 let stageSpec = null;
 const views = [];          // { slot, name, host, view, aspect, w, h, dpr }
 
@@ -141,7 +142,7 @@ const app = {
   get views() { return views.map((v) => ({ slot: v.slot, name: v.name, view: v.view })); },
   /** Same as setting ctx.highlight (e.g. 'velocity' lights that loop in the block diagram). */
   setHighlight(h) { ctx.highlight = h == null ? null : h; },
-  /** Replace the bottom hint bar text for this chapter visit (null restores the chapter's hint). */
+  /** Replace the hint under the takeaway for this chapter visit (null restores the chapter's hint). */
   setHint(text) { hintOverride = text == null ? null : String(text); renderHint(); },
   /** Switch the motor type if the chapter allows it (same as the toolbar). */
   setMotorType(type) { preferredMotor = type; setMotorType(type); },
@@ -379,6 +380,7 @@ function enterChapter(index) {
   ctx.motorType = allowed.includes(preferredMotor) ? preferredMotor : allowed[0];
   ctx.highlight = null;
   hintOverride = null;
+  hintHold = null;
   const ts = ch.timeScale || {};
   const def = ts.default > 0 ? ts.default : 1;
   tsRange = { min: Math.min(ts.min > 0 ? ts.min : def, def), max: Math.max(ts.max > 0 ? ts.max : def, def) };
@@ -550,7 +552,26 @@ function renderText() {
 function renderHint() {
   let hint = hintOverride;
   if (hint == null) hint = typeof ch.hint === 'function' ? hook('hint', ctx) : ch.hint;
-  el.bb.textContent = hint == null ? DEFAULT_HINT : hint;
+  el.pHint.textContent = hint == null ? DEFAULT_HINT : hint;
+  holdHint();
+}
+
+/**
+ * The hint keeps the tallest height its texts have had in this chapter visit, so a longer one
+ * coming and going (chapter 4's slow-homing hint, chapter 6's loop modes) does not move every
+ * row below it or change an embed's height. A new width or font measures it again.
+ */
+function holdHint() {
+  const w = el.pHint.clientWidth;
+  if (!hintHold || hintHold.w !== w) {
+    hintHold = { w, h: 0 };
+    el.pHint.style.minHeight = '';
+  }
+  const h = el.pHint.getBoundingClientRect().height;
+  if (h > hintHold.h) {
+    hintHold.h = h;
+    el.pHint.style.minHeight = `${h}px`;
+  }
 }
 
 function renderControls(reapply) {
@@ -697,11 +718,12 @@ new ResizeObserver(() => {
   hasSize = document.documentElement.clientWidth > 0;
   requestFrame();
   fitTabs();
+  holdHint();   // the root is the shallowest element: changes below it cause no observer loop
   schedulePost();
 }).observe(document.documentElement);
 // Desktop .app fills the iframe and the stage absorbs row changes: watch the rows idealHeight() sums.
 const heightObs = new ResizeObserver(() => schedulePost());
-for (const row of [el.app, el.tb, el.pHead, el.scope, el.ro, el.pLearn, el.bb]) heightObs.observe(row);
+for (const row of [el.app, el.tb, el.pHead, el.scope, el.ro, el.pLearn]) heightObs.observe(row);
 
 /* ---------------- debug overlay (?debug=1) ---------------- */
 let dbg = null, dbgAcc = { frames: 0, steps: 0, sim: 0, draw: 0, since: 0 };
@@ -762,10 +784,11 @@ onFullscreenChange((fs) => {
 });
 
 /**
- * Desktop: padding + toolbar + the stage height this chapter wants + scope +
- * readouts + hint bar + gaps (the stage is the only flexible row). Mobile:
- * the natural height of the one-column layout. (documentElement.scrollHeight
- * never shrinks below the current iframe height, so the .app box is measured.)
+ * Desktop: padding + toolbar + chapter head (title, takeaway, hint) + the
+ * stage height this chapter wants + scope + readouts + explanation + gaps
+ * (the stage is the only flexible row). Mobile: the natural height of the
+ * one-column layout. (documentElement.scrollHeight never shrinks below the
+ * current iframe height, so the .app box is measured.)
  */
 function idealHeight() {
   if (MOBILE.matches) return Math.ceil(el.app.getBoundingClientRect().height);
@@ -774,7 +797,7 @@ function idealHeight() {
   let h = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
   let rows = 1;
   h += desiredStageHeight();
-  for (const part of [el.tb, el.pHead, el.scope, el.ro, el.pLearn, el.bb]) {
+  for (const part of [el.tb, el.pHead, el.scope, el.ro, el.pLearn]) {
     if (getComputedStyle(part).display === 'none') continue;
     h += part.getBoundingClientRect().height;
     rows++;
@@ -788,6 +811,8 @@ function applyTheme(tokens) {
   renderCtx.theme = t;
   scope.setTheme(t);
   readouts.resetWidths();   // fonts loaded or fullscreen: the chips measure their widths again
+  hintHold = null;          // and the hint its height
+  holdHint();
   updateOpenFull();   // the link carries theme=, which the docs page may have just switched
   requestFrame();
 }
