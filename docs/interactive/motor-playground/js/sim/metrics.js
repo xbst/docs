@@ -27,9 +27,10 @@
 //   oscFreqHz/oscAmp  high-passed signal (iq - LPF50(iq)) for FOC, (omegaM - LPF50(omegaM)) for open
 //                     loop (a current-regulated stepper hides its ringing in the current but shows it
 //                     in the rotor speed), so oscAmp is in A for FOC and in rad/s for open loop;
-//                     only for periods spent entirely at rest (planner speed and commanded velocity 0,
-//                     no bump pulse or load-torque change within the last 0.2 s: the loops' answer
-//                     to a shove or a load step is not a rest oscillation): f = crossings /
+//                     only for periods spent entirely at rest (planner speed and commanded velocity 0
+//                     for at least 0.2 s, no bump pulse or load-torque change within the last 0.4 s:
+//                     the loops' answer to a stop, a shove or a load step is not a rest
+//                     oscillation): f = crossings /
 //                     (2 * period), amp = (max - min) / 2. Crossings are counted with a Schmitt
 //                     trigger whose hysteresis is 25% of the previous period's amplitude, so
 //                     measurement noise riding on a real oscillation is not counted.
@@ -63,9 +64,19 @@ const OSC_HYST_FRAC = 0.25;
 const REST_EPS_MMS = 1e-9;
 /**
  * After a bump pulse ends or the load torque changes, steps stay "not at rest" this long (s): the
- * loops' settling after a shove or a load step is not a rest oscillation.
+ * loops' settling after a shove or a load step is not a rest oscillation. 0.4 s covers chapter 8's
+ * slowest heal (velocity I ×0.1: the axis creeps back over encoder cells for about 0.35 s after a
+ * bump, and each count is a pulse of Iq, 0.13 A on the stepper and 0.35 A on the BLDC at about
+ * 900 Hz, which read as a ring; F-67). It was 0.2 s until 2026-10-01.
  */
-const BUMP_REST_HOLDOFF_S = 0.2;
+const BUMP_REST_HOLDOFF_S = 0.4;
+/**
+ * After the command comes to rest, steps stay "not at rest" this long (s): the axis still closes
+ * its following error (0.8 mm at 150 mm/s with chapter 8's optimal gains, 3.2 mm with position P
+ * ×0.25), and the encoder counts of that last stretch read as a ring of 0.14 to 0.38 A in the
+ * first rest period (F-67).
+ */
+const STOP_REST_HOLDOFF_S = 0.2;
 /** Filter cutoffs (Hz). */
 const F_OSC = 50;
 /** Former ripple high-pass cutoff; lpRipple is kept configured but no longer feeds a metric. */
@@ -150,9 +161,11 @@ export class Metrics {
     // Schmitt state persists across periods: -1, 0 (unknown) or +1.
     this.oscState = 0;
     this.oscHyst = 0;
-    // Steps left in the after-bump hold-off (not at rest while > 0), and its length in steps.
+    // Steps left in the hold-off after a bump, a load step or a stop (not at rest while > 0), and
+    // its length in steps after a bump or load step and after a stop (motion keeps it loaded).
     this.bumpHold = 0;
-    this.bumpHoldSteps = 5000;
+    this.bumpHoldSteps = 10000;
+    this.stopHoldSteps = 5000;
     // snapshot.loads.torque of the previous step; a change starts the hold-off too. It starts at
     // 0: the loops start unloaded, so a load present at the first step is a load step for them.
     this.prevLoadTorque = 0;
@@ -203,6 +216,7 @@ export class Metrics {
     this.periodS = periodS;
     this.periodSteps = Math.max(1, Math.round(periodS / dt));
     this.bumpHoldSteps = Math.max(1, Math.round(BUMP_REST_HOLDOFF_S / dt));
+    this.stopHoldSteps = Math.max(1, Math.round(STOP_REST_HOLDOFF_S / dt));
     this.preset = preset || null;
     if (preset) {
       this.L = preset.L;
@@ -313,7 +327,8 @@ export class Metrics {
     const cvx = world.vxCmd;
     const cvy = world.vyCmd;
     // A bump pulse or a load-torque step, and the hold-off after either, are not rest either
-    // (worlds without loads have neither). prevLoadTorque is stored only when the torque changes,
+    // (worlds without loads have neither); motion keeps the stop hold-off loaded, so it runs from
+    // the moment the command comes to rest. prevLoadTorque is stored only when the torque changes,
     // and no NaN stands in for a missing load: rewriting a double field every step boxes it.
     const ld = s.loads;
     if (ld) {
@@ -323,8 +338,11 @@ export class Metrics {
       else if (ld.bump > 0 || ld.bump < 0) this.bumpHold = this.bumpHoldSteps;
       else if (this.bumpHold > 0) this.bumpHold--;
     } else if (this.bumpHold > 0) this.bumpHold--;
-    if (this.bumpHold > 0 || pl.speed > REST_EPS_MMS || cvx > REST_EPS_MMS || cvx < -REST_EPS_MMS
-        || cvy > REST_EPS_MMS || cvy < -REST_EPS_MMS) this.oscAllRest = false;
+    if (pl.speed > REST_EPS_MMS || cvx > REST_EPS_MMS || cvx < -REST_EPS_MMS
+        || cvy > REST_EPS_MMS || cvy < -REST_EPS_MMS) {
+      if (this.bumpHold < this.stopHoldSteps) this.bumpHold = this.stopHoldSteps;
+      this.oscAllRest = false;
+    } else if (this.bumpHold > 0) this.oscAllRest = false;
     if (hpO < this.oscMin) this.oscMin = hpO;
     if (hpO > this.oscMax) this.oscMax = hpO;
     const h = this.oscHyst;
