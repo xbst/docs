@@ -265,6 +265,10 @@ a{color:inherit}
 .cap{font:400 .75rem "Roboto Mono",monospace;color:var(--muted);overflow-wrap:anywhere}
 .note{font-size:.78rem;line-height:1.5;color:var(--desc-color);border-left:3px solid var(--divider);padding-left:9px}
 .note code{font:400 .92em "Roboto Mono",monospace;color:var(--text)}
+/* a line under the control before it (chapter 8's "Also sets the test move"): no callout, as close
+   to that control as its own caption would be (.ctl's 4 px instead of the group's 10 px) */
+.note.help{border-left:0;padding-left:0}
+.cg>.note-w:has(>.help){margin-top:-6px}
 /* small result tables inside notes (chapter 5's sweep table) */
 .note table{border-collapse:collapse;margin-top:4px}
 .note th,.note td{padding:2px 12px 2px 0;text-align:right;white-space:nowrap;vertical-align:baseline}

@@ -12,7 +12,9 @@
  * (only the rows this model reproduces; the others are listed under "More info"
  * as things you would also see on hardware), pick a fitting test move, size
  * the gantry loupe to the symptom, and name the symptom beside the preset
- * after 3.5 s of sim time or when the reader presses "Reveal". The
+ * after 3.5 s of sim time or when the reader presses "Reveal". A line under
+ * the preset select names the test move the preset sets, and a note in the
+ * Test move section says that a preset switches it. The
  * multipliers were measured on the stepper preset (chunk 07, STATUS.md
  * "Preset multipliers"); the BLDC preset shows the same symptoms, mostly
  * stronger, and where it differs (velocity P too low, torque I too high,
@@ -290,10 +292,20 @@ function applyPreset(c, id) {
   refreshSymptom(c);
 }
 
-/** Keep the visible note current without replacing a slider being adjusted. */
+/** Keep the visible notes current without replacing a slider being adjusted. */
 function refreshSymptom(c) {
+  c.app.setControlValue('presetMove', presetMoveHtml());
   c.app.setControlValue('symptom', symptomHtml(c));
   c.app.refreshText();
+}
+
+/**
+ * The line under the preset select: the test move the preset (or the one a Custom state started
+ * from) sets. The move select sits in another section, so a preset switched the move unseen (B-011).
+ */
+function presetMoveHtml() {
+  const m = MOVES.find((x) => x.value === S.lastPreset.move);
+  return m ? `Also sets the test move to "${m.label}".` : '';
 }
 
 function symptomHtml(ctx) {
@@ -398,10 +410,14 @@ export default {
       { type: 'select', id: 'preset', label: 'Preset', group: 'Presets', value: S.preset,
         options: PRESETS.map((p) => ({ value: p.id, label: p.label })).concat([{ value: 'custom', label: 'Custom (sliders moved)', disabled: true }]),
         onChange: (v, c) => (v === 'custom' ? restoreCustom(c) : applyPreset(c, v)) },
+      { type: 'note', id: 'presetMove', kind: 'help', group: 'Presets', html: presetMoveHtml() },
       { type: 'button', id: 'reveal', label: 'Reveal the symptom', group: 'Presets', onClick: (c) => reveal(c) },
       { type: 'note', id: 'symptom', group: 'Presets', html: symptomHtml(ctx) },
       { type: 'select', id: 'move', label: 'Test move', group: 'Test move', value: S.move, options: MOVES,
         onChange: (v, c) => setMove(c, v) },
+      { type: 'note', group: 'Test move',
+        html: 'A preset switches the test move to the one that shows its symptom. To try a preset on another '
+          + 'move, pick the move after the preset.' },
       { type: 'slider', id: 'speed', label: 'Speed', group: 'Test move', min: 50, max: 300, step: 10, value: S.speed, unit: 'mm/s',
         live: false, onChange: (v, c) => { S.speed = v; c.world.set('planner.maxVelocity', v); startMove(c); } },
       { type: 'slider', id: 'accel', label: 'Acceleration', group: 'Test move', min: 1000, max: 10000, step: 500, value: S.accel,

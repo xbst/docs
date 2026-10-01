@@ -20,7 +20,8 @@
  *   toggle:    { type:'toggle', id, label, value, onChange }
  *   button:    { type:'button', id, label, kind:'primary'|'normal', onClick:(ctx)=>void }
  *   select:    { type:'select', id, label, options:[{value, label, disabled}] | [value, …], value, onChange }
- *   note:      { type:'note', html }
+ *   note:      { type:'note', html, kind:'help' }
+ *              `kind:'help'` reads as a line under the control before it (no callout border).
  *
  * Values are preserved by id across re-renders (refreshControls, motor-type
  * change) unless the chapter passes a different `value` than it did last time.
@@ -434,7 +435,7 @@ const BUILD = {
 
   note(spec) {
     const w = wrap(spec, 'note-w');
-    const n = el('div', 'note');
+    const n = el('div', spec.kind === 'help' ? 'note help' : 'note');
     const set = (html) => { n.innerHTML = html || ''; };
     set(spec.html);
     w.append(n);
