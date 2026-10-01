@@ -182,10 +182,12 @@ export default {
         title: 'Copper loss at this current, compared with running at the rated current' },
     ];
     if (m1) {
+      // Room for 3.54 A and 100% from the start: the values grow from 0 as the smoothing settles,
+      // which wrapped a chip row 0.6 s after Compare at some widths (B-006, found in B-009's check).
       const h1 = heat(sm.amp1, MOTOR_PRESETS.stepper);
-      items.push({ label: 'Open-loop current', value: sm.amp1, unit: 'A peak', digits: 2,
+      items.push({ label: 'Open-loop current', value: sm.amp1, unit: 'A peak', digits: 2, minChars: 4,
         title: 'The open-loop stepper\'s phase current amplitude: its run current, whatever the load' });
-      items.push({ label: 'Open-loop heat', value: h1, unit: '% of rated', digits: 0, warn: h1 > 80,
+      items.push({ label: 'Open-loop heat', value: h1, unit: '% of rated', digits: 0, warn: h1 > 80, minChars: 4,
         title: 'The open-loop stepper\'s copper loss at this current, compared with running at its rated current' });
     }
     return items;
