@@ -235,7 +235,9 @@ function setScope(ctx, s) {
 const DIAG = { name: 'diag', group: 'digital', label: 'DIAG', color: 'err' };
 const CURRENT_TRACES = [
   DIAG,
-  { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'target', dashed: true },
+  // 'sym' for the whole current group: parked with phase A at a positive current, the range would
+  // turn from "±2.5 A" into a longer "lo to hi" once the motion has left the window (B-006).
+  { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'target', dashed: true, range: 'sym' },
   { name: 'iA', label: 'Phase A current', unit: 'A', color: 'phase-a' },
   { name: 'iAmp', label: 'Current amplitude', unit: 'A', color: 'phase-b' },
   { name: 'vAmp', label: 'Voltage amplitude', unit: 'V', color: 'phase-c' },

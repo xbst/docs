@@ -159,7 +159,10 @@ export default {
 
   traces: [
     { name: 'stepN', group: 'digital', pulses: true, label: 'STEP', color: 'phase-a' },
-    { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'phase-a', dashed: true },
+    // 'sym' for the whole current group: a stopped full-stepping motor can hold both phases at
+    // +2.5 A, and 2 s later the range read "2.3 to 2.7 A" instead of "±5 A", four longer legend
+    // entries that added a legend row by themselves (B-006).
+    { name: 'iAStar', label: 'Phase A target', unit: 'A', color: 'phase-a', dashed: true, range: 'sym' },
     { name: 'iA', label: 'Phase A current', unit: 'A', color: 'phase-a' },
     { name: 'iBStar', label: 'Phase B target', unit: 'A', color: 'phase-b', dashed: true },
     { name: 'iB', label: 'Phase B current', unit: 'A', color: 'phase-b' },
