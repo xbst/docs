@@ -66,7 +66,7 @@ Tuning means finding the right Proportional (P) and Integral (I) gains for each 
     
     The loops are cascaded: position outputs a velocity target, velocity outputs a torque target, torque outputs a current. If an inner loop is unstable, all the outer ones will be too. That's why tuning order matters — and why the plugin does them in that order automatically.
 
-??? info "Interactive: see what each PI loop does"
+??? info "Interactive: see what each PI loop does [BETA]"
     Change each loop's gains and filters on a simulated gantry, or pick a preset, and see the symptom each mistuned value causes: overshoot, ringing, rounded corners or noise.
 
     ![Interactive PI loops](../interactive/motor-playground/index.html?chapter=pi-loops&nav=0&product=ouroboros){ type=application/pinout style="height:80vh;min-height:640px;width:100%" }

@@ -9,7 +9,7 @@ hide:
 
 <img src="../assets/ouroboros/ouroboros-board.jpg" alt="Ouroboros" width="600">
 
-Ouroboros is a TMC4671-based FOC (field-oriented control) motor controller for Klipper 3D printers. It drives two motors, steppers or BLDC motors, in closed loop: it reads each motor's encoder, so it knows where the motor really is and compensates for skipped steps before they turn into crashes, layer shifts or failed prints. FOC can also reduce resonances that start at the motor, which improves print quality, and your motors run quieter and cooler.
+Ouroboros is a TMC4671 based FOC motor controller board designed for Klipper 3D printers, supporting stepper and BLDC motors. Ouroboros can control 2 motors, so you can control both X and Y motors of your printer. FOC (field oriented control) can reduce resonances originating at the motor, improving print quality. FOC can also help make your printer quieter, and lower motor temperatures. It can also compensate for skipped steps, avoiding crashes, layer shifts and print failures.
 
 ## Ouroboros Features
 
@@ -23,7 +23,7 @@ Ouroboros is a TMC4671-based FOC (field-oriented control) motor controller for K
 - Built-In Brake Resistors
 - MOSFET Temperature Sensors for Over-Temperature Protection
 - Expansion Connector with CAN, UART, SPI and GPIO Pins
-- CNC-Milled, Anodized Heatsink Made in the USA
+- CNC-Milled, Anodized Heatsink
 - Assembled in the USA
 
 ## Resellers
@@ -52,6 +52,7 @@ Optional and reference:
 
 ## How FOC Works
 
-If you're coming from TMC2209-style stepper drivers, FOC and closed loop may be new to you. The playground below builds it up from what you already know, in nine short chapters: STEP and DIR, microstepping, what's inside a stepper driver, StealthChop and StallGuard, and why a higher voltage helps, then open vs closed loop, FOC, the four PI loops you tune on Ouroboros, and sensorless homing with FOC. Every chapter is a live simulation: move the controls, break things, and watch the motor, the gantry and the scope react. Where a control matches an Ouroboros config option, its name is shown under it. The motors are a simplified teaching model, so the numbers show how things behave, not your printer's exact values.
-
-![Interactive motor control playground](../interactive/motor-playground/index.html?product=ouroboros){ type=application/pinout style="height:80vh;min-height:640px;width:100%" }
+??? info "FOC Interactive playground [BETA]"
+    If you're used to traditional stepper drivers, FOC and closed loop may be new to you. The playground below builds it up from what you already know, in nine short chapters: STEP and DIR, microstepping, what's inside a stepper driver, StealthChop and StallGuard, and why a higher voltage helps, then open vs closed loop, FOC, the four PI loops you tune on Ouroboros, and sensorless homing with FOC. Every chapter is a live simulation: move the controls, break things, and watch the motor, the gantry and the scope react. Where a control matches an Ouroboros config option, its name is shown under it. The motors are a simplified teaching model, so the numbers show how things behave, not your printer's exact values.
+    
+    ![Interactive motor control playground](../interactive/motor-playground/index.html?product=ouroboros){ type=application/pinout style="height:80vh;min-height:640px;width:100%" }

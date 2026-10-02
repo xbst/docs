@@ -19,7 +19,7 @@ When the TMC4671 detects that the motor's velocity PI loop is demanding more cur
 
 Detection happens within a few control cycles (about 40 µs each) of the current demand crossing `homing_current`. The lower `homing_current` is, the sooner the demand crosses it, and the less the carriage pushes into the hard stop first.
 
-??? info "Interactive: how stall detection works"
+??? info "Interactive: how stall detection works [BETA]"
     Home a simulated carriage into a hard stop and change `homing_current`, the homing speed and the retract distance to see when the flag fires, what a false trigger looks like, and why the next homing needs a retract.
 
     ![Interactive sensorless homing](../interactive/motor-playground/index.html?chapter=sensorless-foc&nav=0&product=ouroboros){ type=application/pinout style="height:80vh;min-height:640px;width:100%" }
