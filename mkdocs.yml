@@ -1,5 +1,6 @@
 site_name: Isik's Tech Documentation
 site_url: https://docs.isiks.tech
+site_description: Manuals, pinouts, firmware flashing and Klipper setup guides for Isik's Tech 3D printer electronics.
 site_author: XBST LLC
 copyright: Copyright &copy; 2026 XBST LLC
 repo_url: https://github.com/xbst
@@ -77,6 +78,9 @@ markdown_extensions:
   - pinout_embed
 
 plugins:
+  - meta
+  - social:
+      cards_layout: isikstech
   - redirects:
       redirect_maps:
         Ouroboros/gibberish.md: ouroboros/plugin-reference.md
@@ -196,6 +200,7 @@ nav:
     - "GitHub Repository": "https://github.com/xbst/MOAR_CAN"
     - "Store Page": "https://store.isiks.tech/products/MOAR_CAN"
   - "Ouroboros":
+    - ouroboros/index.md
     - "Mount & Wiring": "ouroboros/wiring.md"
     - "Firmware Setup": "ouroboros/firmware-setup.md"
     - "Motor Setup":

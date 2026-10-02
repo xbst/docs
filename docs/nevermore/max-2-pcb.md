@@ -1,4 +1,9 @@
 ---
+title: Nevermore Max 2 PCB
+description: Mount and wiring instructions for the Nevermore Max 2 PCB, a controller PCB for the Nevermore Max air filter.
+social:
+  cards_layout_options:
+    image: docs/assets/nevermore/Max.jpg
 hide:
   - footer
 ---

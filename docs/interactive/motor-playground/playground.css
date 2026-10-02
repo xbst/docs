@@ -1,0 +1,442 @@
+/* Motor Control Playground: palette, layout, fullscreen and mobile rules.
+   The first four blocks are copied verbatim from ../can-topology.html so the
+   widget matches the site and the other interactive embeds. The playground's
+   own tokens (SPEC 4.9) follow in a second set of the same four blocks. */
+
+:root {
+  --bg:transparent; --text:#1a1a1a;
+  --tip-bg:#f8f8f8; --tip-border:#d0d0d0; --tip-shadow:rgba(0,0,0,.12);
+  --hs-hover:rgba(255,191,0,.13); --hs-stroke:rgba(255,191,0,.5);
+  --hs-active:rgba(255,191,0,.22);
+  --hint-bg:rgba(30,30,30,.75); --hint-text:#fff;
+  --divider:#e5e5e5;
+  --conn-body:#e8e8e0; --conn-cavity:#d0d0c8; --conn-stroke:#555;
+  --line-color:#777; --label-color:#333;
+  --desc-color:#555; --type-color:#888;
+  --pair-a:#E67E22; --pair-b:#27AE60;
+  --ok:#15803d; --err:#dc2626; --warn:#d97706;
+  --pulse:#E39A00; --reflect:#dc2626;
+  --bus-glow:rgba(255,191,0,.20);
+  --scope-bg:#fafafa; --scope-grid:#e5e5e5; --scope-trace:#E39A00;
+  --jumper-cap:#2C3E50;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:transparent; --text:#e0e0e0;
+  --tip-bg:#1e1e1e; --tip-border:#3a3a3a; --tip-shadow:rgba(0,0,0,.4);
+  --hs-hover:rgba(255,191,0,.15); --hs-stroke:rgba(255,191,0,.55);
+  --hs-active:rgba(255,191,0,.26);
+  --hint-bg:rgba(240,240,240,.85); --hint-text:#131313;
+  --divider:#333;
+  --conn-body:#3a3a35; --conn-cavity:#2e2e28; --conn-stroke:#aaa;
+  --line-color:#888; --label-color:#ddd;
+  --desc-color:#aaa; --type-color:#888;
+  --pair-a:#F39C12; --pair-b:#2ECC71;
+  --ok:#4ade80; --err:#f87171; --warn:#fbbf24;
+  --pulse:#FFC21A; --reflect:#f87171;
+  --bus-glow:rgba(255,191,0,.20);
+  --scope-bg:#0d0d0d; --scope-grid:#2a2a2a; --scope-trace:#FFC21A;
+  --jumper-cap:#94a3b8;
+}}
+:root[data-theme="dark"]{
+  --bg:transparent; --text:#e0e0e0;
+  --tip-bg:#1e1e1e; --tip-border:#3a3a3a; --tip-shadow:rgba(0,0,0,.4);
+  --hs-hover:rgba(255,191,0,.15); --hs-stroke:rgba(255,191,0,.55);
+  --hs-active:rgba(255,191,0,.26);
+  --hint-bg:rgba(240,240,240,.85); --hint-text:#131313;
+  --divider:#333;
+  --conn-body:#3a3a35; --conn-cavity:#2e2e28; --conn-stroke:#aaa;
+  --line-color:#888; --label-color:#ddd;
+  --desc-color:#aaa; --type-color:#888;
+  --pair-a:#F39C12; --pair-b:#2ECC71;
+  --ok:#4ade80; --err:#f87171; --warn:#fbbf24;
+  --pulse:#FFC21A; --reflect:#f87171;
+  --bus-glow:rgba(255,191,0,.20);
+  --scope-bg:#0d0d0d; --scope-grid:#2a2a2a; --scope-trace:#FFC21A;
+  --jumper-cap:#94a3b8;
+}
+:root[data-theme="light"]{
+  --bg:transparent; --text:#1a1a1a;
+  --tip-bg:#f8f8f8; --tip-border:#d0d0d0; --tip-shadow:rgba(0,0,0,.12);
+  --hs-hover:rgba(255,191,0,.13); --hs-stroke:rgba(255,191,0,.5);
+  --hs-active:rgba(255,191,0,.22);
+  --hint-bg:rgba(30,30,30,.75); --hint-text:#fff;
+  --divider:#e5e5e5;
+  --conn-body:#e8e8e0; --conn-cavity:#d0d0c8; --conn-stroke:#555;
+  --line-color:#777; --label-color:#333;
+  --desc-color:#555; --type-color:#888;
+  --pair-a:#E67E22; --pair-b:#27AE60;
+  --ok:#15803d; --err:#dc2626; --warn:#d97706;
+  --pulse:#E39A00; --reflect:#dc2626;
+  --bus-glow:rgba(255,191,0,.20);
+  --scope-bg:#fafafa; --scope-grid:#e5e5e5; --scope-trace:#E39A00;
+  --jumper-cap:#2C3E50;
+}
+
+/* Playground tokens, light / dark. Dashed = commanded/target, solid = actual.
+   Red only for errors, flags and the N pole; amber for highlights and the field.
+   --page-bg is SPEC 4.9's solid page background, painted on a standalone page and in
+   fullscreen (--bg stays transparent so an embed blends with the docs page). --focus is
+   the keyboard focus ring: at least 3:1 on every surface (the light --pulse is 2.2:1). */
+:root{
+  color-scheme:light;
+  --phase-a:#E39A00; --phase-b:#27AE60; --phase-c:#2E86DE;
+  --axis-q:#D6336C; --axis-d:#7C4DFF; --target:#666666;
+  --rotor-n:#DC2626; --rotor-s:#2563EB;
+  --muted:#666666;
+  --page-bg:#f8f8f8;
+  --focus:#9a6700;
+  --field:var(--phase-a);
+  --led-on:var(--ok); --led-trip:var(--err); --led-off:var(--divider);
+  --font-scale:1;
+}
+@media(prefers-color-scheme:dark){:root{
+  color-scheme:dark;
+  --phase-a:#FFC21A; --phase-b:#2ECC71; --phase-c:#4DA3FF;
+  --axis-q:#FF6EB4; --axis-d:#A97BFF; --target:#AAAAAA;
+  --rotor-n:#F87171; --rotor-s:#60A5FA;
+  --muted:#9a9a9a;
+  --page-bg:#131313;
+  --focus:#FFC21A;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --phase-a:#FFC21A; --phase-b:#2ECC71; --phase-c:#4DA3FF;
+  --axis-q:#FF6EB4; --axis-d:#A97BFF; --target:#AAAAAA;
+  --rotor-n:#F87171; --rotor-s:#60A5FA;
+  --muted:#9a9a9a;
+  --page-bg:#131313;
+  --focus:#FFC21A;
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --phase-a:#E39A00; --phase-b:#27AE60; --phase-c:#2E86DE;
+  --axis-q:#D6336C; --axis-d:#7C4DFF; --target:#666666;
+  --rotor-n:#DC2626; --rotor-s:#2563EB;
+  --muted:#666666;
+  --page-bg:#f8f8f8;
+  --focus:#9a6700;
+}
+
+/* ---------------- base ---------------- */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:var(--bg);color:var(--text);
+  font-family:Roboto,system-ui,sans-serif;-webkit-text-size-adjust:100%}
+body{overflow-x:hidden;overflow-y:auto}
+/* set outside an iframe by index.html's head (and main.js): no docs page shows through there */
+html.is-standalone{background:var(--page-bg)}
+[hidden]{display:none!important}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);
+  clip-path:inset(50%);white-space:nowrap}
+.mono{font-family:"Roboto Mono",ui-monospace,monospace}
+
+.app{display:flex;flex-direction:column;height:100%;min-height:560px;padding:8px 10px;gap:8px}
+.card{background:var(--tip-bg);border:1px solid var(--tip-border);border-radius:12px;
+  box-shadow:0 2px 8px var(--tip-shadow)}
+
+/* ---------------- toolbar ---------------- */
+.tb{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.tb-row{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;min-width:0}
+.tb-nav{flex-wrap:nowrap}
+.tabs{display:flex;flex:0 1 auto;min-width:0;overflow:hidden;
+  border:1px solid var(--tip-border);border-radius:8px}
+.tabs button{flex:none;white-space:nowrap;background:var(--tip-bg);color:var(--desc-color);border:0;
+  padding:6px 10px;font:500 .78rem Roboto,sans-serif;transition:background .15s}
+.tabs button+button{border-left:1px solid var(--tip-border)}
+.tabs button .n{font-family:"Roboto Mono",monospace;margin-right:2px;color:var(--muted)}
+.tabs button[aria-current="step"]{background:var(--hs-active);color:var(--text)}
+.tabs button[aria-current="step"] .n{color:var(--text)}
+.tabs button:focus-visible{outline-offset:-2px}
+.tabsel{display:none;flex:1 1 auto;min-width:0;max-width:340px}
+.tb select,.btn{background:var(--tip-bg);color:var(--text);border:1px solid var(--tip-border);
+  border-radius:8px;padding:6px 10px;font:500 .78rem Roboto,sans-serif;line-height:1.2}
+.tb select{width:100%}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;
+  text-decoration:none}
+.btn.icon{padding:0;width:32px;height:30px;flex:none}
+.btn.icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+.btn.primary{background:var(--hs-active);border-color:var(--hs-stroke)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+/* aria-disabled buttons keep keyboard focus (main.js): fade their contents and border, not the
+   element, whose opacity would fade the focus ring below 3:1 too */
+.btn[aria-disabled="true"]{color:color-mix(in srgb,var(--text) 45%,transparent);
+  border-color:color-mix(in srgb,var(--tip-border) 45%,transparent);cursor:not-allowed}
+@media(hover:hover){
+  .tabs button:hover,.btn:not(:disabled):not([aria-disabled="true"]):hover,.seg button:not([aria-disabled="true"]):hover,
+  .pills button:not(:disabled):hover{background:var(--hs-hover)}
+  .tabs button[aria-current="step"]:hover{background:var(--hs-active)}
+}
+.pn{display:flex;gap:6px;flex:none}
+.tb-grp{display:flex;align-items:center;gap:6px;flex:none}
+.tb-lbl{font-size:.75rem;color:var(--muted)}
+.seg{display:flex;border:1px solid var(--tip-border);border-radius:8px;overflow:hidden;flex-shrink:0}
+.seg button{background:var(--tip-bg);color:var(--desc-color);border:0;padding:6px 12px;
+  font:500 .78rem Roboto,sans-serif;transition:background .15s}
+.seg button+button{border-left:1px solid var(--tip-border)}
+.seg button[aria-pressed="true"]{background:var(--hs-active);color:var(--text)}
+.seg button[aria-disabled="true"]{color:color-mix(in srgb,var(--desc-color) 45%,transparent);cursor:not-allowed}
+.seg button:focus-visible{outline-offset:-2px}
+.time input{width:120px;accent-color:var(--pulse)}
+.time-h{font:500 .72rem "Roboto Mono",monospace;color:var(--desc-color);min-width:11.5em}
+.badge{font-size:.69rem;font-weight:500;color:var(--text);border:1px solid var(--warn);
+  background:color-mix(in srgb,var(--warn) 14%,transparent);border-radius:10px;padding:1px 8px;white-space:nowrap}
+/* the "slowed to keep up" badge shows while main.js sets .is-slowed on the time group. It takes
+   the time-scale label's place in one grid cell sized for both, so the wrapping toolbar never
+   gains a row (and the page or an embed's posted height never jumps) when it comes and goes */
+.tb-grp.time{display:grid;grid-template-columns:auto auto auto;align-items:center;column-gap:6px}
+.time>.time-h,.time>.badge{grid-row:1;grid-column:3;justify-self:start}
+.time:not(.is-slowed) .badge{visibility:hidden}
+.time.is-slowed .time-h{visibility:hidden}
+.tb-sp{flex:1 1 0;min-width:0}
+.solo .tb-nav{display:none}
+.tabs-collapsed .tabs{display:none}
+.tabs-collapsed .tabsel{display:block}
+
+/* ---------------- stage and panel ---------------- */
+.main{flex:1 1 auto;min-height:0;display:flex;gap:8px}
+.stage{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:8px}
+.view-picker{display:none}
+.views{flex:1 1 auto;min-height:0;display:flex;gap:8px}
+.vh{position:relative;flex:1 1 0;min-width:0;min-height:0;overflow:hidden;
+  background:var(--tip-bg);border:1px solid var(--tip-border);border-radius:12px}
+.vh>canvas,.vh>svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stage.has-sec .vh.p{flex:0 0 var(--split-basis,55%)}
+.vh.strip{flex:0 0 90px}
+
+.panel{flex:0 0 clamp(290px,38%,440px);min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  background:var(--tip-bg);border:1px solid var(--tip-border);border-radius:12px;
+  box-shadow:0 2px 8px var(--tip-shadow);padding:12px 14px;display:flex;flex-direction:column;gap:12px;
+  scrollbar-width:thin}
+.p-head{display:flex;flex-direction:column;gap:4px;flex-shrink:0;padding:4px 2px}
+.panel>*{flex-shrink:0}
+.p-learn{flex-shrink:0;padding:8px 12px}
+.p-learn>summary{cursor:pointer;font-size:.81rem;font-weight:500;padding:4px 0}
+.p-learn[open]>:not(summary){margin-top:12px}
+.p-num{font:500 .69rem "Roboto Mono",monospace;color:var(--muted);letter-spacing:.02em}
+.p-title{font-size:1.06rem;font-weight:600;line-height:1.3}
+.p-take{font-size:.84rem;font-weight:500;line-height:1.45;border-left:3px solid var(--pulse);
+  padding-left:9px;margin-top:4px}
+/* how to use the chapter, under the takeaway and aligned with its text (main.js renderHint) */
+.p-hint{font-size:.78rem;line-height:1.45;color:var(--desc-color);padding-left:12px}
+.p-hint:empty{display:none}
+.p-text{font-size:.81rem;line-height:1.55;color:var(--desc-color)}
+.p-text p+p,.p-deep-body p+p{margin-top:.6em}
+.p-text strong,.p-deep-body strong{color:var(--text);font-weight:500}
+.p-text code,.p-deep-body code,.p-try code{font:400 .92em "Roboto Mono",monospace;color:var(--text)}
+/* small tables in the chapter text (chapter 8's symptom → knob table) */
+.p-text table{border-collapse:collapse;font-size:.95em;margin-top:.6em}
+.p-text th,.p-text td{text-align:left;vertical-align:top;padding:1px 10px 1px 0}
+.p-text th{font-weight:500;color:var(--text);padding-bottom:2px}
+.p-text th:last-child,.p-text td:last-child{padding-right:0}
+.p-text table+p{margin-top:.6em}
+.p-h{font-size:.69rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--desc-color)}
+.p-try{display:flex;flex-direction:column;gap:6px}
+.p-try ul{list-style:none;display:flex;flex-direction:column;gap:5px}
+.p-try li{font-size:.8rem;line-height:1.45;color:var(--desc-color);display:flex;gap:7px}
+.p-try li::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;margin-top:.45em;background:var(--pulse)}
+/* one paragraph showing one of two texts, as tall as the taller (chapter 8's symptom before and
+   after it is named), so the reveal moves nothing below it; the hidden text is not read out */
+.stack{display:grid}
+.stack>*{grid-area:1/1}
+.stack>[aria-hidden="true"]{visibility:hidden}
+.p-deep{border-top:1px solid var(--divider);padding-top:8px}
+.p-deep summary{cursor:pointer;font-size:.8rem;font-weight:500;color:var(--text);width:max-content;max-width:100%}
+.p-deep-body{font-size:.8rem;line-height:1.55;color:var(--desc-color);margin-top:8px}
+
+/* ---------------- controls (controls.js) ---------------- */
+.p-ctl{display:flex;flex-direction:column;gap:14px}
+.p-ctl:empty{display:none}
+.cg{display:flex;flex-wrap:wrap;gap:10px 8px;align-items:flex-start}
+.cg>.p-h{flex:0 0 100%;margin-bottom:-2px}
+.cg[data-sectioned="true"]>.p-h{display:none}
+.section-picker{flex:none;padding-bottom:10px;border-bottom:1px solid var(--divider);font-size:.78rem}
+.ctl{flex:1 1 100%;min-width:0;display:flex;flex-direction:column;gap:4px}
+.ctl.button{flex:0 0 auto}
+.ctl-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.78rem}
+.ctl-h label,.ctl-l{color:var(--text)}
+.ctl-h output{font:500 .75rem "Roboto Mono",monospace;color:var(--text);white-space:nowrap}
+.ctl input[type="range"]{width:100%;accent-color:var(--pulse);height:22px;margin:0}
+.ctl select{width:100%;background:var(--tip-bg);color:var(--text);border:1px solid var(--tip-border);
+  border-radius:8px;padding:6px 8px;font:400 .8rem Roboto,sans-serif}
+.cap{font:400 .75rem "Roboto Mono",monospace;color:var(--muted);overflow-wrap:anywhere}
+.note{font-size:.78rem;line-height:1.5;color:var(--desc-color);border-left:3px solid var(--divider);padding-left:9px}
+.note code{font:400 .92em "Roboto Mono",monospace;color:var(--text)}
+/* a line under the control before it (chapter 8's "Also sets the test move"): no callout, as close
+   to that control as its own caption would be (.ctl's 4 px instead of the group's 10 px) */
+.note.help{border-left:0;padding-left:0}
+.cg>.note-w:has(>.help){margin-top:-6px}
+/* small result tables inside notes (chapter 5's sweep table) */
+.note table{border-collapse:collapse;margin-top:4px}
+.note th,.note td{padding:2px 12px 2px 0;text-align:right;white-space:nowrap;vertical-align:baseline}
+.note th{font-weight:500;color:var(--desc-color)}
+.note td{font:400 .95em "Roboto Mono",monospace;color:var(--text)}
+.note th:first-child,.note td:first-child{text-align:left}
+.note td .x{color:var(--muted)}
+.pills{display:flex;flex-wrap:wrap;gap:4px}
+.pills button{background:var(--tip-bg);color:var(--desc-color);border:1px solid var(--tip-border);border-radius:7px;
+  padding:4px 9px;font:500 .75rem Roboto,sans-serif;min-width:34px}
+.pills button[aria-pressed="true"]{background:var(--hs-active);border-color:var(--hs-stroke);color:var(--text)}
+.pills button:disabled{opacity:.45;cursor:not-allowed}
+.sw{display:flex;align-items:center;gap:9px;background:none;border:0;padding:2px 0;text-align:left;font-size:.8rem}
+.sw-t{position:relative;flex:none;width:30px;height:17px;border-radius:9px;background:var(--divider);
+  box-shadow:inset 0 0 0 1px var(--line-color);transition:background .15s}
+.sw-t::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;
+  background:var(--tip-bg);box-shadow:0 0 0 1px var(--line-color);transition:transform .15s}
+.sw[aria-checked="true"] .sw-t{background:var(--pulse);box-shadow:none}
+.sw[aria-checked="true"] .sw-t::after{transform:translateX(13px);box-shadow:none}
+.sw:disabled{opacity:.45;cursor:not-allowed}
+.ctl.disabled .ctl-h,.ctl.disabled input{opacity:.5}
+
+/* ---------------- scope (views/scope.js) ---------------- */
+.scope{flex:0 0 auto;display:flex;flex-direction:column;gap:5px;padding:8px 10px}
+.scope-plot{position:relative;flex:none;height:162px;border-radius:6px;background:var(--scope-bg);overflow:hidden}
+.scope-plot canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.scope-plot canvas{touch-action:pan-y pinch-zoom}
+.scope-plot:focus-within{outline:2px solid var(--focus);outline-offset:2px}
+.scope-help{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.75rem;line-height:1.4}
+.scope-help p{flex:1;margin:0}
+.scope-clear{flex:none}
+.legend{display:flex;gap:2px 12px;flex-wrap:wrap;flex:none}
+.lg{display:inline-flex;align-items:center;gap:6px;background:none;border:0;border-radius:4px;
+  padding:1px 3px;font-size:.72rem;color:var(--desc-color);white-space:nowrap}
+.lg i{flex:none;width:16px;height:0;border-top:2px solid;display:inline-block}
+.lg i.dash{border-top-style:dashed}
+.lg i.dig{height:7px;width:12px;border:2px solid;border-bottom:0;border-radius:1px}
+/* left: a scale keeps room for its longest range (scope.js holdScale), and a button would center it */
+.lg .u{font-family:"Roboto Mono",monospace;color:var(--muted);text-align:left}
+.lg[aria-pressed="false"]{opacity:.5;text-decoration:line-through}
+@media(hover:hover){.lg:hover{background:var(--hs-hover)}}
+
+/* ---------------- readouts (views/readouts.js) ---------------- */
+.ro{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;flex-shrink:0;min-height:26px;min-width:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap;flex:0 1 auto;min-width:0}
+/* flex:none: readouts.js holds each chip's widest width as a min-width, and a flex item that may
+   shrink would be squeezed down to that minimum in the phone layout's overflowing row */
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;color:var(--desc-color);flex:none;
+  background:var(--tip-bg);border:1px solid var(--tip-border);border-radius:10px;padding:3px 10px;white-space:nowrap}
+.chip b{font:500 .75rem "Roboto Mono",monospace;color:var(--text)}
+/* a value with reserved room (minChars) stays next to its unit; one without a unit reads from the left */
+.chip b:has(+ .u:not([hidden])){text-align:right}
+.chip .u{color:var(--muted)}
+.chip.ok{border-color:var(--ok)}
+.chip.warn{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,var(--tip-bg))}
+.led{flex:none;width:8px;height:8px;border-radius:50%;background:var(--led-off);box-shadow:inset 0 0 0 1px var(--line-color)}
+.led.on{background:var(--led-on);box-shadow:0 0 6px var(--led-on)}
+.led.trip{background:var(--led-trip);box-shadow:0 0 6px var(--led-trip)}
+/* level bar inside a chip (readouts.js item.bar; chapter 4's StallGuard reading) */
+.chip .bar{position:relative;flex:none;width:56px;height:6px;border-radius:3px;background:var(--divider);
+  box-shadow:inset 0 0 0 1px var(--tip-border)}
+.chip .bar .f{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--phase-b)}
+.chip .bar .m{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;border-radius:1px;background:var(--text)}
+.chip .bar.low .f{background:var(--err)}
+.chip .bar.off .f{display:none}
+/* The announcement pill (.live) sits in a slot after the chips: on their last line when the line
+   has room, else on a line of its own. An invisible copy of the chapter's longest message shares
+   the slot's grid cell, so the slot keeps that message's size at any width and font size, and a
+   message coming and going covers nothing and moves nothing (B-008; F-18 had the rows reflow, F-65
+   the floating pill cover the scope card). Out of the flow while a chapter has no message. The
+   pill wraps rather than cutting a long message short; a solid backdrop under the translucent
+   tint, like the chips' own. */
+.msg{display:grid;flex:1 0 auto;min-width:0;max-width:100%}
+.msg.none{position:absolute;left:0;top:0;pointer-events:none}
+.msg>*{grid-area:1/1;justify-self:start;align-self:start;max-width:100%;font-size:.75rem;font-weight:500;line-height:1.35;
+  border:1px solid transparent;border-radius:10px;padding:3px 10px}
+.msg-sample{visibility:hidden}
+.live{color:var(--text);border-color:var(--hs-stroke);
+  background:linear-gradient(var(--hs-active),var(--hs-active)),var(--tip-bg);transition:opacity .4s}
+.live.idle{opacity:0}
+
+/* ---------------- debug overlay (?debug=1) ---------------- */
+.dbg{position:fixed;right:6px;bottom:6px;z-index:9;font:400 11px/1.4 "Roboto Mono",monospace;
+  background:var(--hint-bg);color:var(--hint-text);padding:4px 8px;border-radius:6px;pointer-events:none;white-space:pre}
+
+@media(pointer:coarse){.tb select,.ctl select,.view-picker select{font-size:16px}}
+
+/* ---------------- standalone page (class set in index.html outside an iframe) ---------------- */
+/* a short window scrolls instead of squeezing the views: the stage row keeps a 256 px floor,
+   a little under the embedded and fullscreen 280 px (STAGE_MIN in main.js), so a 1366×768
+   laptop's ~1366×625 viewport keeps its unscrolled layout (every chapter but pi-loops, which
+   scrolls 18 px); an embed posts its height instead */
+html.is-standalone:not(.is-fs) .app{height:auto;min-height:100%}
+html.is-standalone:not(.is-fs) .main{flex:1 0 256px}
+/* a stage with a visible strip (chapter 7's block chain, 90 px plus the gap) keeps the 280 px
+   floor: at 256 its motor and vector canvases are 156 px, under the motor view's 180 px compact
+   threshold and the vector view's voltage inset; browsers without :has keep 256 */
+html.is-standalone:not(.is-fs) .main:has(> .stage > .vh.strip:not([hidden])){flex-basis:280px}
+/* the explanation is open by default: open, its text extends the page below the fold, and the
+   stage keeps the height the closed layout gives it (--fit-stage, main.js updateFitStage) */
+html.is-standalone:not(.is-fs) .app:has(.p-learn[open]) .main{flex-basis:max(256px,var(--fit-stage,0px))}
+html.is-standalone:not(.is-fs) .app:has(.p-learn[open]) .main:has(> .stage > .vh.strip:not([hidden])){flex-basis:max(280px,var(--fit-stage,0px))}
+
+/* ---------------- fullscreen (class set by main.js on fullscreenchange) ---------------- */
+html.is-fs{font-size:115%;--font-scale:1.15}
+/* solid, or an embed shows the parent's black ::backdrop; :fullscreen paints it before the class */
+html.is-fs,html.is-fs body{background:var(--page-bg)}
+html:fullscreen{background:var(--page-bg)}
+html.is-fs body{overflow:hidden}
+html.is-fs .app{height:100%;min-height:0}
+/* taller than the embedded scope, but short viewports (a 1280×800 laptop) keep room for the views */
+html.is-fs .scope-plot{height:clamp(180px,calc(30vh - 40px),400px)}
+html.is-fs .vh.strip{flex-basis:104px}
+/* the open explanation scrolls the page; the stage keeps its closed height, as on the standalone page */
+html.is-fs:has(.p-learn[open]) body{overflow-y:auto}
+html.is-fs .app:has(.p-learn[open]){height:auto;min-height:100%}
+html.is-fs .app:has(.p-learn[open]) .main{flex:1 0 var(--fit-stage,280px)}
+/* short viewports (a phone in landscape or a small tablet): keep the embedded stage floor
+   (STAGE_MIN in main.js) and the embedded scope height, and let the page scroll instead of
+   collapsing the views */
+@media(max-height:700px){
+  html.is-fs body{overflow-y:auto}
+  html.is-fs .app{height:auto;min-height:100%}
+  html.is-fs .main{flex:1 0 280px}
+  html.is-fs .app:has(.p-learn[open]) .main{flex-basis:max(280px,var(--fit-stage,0px))}
+  html.is-fs .scope-plot{height:162px}
+}
+
+/* ---------------- mobile (<= 720 px): one column, natural height ---------------- */
+@media(max-width:720px){
+  html,body{height:auto}
+  /* an embed's natural height briefly outgrows its iframe while the page applies a new height: a
+     classic scrollbar coming and going for that moment rewrapped the text (B-006); keep its room */
+  html:not(.is-standalone){scrollbar-gutter:stable}
+  .app{height:auto;min-height:0;padding:8px}
+  .main,.panel{display:contents}
+  .tb{order:0} .p-head{order:1} .stage{order:2} .p-ctl{order:3} .scope{order:4}
+  .ro{order:5} .p-learn{order:6}
+  .tabs{display:none}
+  .tabsel{display:block;max-width:none}
+  .tb-nav{flex-wrap:nowrap}
+  .tb-grp.time{flex:1 1 100%;min-width:0;grid-template-columns:auto minmax(40px,1fr) auto}
+  .time input{width:100%;min-width:0}
+  .time-h{min-width:0}
+  .p-head{padding:2px 2px 0}
+  .stage{flex:none}
+  .stage.multi-view .view-picker{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--desc-color)}
+  .view-picker select{flex:1;min-width:0;background:var(--tip-bg);border:1px solid var(--tip-border);border-radius:8px;padding:7px 10px}
+  .stage[data-mobile-view="primary"] .vh.s,.stage[data-mobile-view="primary"] .vh.strip,
+  .stage[data-mobile-view="secondary"] .vh.p,.stage[data-mobile-view="secondary"] .vh.strip,
+  .stage[data-mobile-view="strip"] .views{display:none}
+  .views{flex-direction:column}
+  .vh,.stage.has-sec .vh.p{flex:none;width:100%;aspect-ratio:1/var(--ar,.75);min-height:200px;max-height:300px}
+  .vh.strip{aspect-ratio:auto;height:90px;min-height:0;flex:none}
+  .p-ctl{background:var(--tip-bg);border:1px solid var(--tip-border);border-radius:12px;padding:12px}
+  .p-text,.p-try,.p-deep{padding:0 2px}
+  .p-deep{border-top:0;padding-top:0}
+  .scope-plot{height:160px}
+  .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+  /* fullscreen keeps the one-column page scrolling (the desktop rules lock the viewport); the
+     toolbar stays on top, across the side gutters, so exit fullscreen stays in reach, and a
+     content control focused from below scrolls clear of it (the toolbar is at most about
+     153 px). The margin sits on the content only: on the root, as scroll-padding, it would
+     scroll the page whenever a toolbar control takes focus */
+  html.is-fs body{overflow-x:hidden;overflow-y:auto}
+  html.is-fs .app{height:auto}
+  html.is-fs .tb{position:sticky;top:0;z-index:3;margin:-8px;padding:8px;background:var(--page-bg)}
+  html.is-fs .app>:not(.tb) *{scroll-margin-top:9rem}
+}
+
+@media(max-width:320px){#motor-lbl{display:none}}

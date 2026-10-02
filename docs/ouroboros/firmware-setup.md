@@ -1,5 +1,6 @@
 ---
 title: Ouroboros Klipper Firmware Setup
+description: Install the TMC4671 Klipper plugin and flash Klipper firmware to Ouroboros.
 hide:
   - footer
 ---

@@ -1,4 +1,5 @@
 ---
+description: Controller PCBs for the Nevermore Mini, Max and Stealthmax air filters. Compare the boards and find the mount, wiring and firmware docs for each.
 hide:
   - footer
 ---

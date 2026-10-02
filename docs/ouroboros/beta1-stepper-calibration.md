@@ -1,5 +1,6 @@
 ---
 title: Ouroboros Encoder Stepper Calibration
+description: "Outdated: manual PI tuning of closed-loop FOC stepper motors with Ouroboros and the TMC4671 Klipper plugin."
 hide:
   - footer
 ---

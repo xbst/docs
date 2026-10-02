@@ -1,5 +1,6 @@
 ---
 title: Ouroboros Sensorless Homing
+description: "How Ouroboros uses the TMC4671 STATUS outputs for sensorless homing: hardware, Klipper config and homing_current tuning."
 hide:
   - footer
 ---
@@ -16,7 +17,12 @@ hide:
 
 When the TMC4671 detects that the motor's velocity PI loop is demanding more current than the configured `homing_current` allows — i.e. the motor has hit something — it raises its `STATUS` output pin. On Ouroboros, the `STATUS` outputs of both TMC4671 chips are wired to MCU GPIOs (PE2 for X, PA2 for Y), so Klipper can use them as virtual endstops.
 
-Detection happens within ~40 µs of contact (a few PWM cycles), which is fast enough to stop the homing move before any meaningful mechanical force builds up.
+Detection happens within a few control cycles (about 40 µs each) of the current demand crossing `homing_current`. The lower `homing_current` is, the sooner the demand crosses it, and the less the carriage pushes into the hard stop first.
+
+??? info "Interactive: how stall detection works [BETA]"
+    Home a simulated carriage into a hard stop and change `homing_current`, the homing speed and the retract distance to see when the flag fires, what a false trigger looks like, and why the next homing needs a retract.
+
+    ![Interactive sensorless homing](../interactive/motor-playground/index.html?chapter=sensorless-foc&nav=0&product=ouroboros){ type=application/pinout style="height:80vh;min-height:640px;width:100%" }
 
 ## Hardware
 
@@ -66,7 +72,7 @@ homing_retract_dist: 5
 
 ## Tuning `homing_current`
 
-During homing, the TMC4671's torque/flux current limit is temporarily reduced from `run_current` to `homing_current`. The velocity PI loop tries to maintain the commanded homing speed. As long as the carriage is moving freely, the demanded current is only what's needed to overcome friction and inertia, which is well below `homing_current`. When the carriage hits the hard stop, the velocity error spikes, the PI loop demands maximum current immediately — and the moment that demand exceeds `homing_current`, the `STATUS` pin fires.
+During homing, the TMC4671's torque/flux current limit is temporarily reduced from `run_current` to `homing_current`. The velocity PI loop tries to maintain the commanded homing speed. As long as the carriage is moving freely, the demanded current is only what's needed to overcome friction and inertia, which is below `homing_current`. At the hard stop the carriage cannot follow the commanded speed. The speed error grows at once and the loop demands more current. The moment the demand exceeds the limit, a **limit flag** is set and the driver's **status output** goes high. The controller reads that pin as an endstop.
 
 The right value is **just above the peak current the motor needs during a normal free homing move.**
 

@@ -1,4 +1,6 @@
 ---
+title: Birds' Nest Manual
+description: Birds' Nest is a USB hub PCB for tool changers with USB toolheads. Klipper firmware flashing and pinout.
 hide:
   - footer
 ---

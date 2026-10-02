@@ -1,4 +1,6 @@
 ---
+title: ToqueCAN Manual
+description: ToqueCAN is a Raspberry Pi toque with a USB to CAN adapter, 3-port USB hub and 5V 5A power for the Pi. Installation, jumpers, firmware and CAN setup.
 hide:
   - footer
 ---

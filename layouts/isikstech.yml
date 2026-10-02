@@ -1,0 +1,155 @@
+# Social card layout: dark card with amber PCB traces, the product's board
+# photo on the right and the page's product, title and description on the
+# left. Pages without a photo get a large logo in the photo tile instead.
+#
+# Per-product options come from each folder's .meta.yml, under
+# social.cards_layout_options:
+#   product: name shown above the page title
+#   image:   square board photo, path relative to the project root
+
+definitions:
+
+  - &card_color "#131313"
+
+  - &amber "#ffc105"
+
+  - &font_family >-
+    {%- if config.theme.font is mapping -%}
+      {{ config.theme.font.get("text", "Roboto") }}
+    {%- else -%}
+      Roboto
+    {%- endif -%}
+
+  - &logo >-
+    {{ config.docs_dir }}/{{ config.theme.logo }}
+
+  - &photo >-
+    {{ layout.image }}
+
+  - &fallback_logo >-
+    {%- if not layout.image -%}
+      {{ config.docs_dir }}/{{ config.theme.logo }}
+    {%- endif -%}
+
+  - &site_host >-
+    {{ config.site_url | replace("https://", "") | replace("http://", "") | trim("/") }}
+
+  # Hidden on a product's own index page, where it would repeat the title
+  - &product >-
+    {%- if layout.product != page.meta.get("title", page.title) -%}
+      {{ layout.product }}
+    {%- endif -%}
+
+  - &page_title >-
+    {%- if page.is_homepage -%}
+      {{ config.site_name }}
+    {%- else -%}
+      {{ page.meta.get("title", page.title) }}
+    {%- endif -%}
+
+  - &page_title_with_site_name >-
+    {%- if not page.is_homepage -%}
+      {{ page.meta.get("title", page.title) }} - {{ config.site_name }}
+    {%- else -%}
+      {{ config.site_name }}
+    {%- endif -%}
+
+  - &page_description >-
+    {{ page.meta.get("description", config.site_description) }}
+
+# Meta tags (a layout without these drops every og: and twitter: tag)
+tags:
+
+  og:type: website
+  og:title: *page_title_with_site_name
+  og:description: *page_description
+  og:image: "{{ image.url }}"
+  og:image:type: "{{ image.type }}"
+  og:image:width: "{{ image.width }}"
+  og:image:height: "{{ image.height }}"
+  og:url: "{{ page.canonical_url }}"
+
+  twitter:card: summary_large_image
+  twitter:title: *page_title_with_site_name
+  twitter:description: *page_description
+  twitter:image: "{{ image.url }}"
+
+size: { width: 1200, height: 630 }
+layers:
+
+  - background:
+      color: *card_color
+
+  - background:
+      image: layouts/isikstech/traces.svg
+
+  # Board photo tile
+  - size: { width: 472, height: 472 }
+    offset: { x: 672, y: 79 }
+    background:
+      image: *photo
+
+  # Large logo in the tile when there's no photo
+  - size: { width: 340, height: 340 }
+    offset: { x: 738, y: 145 }
+    background:
+      image: *fallback_logo
+
+  - background:
+      image: layouts/isikstech/frame.svg
+
+  # Header: logo and site address
+  - size: { width: 56, height: 56 }
+    offset: { x: 64, y: 56 }
+    background:
+      image: *logo
+
+  - size: { width: 400, height: 36 }
+    offset: { x: 136, y: 66 }
+    typography:
+      content: *site_host
+      align: start center
+      color: "#d6d6d6"
+      font:
+        family: *font_family
+        style: Medium
+
+  # Product name
+  - size: { width: 552, height: 44 }
+    offset: { x: 64, y: 168 }
+    typography:
+      content: *product
+      align: start center
+      overflow: shrink
+      color: *amber
+      font:
+        family: *font_family
+        style: Bold
+
+  # Page title
+  - size: { width: 552, height: 204 }
+    offset: { x: 62, y: 220 }
+    typography:
+      content: *page_title
+      align: start top
+      overflow: shrink
+      color: "#ffffff"
+      line:
+        amount: 3
+        height: 1.15
+      font:
+        family: *font_family
+        style: Bold
+
+  # Page description
+  - size: { width: 552, height: 136 }
+    offset: { x: 64, y: 436 }
+    typography:
+      content: *page_description
+      align: start bottom
+      color: "#b4b4b4"
+      line:
+        amount: 4
+        height: 1.3
+      font:
+        family: *font_family

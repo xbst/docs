@@ -1,0 +1,451 @@
+/**
+ * Declarative controls renderer (SPEC 4.4). A chapter's `controls(ctx)`
+ * returns an array of specs; this module turns them into grouped, keyboard-
+ * operable DOM controls inside the panel.
+ *
+ * Common fields: `id` (unique within the chapter), `label`, `group` (heading;
+ * controls without one come first, ungrouped), `disabled`, `title` (tooltip),
+ * `caption` (a config key shown under the control in Roboto Mono; pass
+ * `ctx.product.keys.X`, which is undefined for the generic profile).
+ *
+ *   slider:    { type:'slider', id, label, min, max, step, value, unit, log:false,
+ *                format:(v)=>string, live:true, onChange:(v, ctx)=>void }
+ *              `log:true` maps the track on log10 (min > 0) in n positions (200,
+ *              or the whole number nearest to log10(max/min)/`logStep`), the last
+ *              one a hair inside max so the browser can reach it; `step` then
+ *              only rounds the value, and the arrow keys skip track positions
+ *              that round to the value already shown. `sig` (log only) rounds to
+ *              that many significant digits instead, on a track fine enough to
+ *              reach every such value (sig 2: 690, 700, 710 and 19 000, 20 000;
+ *              a config's round numbers); `step` then only sets the decimals.
+ *              `live:false` fires onChange on release only.
+ *   segmented: { type:'segmented', id, label, options:[{value, label, disabled, title}], value, onChange }
+ *   toggle:    { type:'toggle', id, label, value, onChange }
+ *   button:    { type:'button', id, label, kind:'primary'|'normal', onClick:(ctx)=>void }
+ *   select:    { type:'select', id, label, options:[{value, label, disabled}] | [value, …], value, onChange }
+ *   note:      { type:'note', html, kind:'help' }
+ *              `kind:'help'` reads as a line under the control before it (no callout border).
+ *
+ * Values are preserved by id across re-renders (refreshControls, motor-type
+ * change) unless the chapter passes a different `value` than it did last time.
+ * A preserved value is fitted to the new spec: a slider's is clamped to its
+ * [min, max], and a select's or segmented control's falls back to `value` when
+ * the options no longer offer it. With `{reapply:true}` (used after a
+ * motor-type change reconfigures the world) every preserved value that differs
+ * from the chapter's value is sent through its onChange again, so the world
+ * matches what the controls show; without it, only a value the fitting changed
+ * is sent through onChange.
+ */
+import { formatValue } from './format.js';
+
+const PREFIX = 'ctl-';
+/** Track direction of the arrow keys on a range input. */
+const ARROW_DIR = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 };
+
+const same = (a, b) => a === b || (typeof a === 'number' && typeof b === 'number' && Math.abs(a - b) <= 1e-12 * Math.max(1, Math.abs(a)));
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function decimalsOf(step) {
+  if (!(step > 0) || step >= 1) return 0;
+  return Math.min(6, Math.max(0, Math.ceil(-Math.log10(step) - 1e-9)));
+}
+
+function roundTo(v, step) {
+  if (!(step > 0)) return v;
+  return +(Math.round(v / step) * step).toFixed(decimalsOf(step));
+}
+
+const normOptions = (opts) => (opts || []).map((o) => (o !== null && typeof o === 'object')
+  ? o : { value: o, label: String(o) });
+
+/**
+ * A preserved value made to fit a re-rendered control: a slider's is clamped
+ * to the spec's [min, max] (linear units, log sliders too); a select's or
+ * segmented control's falls back to the spec's value when no option offers it.
+ */
+function fitValue(spec, v) {
+  if (spec.type === 'slider') {
+    const min = +spec.min, max = +spec.max;
+    return typeof v === 'number' && max >= min ? Math.min(max, Math.max(min, v)) : v;
+  }
+  if (spec.type === 'select' || spec.type === 'segmented') {
+    const offered = (spec.options || []).some((o) => same((o !== null && typeof o === 'object') ? o.value : o, v));
+    return offered ? v : spec.value;
+  }
+  return v;
+}
+
+/** Renders and tracks the controls of the current chapter. */
+export class Controls {
+  /**
+   * @param {HTMLElement} host panel element the controls render into
+   * @param {Object} ctx chapter ctx passed to onChange/onClick
+   */
+  constructor(host, ctx) {
+    this.host = host;
+    this.ctx = ctx;
+    /** @type {Map<string, {spec: *, value: *}>} */
+    this.memory = new Map();
+    /** @type {Map<string, {set: (v: *) => void, el: HTMLElement}>} */
+    this.items = new Map();
+    this.gen = 0;
+    this.groupKey = null;
+  }
+
+  /** Forget preserved values (called on chapter change). */
+  reset() { this.memory.clear(); this.groupKey = null; }
+
+  /** Remove all controls and forget preserved values. */
+  clear() { this.reset(); this.items.clear(); this.host.replaceChildren(); }
+
+  /**
+   * Build the controls from specs, replacing the previous ones.
+   * @param {Array<Object>} specs
+   * @param {{reapply?: boolean}} [opts]
+   */
+  render(specs, opts) {
+    const reapply = !!(opts && opts.reapply);
+    const gen = ++this.gen;
+    const active = document.activeElement;
+    const focusId = active && active !== document.body && this.host.contains(active) ? active.id : null;
+    this.items.clear();
+    const frag = document.createDocumentFragment();
+    const groups = new Map();
+    const pending = [];
+    for (const spec of specs || []) {
+      if (!spec || !BUILD[spec.type]) {
+        if (spec) console.warn('[playground] unknown control type:', spec.type);
+        continue;
+      }
+      const key = spec.group || '';
+      let g = groups.get(key);
+      if (!g) {
+        g = el('div', 'cg');
+        if (key) {
+          const h = el('h2', 'p-h', key);
+          h.id = PREFIX + 'g' + groups.size;
+          g.setAttribute('role', 'group');
+          g.setAttribute('aria-labelledby', h.id);
+          g.append(h);
+        }
+        groups.set(key, g);
+        frag.append(g);
+      }
+      let value = spec.value;
+      if (spec.id != null && HAS_VALUE[spec.type]) {
+        const mem = this.memory.get(spec.id);
+        let fitted = false;
+        if (mem && same(mem.spec, spec.value)) {
+          value = fitValue(spec, mem.value);
+          fitted = !same(value, mem.value);
+        }
+        this.memory.set(spec.id, { spec: spec.value, value });
+        // After a motor-type change the world runs the chapter's values: replay every other one.
+        // Otherwise it runs the preserved values: replay only one the fitting changed.
+        if (mem && spec.onChange && (reapply ? !same(value, spec.value) : fitted)) pending.push([spec, value]);
+      }
+      const item = BUILD[spec.type](spec, value, this);
+      if (spec.title) item.el.title = spec.title;
+      g.append(item.el);
+      if (spec.id != null) this.items.set(String(spec.id), item);
+    }
+    // Long chapters expose one set of controls at a time. Keep all inputs mounted
+    // so switching sections never resets a gain or interrupts the simulation.
+    const sections = [...groups.keys()].filter(Boolean);
+    let picker = null;
+    if (sections.length > 2) {
+      if (this.groupKey !== '*' && !sections.includes(this.groupKey)) this.groupKey = sections[0];
+      picker = el('div', 'ctl section-picker');
+      const label = el('label', 'ctl-l', 'Adjust');
+      label.htmlFor = PREFIX + 'section';
+      const select = el('select');
+      select.id = label.htmlFor;
+      select.setAttribute('aria-label', 'Control group');
+      for (const key of [...sections, '*']) {
+        const option = el('option', null, key === '*' ? 'All controls' : key);
+        option.value = key;
+        select.append(option);
+      }
+      select.value = this.groupKey;
+      const show = () => {
+        for (const [key, group] of groups) {
+          group.hidden = !!key && this.groupKey !== '*' && key !== this.groupKey;
+          group.setAttribute('data-sectioned', String(this.groupKey !== '*'));
+        }
+      };
+      select.addEventListener('change', () => { this.groupKey = select.value; show(); });
+      show();
+      picker.append(label, select);
+    }
+    this.host.replaceChildren(...(picker ? [picker, frag] : [frag]));
+    if (focusId) {
+      const f = document.getElementById(focusId);
+      if (f) f.focus({ preventScroll: true });
+    }
+    for (const [spec, v] of pending) {
+      if (this.gen !== gen) break;     // an onChange re-rendered the controls (a preset): stop here
+      this.fire(spec.onChange, v);
+    }
+  }
+
+  /**
+   * Set a control's value without calling its onChange.
+   * @param {string} id
+   * @param {*} value
+   */
+  setValue(id, value) {
+    const item = this.items.get(String(id));
+    const mem = this.memory.get(id);
+    if (mem) mem.value = value;
+    if (item) item.set(value);
+  }
+
+  /** Current value of a control (preserved or last set). */
+  getValue(id) {
+    const mem = this.memory.get(id);
+    return mem ? mem.value : undefined;
+  }
+
+  /** @private record a user change */
+  store(id, value) {
+    if (id == null) return;
+    const mem = this.memory.get(id);
+    if (mem) mem.value = value;
+    else this.memory.set(id, { spec: undefined, value });
+  }
+
+  /** @private call a chapter handler; errors are logged, never thrown into the DOM event */
+  fire(fn, ...args) {
+    if (typeof fn !== 'function') return;
+    try { fn(...args, this.ctx); } catch (err) { console.error('[playground] control handler failed:', err); }
+  }
+}
+
+const HAS_VALUE = { slider: true, segmented: true, toggle: true, select: true };
+
+function wrap(spec, kind) {
+  const w = el('div', 'ctl ' + kind + (spec.disabled ? ' disabled' : ''));
+  return w;
+}
+
+function addCaption(w, spec, describedEl, id) {
+  if (!spec.caption) return;
+  const c = el('div', 'cap', spec.caption);
+  c.id = id + '-c';
+  w.append(c);
+  if (describedEl) describedEl.setAttribute('aria-describedby', c.id);
+}
+
+const BUILD = {
+  slider(spec, value, C) {
+    const id = PREFIX + spec.id;
+    const w = wrap(spec, 'slider');
+    const head = el('div', 'ctl-h');
+    const lab = el('label', null, spec.label);
+    lab.htmlFor = id;
+    const out = el('output');
+    out.htmlFor = id;
+    head.append(lab, out);
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.id = id;
+    const min = +spec.min, max = +spec.max;
+    const log = !!spec.log && min > 0 && max > min;
+    const sig = log && spec.sig > 0 ? Math.round(spec.sig) : 0;
+    if (log) {
+      // A whole number of track steps spans the range, each a hair short of its share, so the last
+      // grid point sits just inside max: the browser compares min + k·step with max in decimal, and
+      // a step string that rounds up put max one step out of reach (x9.82 of x10 on 0.25…10).
+      // With `sig` a step is at most 90% of the narrowest rounding interval (the one just under a
+      // power of ten, 1 part in 10^sig), so each sig-digit value has a track position.
+      const a = Math.log10(min), b = Math.log10(max);
+      const share = spec.logStep > 0 ? spec.logStep : sig ? 0.9 * Math.log10(1 + 10 ** -sig) : (b - a) / 200;
+      const n = Math.max(1, sig && !(spec.logStep > 0) ? Math.ceil((b - a) / share) : Math.round((b - a) / share));
+      input.min = String(a);
+      input.max = String(b);
+      input.step = String((b - a) / n * (1 - 1e-9));
+    } else {
+      input.min = String(min);
+      input.max = String(max);
+      input.step = spec.step > 0 ? String(spec.step) : 'any';
+    }
+    input.disabled = !!spec.disabled;
+    const fmt = typeof spec.format === 'function' ? spec.format
+      : (v) => (log && !(spec.step > 0) ? formatValue(v) : formatValue(v, decimalsOf(spec.step)))
+        + (spec.unit ? ' ' + spec.unit : '');
+    const toRaw = (v) => (log ? Math.log10(Math.min(max, Math.max(min, v))) : v);
+    const fromRaw = (r) => {
+      if (!log) return +r;
+      const v = Math.pow(10, +r);
+      return sig ? Math.min(max, Math.max(min, +v.toPrecision(sig))) : spec.step > 0 ? roundTo(v, spec.step) : +v.toPrecision(3);
+    };
+    let current = value;
+    const show = (v) => {
+      const s = fmt(v);
+      out.textContent = s;
+      input.setAttribute('aria-valuetext', s);
+    };
+    const set = (v) => { current = v; input.value = String(toRaw(v)); show(v); };
+    set(value);
+    input.addEventListener('input', () => {
+      const v = fromRaw(input.value);
+      if (same(v, current)) return;
+      current = v;
+      show(v);
+      C.store(spec.id, v);
+      if (spec.live !== false) C.fire(spec.onChange, v);
+    });
+    if (spec.live === false) input.addEventListener('change', () => C.fire(spec.onChange, current));
+    if (log && (spec.step > 0 || sig)) {
+      // Near the low end neighboring track positions round to the same value: an arrow key
+      // moves on to the next position whose value differs. At an end nothing is sent; a thumb
+      // a position or two short of it (a pointer drag) parks on the end, as the native key would.
+      input.addEventListener('keydown', (e) => {
+        const dir = ARROW_DIR[e.key];
+        if (!dir || e.altKey || e.ctrlKey || e.metaKey) return;
+        e.preventDefault();
+        const lo = +input.min, st = +input.step, last = Math.floor((+input.max - lo) / st + 1e-9);
+        for (let k = Math.round((+input.value - lo) / st) + dir; k >= 0 && k <= last; k += dir) {
+          const v = fromRaw(lo + k * st);
+          if (same(v, current)) continue;
+          set(v);
+          C.store(spec.id, v);
+          C.fire(spec.onChange, v);     // a key press is its own release, so also with live:false
+          return;
+        }
+        input.value = String(dir > 0 ? lo + last * st : lo);
+      });
+    }
+    w.append(head, input);
+    addCaption(w, spec, input, id);
+    return { el: w, set };
+  },
+
+  segmented(spec, value, C) {
+    const id = PREFIX + spec.id;
+    const w = wrap(spec, 'segmented');
+    const head = el('div', 'ctl-h');
+    const lab = el('span', 'ctl-l', spec.label);
+    lab.id = id + '-l';
+    head.append(lab);
+    const box = el('div', 'pills');
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-labelledby', lab.id);
+    box.id = id;
+    const options = normOptions(spec.options);
+    const buttons = options.map((o, i) => {
+      const b = el('button', null, o.label != null ? o.label : String(o.value));
+      b.type = 'button';
+      // An id per option, so focus comes back to the pressed option when its onChange
+      // re-renders the controls (render() restores focus by id).
+      b.id = id + '-' + i;
+      b.disabled = !!(o.disabled || spec.disabled);
+      if (o.title) b.title = o.title;
+      b.addEventListener('click', () => {
+        if (same(current, o.value)) return;
+        set(o.value);
+        C.store(spec.id, o.value);
+        C.fire(spec.onChange, o.value);
+      });
+      box.append(b);
+      return b;
+    });
+    let current = value;
+    const set = (v) => {
+      current = v;
+      options.forEach((o, i) => buttons[i].setAttribute('aria-pressed', String(same(o.value, v))));
+    };
+    set(value);
+    w.append(head, box);
+    addCaption(w, spec, box, id);
+    return { el: w, set };
+  },
+
+  toggle(spec, value, C) {
+    const id = PREFIX + spec.id;
+    const w = wrap(spec, 'toggle');
+    const b = el('button', 'sw');
+    b.type = 'button';
+    b.id = id;
+    b.setAttribute('role', 'switch');
+    b.disabled = !!spec.disabled;
+    const track = el('span', 'sw-t');
+    track.setAttribute('aria-hidden', 'true');
+    const lab = el('span', null, spec.label);
+    lab.id = id + '-l';
+    b.setAttribute('aria-labelledby', lab.id);
+    b.append(track, lab);
+    let current = !!value;
+    const set = (v) => { current = !!v; b.setAttribute('aria-checked', String(current)); };
+    set(value);
+    b.addEventListener('click', () => {
+      set(!current);
+      C.store(spec.id, current);
+      C.fire(spec.onChange, current);
+    });
+    w.append(b);
+    addCaption(w, spec, b, id);
+    return { el: w, set };
+  },
+
+  button(spec, value, C) {
+    const w = wrap(spec, 'button');
+    const b = el('button', 'btn' + (spec.kind === 'primary' ? ' primary' : ''), spec.label);
+    b.type = 'button';
+    if (spec.id != null) b.id = PREFIX + spec.id;
+    b.disabled = !!spec.disabled;
+    if (spec.ariaLabel) b.setAttribute('aria-label', spec.ariaLabel);
+    b.addEventListener('click', () => C.fire(spec.onClick));
+    w.append(b);
+    return { el: w, set: () => {} };
+  },
+
+  select(spec, value, C) {
+    const id = PREFIX + spec.id;
+    const w = wrap(spec, 'select');
+    const head = el('div', 'ctl-h');
+    const lab = el('label', null, spec.label);
+    lab.htmlFor = id;
+    head.append(lab);
+    const sel = document.createElement('select');
+    sel.id = id;
+    sel.disabled = !!spec.disabled;
+    const options = normOptions(spec.options);
+    options.forEach((o, i) => {
+      const op = el('option', null, o.label != null ? o.label : String(o.value));
+      op.value = String(i);
+      op.disabled = !!o.disabled;
+      sel.append(op);
+    });
+    const set = (v) => {
+      const i = options.findIndex((o) => same(o.value, v));
+      sel.value = String(i >= 0 ? i : 0);
+    };
+    set(value);
+    sel.addEventListener('change', () => {
+      const o = options[+sel.value];
+      if (!o) return;
+      C.store(spec.id, o.value);
+      C.fire(spec.onChange, o.value);
+    });
+    if (spec.label) w.append(head);
+    w.append(sel);
+    addCaption(w, spec, sel, id);
+    return { el: w, set };
+  },
+
+  note(spec) {
+    const w = wrap(spec, 'note-w');
+    const n = el('div', spec.kind === 'help' ? 'note help' : 'note');
+    const set = (html) => { n.innerHTML = html || ''; };
+    set(spec.html);
+    w.append(n);
+    return { el: w, set };
+  },
+};

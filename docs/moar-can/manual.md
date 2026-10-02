@@ -1,4 +1,6 @@
 ---
+title: MOAR_CAN Manual
+description: MOAR_CAN is a CAN bus hub for IDEX printers and tool changers that keeps a linear bus with short stubs. Topology, cabling, connectors and power.
 hide:
   - footer
 ---

@@ -1,5 +1,6 @@
 ---
 title: Ouroboros Encoder Stepper Calibration
+description: Set up and tune Ouroboros with closed-loop encoder stepper motors, using the TMC4671 plugin's board and motor profiles and automatic startup tuning.
 hide:
   - footer
 ---
@@ -64,6 +65,11 @@ Tuning means finding the right Proportional (P) and Integral (I) gains for each 
     - **Position**: how the motor corrects position error. Tuning affects dimensional accuracy.
     
     The loops are cascaded: position outputs a velocity target, velocity outputs a torque target, torque outputs a current. If an inner loop is unstable, all the outer ones will be too. That's why tuning order matters — and why the plugin does them in that order automatically.
+
+??? info "Interactive: see what each PI loop does [BETA]"
+    Change each loop's gains and filters on a simulated gantry, or pick a preset, and see the symptom each mistuned value causes: overshoot, ringing, rounded corners or noise.
+
+    ![Interactive PI loops](../interactive/motor-playground/index.html?chapter=pi-loops&nav=0&product=ouroboros){ type=application/pinout style="height:80vh;min-height:640px;width:100%" }
 
 ## Step 1: Config
 
@@ -242,7 +248,7 @@ You can also use the plugin's tuning commands by hand — see the [Plugin Refere
 
 ### Live biquad tuning
 
-Biquad filter frequencies smooth out the measured currents and velocity. The autotune sets them to reasonable values, but you can experiment live (no restart required) with `SET_TMC_BIQUAD_FILTER`. See the [Plugin Reference](./plugin-reference/) for details. Rough guidance:
+Biquad filters smooth out the torque and flux targets and the measured velocity. The autotune sets them to reasonable values, but you can experiment live (no restart required) with `SET_TMC_BIQUAD_FILTER`. See the [Plugin Reference](./plugin-reference/) for details. Rough guidance:
 
 - `biquad_flux_frequency`: around 800 Hz for typical NEMA-17.
 - `biquad_torque_frequency`: around 1600 Hz.

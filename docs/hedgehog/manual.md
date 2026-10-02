@@ -1,5 +1,6 @@
 ---
-title: Hedgehog
+title: Hedgehog Manual
+description: Hedgehog is a Klipper I/O expansion PCB with 31 I/O pins and USB and CAN support. Klipper setup, pinout and designing it into custom PCBs.
 hide:
   - footer
 ---

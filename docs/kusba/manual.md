@@ -1,5 +1,6 @@
 ---
 title: KUSBA Manual
+description: KUSBA is a USB accelerometer PCB that makes Klipper input shaping easy. Where to buy, firmware flashing and Klipper config.
 hide:
   - footer
 ---

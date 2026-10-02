@@ -1,0 +1,6 @@
+# Shared front matter for every page in this folder and its subfolders
+# (meta plugin). Card image paths are relative to the project root.
+social:
+  cards_layout_options:
+    product: "MOAR_CAN"
+    image: docs/assets/moar_can/moar_can-board.jpg

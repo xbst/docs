@@ -1,4 +1,5 @@
 ---
+description: "Manuals, pinouts and setup guides for Isik's Tech 3D printer PCBs: CAN bus adapters and hubs, filament changer controllers, Nevermore controllers and more."
 hide:
   - footer
 ---
@@ -105,11 +106,11 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
       <th colspan="2" style="font-size: 24px"></th>
     </tr>
     <tr>
-      <td colspan="2">Ouroboros is a TMC4671-based FOC servo controller designed for Klipper 3D printers.</td>
+      <td colspan="2">Ouroboros is a TMC4671-based FOC motor controller designed for Klipper 3D printers.</td>
       <td colspan="2"></td>
       </tr>
     <tr>
-      <th width="12.5%"><a href="ouroboros/wiring/">Docs</a></th>
+      <th width="12.5%"><a href="ouroboros/">Docs</a></th>
       <th width="12.5%"><a href="https://store.isiks.tech/products/ouroboros">Store</a></th>
       <th width="12.5%"></th>
       <th width="12.5%"></th>

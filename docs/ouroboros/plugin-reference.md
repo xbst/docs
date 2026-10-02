@@ -1,5 +1,6 @@
 ---
 title: TMC4671 Plugin Reference
+description: G-code commands and config options of the TMC4671 Klipper plugin that drives Ouroboros.
 hide:
   - footer
 ---
