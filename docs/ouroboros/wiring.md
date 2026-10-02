@@ -1,14 +1,15 @@
 ---
-title: Ouroboros Wiring & Mount
+title: Ouroboros Mount & Wiring
 description: Ouroboros mounts, pinout, MCU_PWR switch, and motor power, encoder and expansion connector wiring.
 hide:
   - footer
 ---
 
-# Ouroboros Wiring & Mount
+# Ouroboros Mount & Wiring
 
-## Ouroboros Mounts
-- [Voron DIN Rail Mount by hartk](./Ouroboros_Mount_hartk.zip)
+## Ouroboros Intergation CAD & Mounts
+
+Ouroboros CAD and mounts can be found on [this repo](https://github.com/xbst/Ouroboros-CAD).
 
 ## Ouroboros Wiring
 
