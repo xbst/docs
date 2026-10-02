@@ -205,12 +205,12 @@ export default {
   text() {
     return '<p>Inside the motor, two coils (A and B) pull on the rotor. A <strong>full step</strong> switches the '
       + 'currents so the field jumps 90°, a quarter of the electrical cycle. The rotor snaps after it, overshoots '
-      + 'and rings at the stepper\'s resonance, typically 100–300 Hz: the classic stepper buzz.</p>'
+      + 'and rings at the stepper\'s resonance, typically 100–300 Hz: the stepper buzz.</p>'
       + '<p><strong>Microstepping</strong> sets the two currents to the cosine and sine of the field angle, so the '
       + 'field turns in small angles instead of jumps. Smaller jumps, less vibration, quieter motion.</p>'
       + '<p>But the pull toward the next microstep is small, and it grows only with the distance from it. Friction '
-      + 'or a load holds the rotor a few microsteps behind, and a slow rotor moves in bursts. More microsteps do '
-      + 'not make it more accurate under load.</p>'
+      + 'or a load holds the rotor a few microsteps behind, and a slow rotor moves in bursts. More microsteps doesn\'t '
+      + 'make it more accurate under load.</p>'
       + '<p>Drivers can <strong>interpolate</strong>: they take 16 microsteps from the controller and smooth them '
       + 'to 256 inside. Every microstep from the controller is a pulse to send, which is why 16 with interpolation '
       + 'is the usual setting.</p>';

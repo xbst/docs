@@ -474,7 +474,7 @@ export default {
     + 'high and Klipper uses it as the endstop. It needs a minimum speed and a threshold tuned at your homing '
     + 'speed: too sensitive triggers early, too dull slams into the stop. With FOC, chapter 9 detects the stop '
     + 'without guessing.</p>'
-    + '<p><em>A behavior model of these features, not the chip\'s circuit.</em></p>',
+    + '<p><em>This is a behavior model of these features, not the chip\'s circuit.</em></p>',
 
   tryThis: [
     'In StealthChop, raise the speed to 150 mm/s until the rotor falls out of step. Switch to SpreadCycle and try again.',
