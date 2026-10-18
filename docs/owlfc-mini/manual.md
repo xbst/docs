@@ -124,12 +124,10 @@ To use USB for the Klipper connection when deployed, set the USB/CAN Mode Switch
 
 ## Software Setup
 
-OwlFC-Mini support is being added to:
+OwlFC-Mini is supported by:
 
 - [AFC (AFC Klipper Add-On)](https://github.com/AFCProject/AFC-Klipper-Add-On)
 - [Happy Hare](https://github.com/moggieuk/Happy-Hare)
-
-!!! info "Docs will be updated soon with more details as soon as support is added."
 
 ## Printed Parts
 
