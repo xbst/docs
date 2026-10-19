@@ -20,6 +20,11 @@
  * chapter (onLeave, configure, onEnter) and re-renders the controls with their
  * values preserved; values the reader changed are sent through onChange again
  * so the reconfigured world matches the controls.
+ *
+ * Sound (audio.js, chunk 08): off until the reader presses the toolbar's sound
+ * button. While it is on, advance() hands every sim step to its analyzer, draw()
+ * calls sound.frame() (time scale 0 while paused: silence), drain() passes the
+ * events on (knocks) and an idle frame loop silences it at once.
  */
 import { CHAPTERS } from './chapters/index.js';
 import { getView } from './views/index.js';
@@ -30,6 +35,7 @@ import { getProduct } from './products.js';
 import { readTokens, onThemeChange } from './theme.js';
 import { formatValue, timeScaleLabel } from './format.js';
 import { EMBEDDED, canFullscreen, createHeightPoster, onFullscreenChange, toggleFullscreen, watchDevicePixelRatio } from './embed.js';
+import { MotorSound } from './audio.js';
 
 const params = new URLSearchParams(location.search);
 const SOLO = params.get('nav') === '0';
@@ -75,6 +81,8 @@ const renderCtx = { theme: readTokens(), motorType: preferredMotor, chapterId: '
 const scope = new Scope(el.scope);
 const readouts = new Readouts(el.ro);
 const controls = new Controls(el.pCtl, ctx);
+// Optional motor sound (audio.js): inert until its toolbar button turns it on.
+const sound = new MotorSound();
 
 /* ---------------- app API for chapters ---------------- */
 const app = {
@@ -642,6 +650,7 @@ function drainEvents(snap) {
 function drain(list) {
   for (let i = 0; i < list.length; i++) {
     const ev = list[i];
+    sound.event(ev);   // knocks for lost steps and bumps, whatever the chapter announces
     let text;
     if (typeof ch.onEvent === 'function') {
       try {
@@ -668,7 +677,7 @@ function requestFrame() {
 
 function frame(now) {
   rafId = 0;
-  if (isIdle()) { lastNow = 0; return; }
+  if (isIdle()) { lastNow = 0; sound.idle(); return; }
   rafId = requestAnimationFrame(frame);
   const dt = lastNow ? Math.min((now - lastNow) / 1000, 0.1) : 0;
   lastNow = now;
@@ -692,9 +701,11 @@ function advance(dt, now) {
   let capped = n > capSteps;
   if (capped) n = capSteps;
   const t0 = performance.now(), budget = app.stepBudgetMs;
+  const tap = sound.listening ? sound.analyzer : null;   // the sound reads every step while it is on
   let done = 0;
   while (done < n) {
     world.step();
+    if (tap !== null) tap.sample(world);
     if ((++done & 127) === 0 && done < n && performance.now() - t0 > budget) { capped = true; break; }
   }
   if (capped) stepDebt = 0;
@@ -723,6 +734,7 @@ function draw(now) {
     try { ch.onFrame(ctx, snap); } catch (err) { reportOnce(`${ch.id}.onFrame`, err); }
   }
   drainEvents(snap);
+  sound.frame(world, paused ? 0 : timeScale, now);
   const slowed = now < slowedUntil;
   // a class on the time group, not `hidden`: the toolbar keeps the badge's cell reserved at every width
   if (slowed !== slowedShown) { slowedShown = slowed; el.slowed.parentNode.classList.toggle('is-slowed', slowed); }
@@ -890,8 +902,9 @@ async function init() {
   applyTheme();
   world = await createWorld(params.get('sim'));
   ctx.world = world;
-  window.MotorPlayground = { app, world };
+  window.MotorPlayground = { app, world, sound };
   enterChapter(resolveChapter(params.get('chapter')));
+  if (MotorSound.supported) sound.mount(app.registerSoundButton());
   watchDevicePixelRatio(() => { for (const v of views) sizeView(v); scope.measure(); requestFrame(); });
   window.addEventListener('resize', () => { fitTabs(); schedulePost(); });
   MOBILE.addEventListener('change', () => { fitTabs(); schedulePost(); });
