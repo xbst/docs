@@ -7,7 +7,7 @@ hide:
 
 # OwlFC-Mini Manual
 
-<img src="../assets/owlfc-mini/owlfc-mini-board.png" width="800"/>
+<img src="../assets/owlfc-mini/owlfc-mini-board.jpg" width="800"/>
 
 ## OwlFC-Mini Features
 

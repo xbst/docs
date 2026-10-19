@@ -49,7 +49,7 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
       <th width="12.5%"><a href="https://store.isiks.tech/products/afc-pro">Store</a></th>
     </tr>
     <tr>
-      <td width="25%" rowspan="3"><img src="./assets/owlfc-mini/owlfc-mini-thumb.png"></td>
+      <td width="25%" rowspan="3"><img src="./assets/owlfc-mini/owlfc-mini-thumb.jpg"></td>
       <th colspan="2" style="font-size: 24px">OwlFC-Mini</th>
       <td width="25%" rowspan="3"></td>
       <th colspan="2" style="font-size: 24px"></th>
@@ -167,6 +167,7 @@ Welcome to the Isik's Tech documentation website. You can find a list of our 3D 
     </tr>
   </tbody>
 </table>
+
 ## Resellers
 
 You can find links to our US-based store above (shipping globally). Resellers listed below may not be reselling all of our products. For resellers for a specific product, click "Docs" above.
