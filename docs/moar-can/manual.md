@@ -15,7 +15,7 @@ Most CAN bus hub PCBs on the market use a very short linear bus (the trace lengt
 
 MOAR_CAN is designed to keep the stub length as short as possible, and requires a longer bus to follow the recommended specs as closely as possible. This requires the CAN bus to go to the toolhead (or other CAN device) and come back from there. The longer bus is not a problem, since up to 40 meters of bus length is within the recommended specs.
 
-You can explore both approaches in the interactive simulator below. Add or remove toolheads, switch a toolhead between 6-wire and 4-wire cabling, move the 120-ohm termination jumpers, and toggle the bypass jumpers behind each port to see how the bus and the signals on it react. The "Typical 4-wire hub" preset shows how most hubs on the market are wired; the "Recommended 6-wire" preset shows how MOAR_CAN is meant to be wired. The termination can be on the hub or on the last CAN device — try the "Last toolhead terminated" preset.
+You can explore both approaches in the interactive simulator below. Add or remove toolheads, switch a toolhead between 6-wire and 4-wire cabling, move the 120-ohm termination jumpers, and toggle the bypass jumpers behind each port to see how the bus and the signals on it react. The "Typical 4-wire hub" preset shows how most hubs on the market are wired; the "Recommended 6-wire" preset shows how MOAR_CAN is meant to be wired. The termination can be on the hub or on the last CAN device — try the "Last toolhead terminated" preset. The ToqueCAN board in the simulator shows the MOAR_CAN connected to a ToqueCAN, where the hub sits in the middle of the bus instead of at its end.
 
 ![Interactive CAN bus topology simulator](../interactive/can-topology.html?board=moar_can){ type=application/pinout style="height:80vh;min-height:700px;width:100%" }
 
@@ -45,6 +45,8 @@ If a 6-pin connector is not going to be used, the pin headers behind it needs to
 
 ![MOAR_CAN jumper locations](../assets/moar_can/jumper-locations.png)
 
+The bus runs through the ports in order, from CAN1 to CAN8, entering each port on the CAN IN pins and leaving on the CAN OUT pins (with a ToqueCAN it is the other way around, see below). A toolhead can also be the terminated end of the bus with a single CAN pair (4 wires): connect its pair to the pins facing the USB/CAN adapter (CAN IN with the XH2.54 or 4-pin MX3.0 input, CAN OUT with a ToqueCAN), leave the jumpers behind that port unpopulated, and don't use the ports beyond it. The "Last toolhead terminated" preset in the simulator shows this.
+
 ## MOAR_CAN Connector
 
 The CAN wires from your USB/CAN adapter (PiCAN, ToqueCAN, etc.) can be connected to the MOAR_CAN using the XH2.54 MOAR_CAN connector, or the MX3.0 2x2 connector (more about this connector later).
@@ -55,11 +57,13 @@ MOAR_CAN connector pinout:
 
 ![MOAR_CAN connector pinout](../assets/moar_can/moar_can-connector-pinout.png)
 
+With a ToqueCAN, the MOAR_CAN is not at the end of the bus but in the middle of it. The ToqueCAN's CAN transceiver sits on a short bus between its two 4-pin CAN ports, and its MOAR_CAN connector carries both halves of that bus: the OUT pair connects to the OUT pins of the MOAR_CAN (the end with the 120-Ohm termination jumper), the bus then runs through the ports from CAN8 to CAN1, and the IN pins take it back to the ToqueCAN's other CAN port. The ends of the bus are the CAN devices on the ToqueCAN's CAN ports (or the ToqueCAN's CAN_120R jumper, when only one of its ports is used), so with a ToqueCAN the toolheads on the MOAR_CAN are wired with both CAN pairs (or the bypass jumpers are populated behind unused ports), none of them is terminated, and the MOAR_CAN's own termination jumper is not populated. Select "ToqueCAN" in the simulator above to see this, and see the [ToqueCAN manual](../toquecan/manual.md#can-bus-topology) for the ToqueCAN side of the rules.
+
 ## 120-Ohm Termination Jumper
 
-There is a 120-Ohm CAN termination jumper on the PCB as well. This should not be populated if using the MOAR_CAN with a ToqueCAN. It should not be populated if the last CAN device connected to the MOAR_CAN is terminated either. If the last CAN device connected to the MOAR_CAN does not have the 120-Ohm CAN termination, then a jumper should be connected, so the CAN bus has termination on both ends of the bus.
+There is a 120-Ohm CAN termination jumper on the PCB as well. This should not be populated if using the MOAR_CAN with a ToqueCAN, since both ends of the MOAR_CAN's bus then run back to the ToqueCAN and the MOAR_CAN is never at an end of the bus. It should not be populated if the last CAN device connected to the MOAR_CAN is terminated either. If the last CAN device connected to the MOAR_CAN does not have the 120-Ohm CAN termination, then a jumper should be connected, so the CAN bus has termination on both ends of the bus.
 
-Your USB/CAN adapter should also be terminated, except when using a ToqueCAN. With a ToqueCAN, the 2 CAN devices connected to the ToqueCAN should be terminated.
+Your USB/CAN adapter should also be terminated, except when using a ToqueCAN. With a ToqueCAN, the CAN devices connected to the ToqueCAN's two CAN ports should be terminated instead, or the ToqueCAN's CAN_120R jumper when only one of its CAN ports is used. See the [ToqueCAN manual](../toquecan/manual.md#can-bus-topology) for the details.
 
 120-Ohm Termination Jumper:
 

@@ -130,7 +130,7 @@ There are 3 sets of jumpers on the ToqueCAN, highlighted below:
 
 - 5V_OFF: Turns off the 5V regulator on the PCB. Leave unpopulated for ToqueCAN to generate 5V for the Raspberry Pi, USB devices and other devices powered by the 5V rail.
 
-- CAN_120R: The 120Ω termination resistor for CAN bus. Populate it if you are connecting 1 CAN device to the Microfits, don’t populate if you’re using both. For its use with MOAR_CAN, refer to that section of this document.
+- CAN_120R: The 120Ω termination resistor for the CAN bus. Populate it if you are connecting 1 CAN device to the Microfits, don’t populate it if you’re using both. See the [CAN Bus Topology](#can-bus-topology) section for the details, including its use with a MOAR_CAN hub.
 
 - FAN_PWM: The PWM source for the 30/40mm fan, if you are using a PWM capable fan. This lets you control the fan’s speed. You need to use Pi’s control if you are using Candlelight as your CAN firmware, with Klipper in bridge mode you can use the Pi or the MCU.
 
@@ -138,7 +138,7 @@ There are 3 sets of jumpers on the ToqueCAN, highlighted below:
 
 #### MOAR_CAN
 
-If you're not planning to connect a MOAR_CAN CAN bus hub to your ToqueCAN, populate the MOAR_CAN connector with the included jumper PCB.
+If you're not planning to connect a MOAR_CAN CAN bus hub to your ToqueCAN, populate the MOAR_CAN connector with the included jumper PCB. The jumper PCB closes the CAN bus between the two CAN ports: without it (and without a hub), the CAN port next to the USB-C connector is not connected to the CAN transceiver at all. See the [CAN Bus Topology](#can-bus-topology) section.
 
 ### 4. Fan & Neopixels
 
@@ -274,6 +274,32 @@ This step is optional. If you want to use your Raspberry Pi to control your PWM 
 7. Adjust the trigger temperature.
 8. When done, exit with `Finish`, and reboot.
 
+### CAN Bus Topology
+
+ToqueCAN follows the linear bus topology of the 1Mbit CAN bus standard (ISO 11898): one bus with a maximum length of 40 meters, a maximum of 30 nodes (CAN devices), a <u>maximum stub length of 300mm</u>, and 120Ω termination resistors on both ends of the bus.
+
+A typical USB to CAN adapter has a single CAN connector, with its CAN transceiver at that end of the bus. ToqueCAN instead routes a short linear bus across the PCB and hangs its CAN transceiver off it as a very short stub (a few centimeters of PCB trace). The two 4-pin CAN ports are the two ends of this bus, and the MOAR_CAN connector sits in the middle of it, carrying the two halves of the bus on its inner and outer pin pairs:
+
+- With the included jumper PCB on the MOAR_CAN connector, the two pairs are shorted together and the bus simply runs from one CAN port to the other.
+- With a MOAR_CAN hub connected instead, the bus leaves the ToqueCAN on the outer pair (OUT H / OUT L), runs through the whole hub, and comes back to the ToqueCAN on the inner pair (IN H / IN L). The hub, and every toolhead wired to it with both CAN pairs, becomes part of the bus instead of a stub.
+
+This is why a CAN device on one of the ToqueCAN's CAN ports is not a stub even with a long cable: it is an end of the bus, so it needs to be terminated. Note that the two CAN ports are not identical. The port next to the CAN_120R label (labeled CAN1 in the simulator below) shares its CAN net with the transceiver and the CAN_120R termination jumper, while the port next to the USB-C connector (CAN2) is on the far side of the MOAR_CAN connector. This only matters when a MOAR_CAN hub is connected.
+
+You can explore all of this in the interactive simulator below. Add or remove CAN devices on the two CAN ports, toggle the CAN_120R jumper and the termination on the devices, swap the jumper PCB for a MOAR_CAN hub, and see how the bus and the signals on it react. The presets show the supported configurations.
+
+![Interactive CAN bus topology simulator](../interactive/can-topology.html?board=toquecan){ type=application/pinout style="height:80vh;min-height:700px;width:100%" }
+
+The rule is always the same: the two ends of the bus are terminated, and nothing else is. Which parts are the ends depends on what is connected where:
+
+| Configuration | CAN devices on the CAN ports | CAN_120R jumper | MOAR_CAN connector |
+| --- | --- | --- | --- |
+| 1 CAN device | Terminated | Populated | Jumper PCB |
+| 2 CAN devices | Both terminated | Not populated | Jumper PCB |
+| MOAR_CAN hub and 2 CAN devices | Both terminated | Not populated | MOAR_CAN hub |
+| MOAR_CAN hub and 1 CAN device | Terminated, on the CAN port next to the USB-C connector | Populated | MOAR_CAN hub |
+
+With a MOAR_CAN hub connected, the termination jumper on the MOAR_CAN stays unpopulated and the toolheads on the hub are not terminated: both ends of the hub's bus run back to the ToqueCAN, so nothing on the hub is at an end of the bus. The one exception is a toolhead that is deliberately made the end of the bus, wired with a single CAN pair (4 wires) and terminated, with no bypass jumpers behind its port; the ToqueCAN's CAN port next to the USB-C connector is then left unused. The "MOAR_CAN hub, last toolhead terminated" preset in the simulator shows this, and the [MOAR_CAN manual](../moar-can/manual.md#moar_can-connector) describes which hub port and pins to use for it.
+
 ### MOAR_CAN Connector
 
 This is an optional connector for adding more CAN bus devices. This requires an external PCB or similar solution to wire all the CAN bus devices together.
@@ -284,7 +310,11 @@ More information about the Isik’s Tech MOAR_CAN:
 
 [https://docs.isiks.tech/moar-can/manual/](../moar-can/manual.md)
 
-To use the ToqueCAN with a MOAR_CAN or similar CAN Bus hub PCB, you need to run 2 pairs of twisted CAN wires from the MOAR_CAN connector on the ToqueCAN. The inner and outer pairs of wires need to be twisted together. The 120Ω termination resistor jumper on the ToqueCAN should not be jumped. There should be a termination resistor on the 2 CAN devices connected to the ToqueCAN. All the CAN devices connected together need to share the same GND, so the GND of the CAN bus hub needs to be connected to the same source as ToqueCAN, or if using separate power supplies, GNDs of both power supplies need to be connected together with a thick wire.
+To use the ToqueCAN with a MOAR_CAN or similar CAN Bus hub PCB, you need to run 2 pairs of twisted CAN wires from the MOAR_CAN connector on the ToqueCAN to the hub. The inner pair (IN H / IN L) and the outer pair (OUT H / OUT L) are each twisted together, and the pinout must be the same on both ends of the cable:
+
+![MOAR_CAN connector pinout](../assets/moar_can/moar_can-connector-pinout.png)
+
+The hub then sits in the middle of the ToqueCAN's CAN bus, as described in the [CAN Bus Topology](#can-bus-topology) section: the bus leaves the ToqueCAN on the outer pair, runs through the hub, and comes back on the inner pair. With CAN devices on both of the ToqueCAN's CAN ports, both devices are terminated and the CAN_120R jumper on the ToqueCAN is not populated. The termination jumper on the MOAR_CAN is never populated with a ToqueCAN, and the toolheads on the hub are not terminated either. All the CAN devices connected together need to share the same GND, so the GND of the CAN bus hub needs to be connected to the same source as ToqueCAN, or if using separate power supplies, GNDs of both power supplies need to be connected together with a thick wire.
 
 Follow the manual / documentation of the CAN bus hub you are using for information about how CAN devices need to connect to the CAN hub. Isik’s Tech MOAR_CAN documentation can be found on its GitHub repository.
 
