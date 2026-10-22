@@ -226,6 +226,7 @@ svg text{font-family:Roboto,system-ui,sans-serif;fill:var(--label-color);user-se
     <div class="seg" role="group" aria-label="Hub board">
       <button id="b-moar" data-board="moar_can" aria-pressed="true">MOAR_CAN</button>
       <button id="b-bnc" data-board="bnc" aria-pressed="false">Birds' Nest CAN</button>
+      <button id="b-tq" data-board="toquecan" aria-pressed="false">ToqueCAN</button>
     </div>
     <label>Preset
       <select id="preset" aria-label="Configuration preset">
@@ -266,13 +267,13 @@ svg text{font-family:Roboto,system-ui,sans-serif;fill:var(--label-color);user-se
       </div>
     </div>
   </div>
-  <div class="bb">Click buttons on toolheads, and bypass jumpers and 120&Omega; jumpers on hub to reconfigure the bus, click blue circles to probe.</div>
+  <div class="bb" id="hint">Click buttons on toolheads, and bypass jumpers and 120&Omega; jumpers on hub to reconfigure the bus, click the amber circles to probe.</div>
 </div>
 <script>
 'use strict';
 /* ---------------- constants ---------------- */
 const NPORTS=6;
-const MM={cable:1000, adapter:300, nodeStub:20, hubTrace:15, jumper:5};
+const MM={cable:1000, adapter:300, nodeStub:20, hubTrace:15, jumper:5, tqTrace:20, hubCable:300};
 const LIM={stubMm:300, busMm:40000, nodes:30};
 const PORT_CX=[330,456,582,708,834,960];
 const BUS_Y=88, PIN_DY=14;           // port pins at cx +/- PIN_DY
@@ -281,11 +282,28 @@ const FARX=1050, FAR_JX=1058;
 const SPEED=700;                    // viewBox units per second for pulses
 const EMIT_MS=2400, MAX_PULSES=24;
 
+/* ToqueCAN board geometry: the ToqueCAN sits on the left, its two 4-pin CAN ports are the
+   two ends of the bus, and the MOAR_CAN connector (top edge) either carries the jumper PCB
+   or loops the bus out through a MOAR_CAN hub drawn on the right. CAN1 shares a net with the
+   transceiver and the CAN_120R jumper ("M" lane); CAN2 is the other net ("X" lane). */
+const TQ={body:{x:16,y:36,w:284,h:116}, c1:200, c2:72, probeX:158, termX:124,
+          connMx:106, connXx:90, xLaneY:100, bridgeY:22, outY:20, retY:10,
+          hubInX:312, hubOutX:1094};
+
 const BOARD={
-  moar_can:{hub:{x:250,y:36,w:880,h:116}, name:'MOAR_CAN', ifLabel:'USB/CAN adapter',
+  moar_can:{hub:{x:250,y:36,w:880,h:116}, portCx:PORT_CX, farX:FARX, farJx:FAR_JX, farProbeX:1096,
+            vbW:1160, name:'MOAR_CAN', ifLabel:'USB/CAN adapter',
             startX:120, nearTermName:'the 120-ohm termination on the USB/CAN adapter'},
-  bnc:     {hub:{x:100,y:36,w:1030,h:116}, name:"Birds' Nest CAN", ifLabel:'USB↔CAN bridge',
-            startX:150, nearTermName:"the hub's near 120-ohm termination jumper"}
+  bnc:     {hub:{x:100,y:36,w:1030,h:116}, portCx:PORT_CX, farX:FARX, farJx:FAR_JX, farProbeX:1096,
+            vbW:1160, name:"Birds' Nest CAN", ifLabel:'USB↔CAN bridge',
+            startX:150, nearTermName:"the hub's near 120-ohm termination jumper"},
+  toquecan:{hub:{x:324,y:36,w:856,h:116}, portCx:[396,522,648,774,900,1026], hubJx:346,
+            vbW:1200, name:'MOAR_CAN', ifLabel:'ToqueCAN (CAN transceiver)',
+            startX:TQ.probeX, nearTermName:"the ToqueCAN's CAN_120R jumper"}
+};
+const HINT={
+  hub:'Click buttons on toolheads, and bypass jumpers and 120Ω jumpers on hub to reconfigure the bus, click the amber circles to probe.',
+  toquecan:'Click buttons on CAN devices and toolheads, the jumper PCB on the MOAR_CAN connector, and the 120Ω jumpers to reconfigure the bus, click the amber circles to probe.'
 };
 
 /* ---------------- state ---------------- */
@@ -294,7 +312,7 @@ function defaultBoard(){
   const hashRaw=location.hash.replace(/^#\??/,'');
   const h=new URLSearchParams(hashRaw.includes('=')?hashRaw:'board='+hashRaw).get('board');
   const v=(q||h||'').toLowerCase();
-  return v==='bnc'?'bnc':'moar_can';
+  return v==='bnc'?'bnc':(v==='toquecan'||v==='tq'?'toquecan':'moar_can');
 }
 const PRESETS={
   recommended:s=>{s.termNear=true;s.termFar=true;
@@ -304,15 +322,50 @@ const PRESETS={
   lastterm:s=>{s.termNear=true;s.termFar=false;
     s.ports.forEach((p,i)=>{p.occupied=true;p.nodeTerm=false;p.bypass=false;
       p.cable=i===NPORTS-1?'4wire':'6wire';});
-    s.ports[NPORTS-1].nodeTerm=true;}
+    s.ports[NPORTS-1].nodeTerm=true;},
+  // ToqueCAN: termNear = the ToqueCAN's CAN_120R jumper, termFar = the hub's 120-ohm jumper
+  tq1:s=>{tqReset(s);s.termNear=true;
+    s.tq.dev[0]={occupied:true,nodeTerm:true};},
+  tq2:s=>{tqReset(s);
+    s.tq.dev[0]={occupied:true,nodeTerm:true};s.tq.dev[1]={occupied:true,nodeTerm:true};},
+  tqhub:s=>{tqReset(s);s.tq.hub=true;
+    s.tq.dev[0]={occupied:true,nodeTerm:true};s.tq.dev[1]={occupied:true,nodeTerm:true};},
+  tqhub4:s=>{tqReset(s);s.tq.hub=true;
+    s.tq.dev[0]={occupied:true,nodeTerm:true};s.tq.dev[1]={occupied:true,nodeTerm:true};
+    s.ports.forEach(p=>{p.cable='4wire';p.bypass=true;});},
+  tqhublast:s=>{tqReset(s);s.tq.hub=true;
+    s.tq.dev[0]={occupied:true,nodeTerm:true};
+    s.ports[NPORTS-1].cable='4wire';s.ports[NPORTS-1].nodeTerm=true;}
 };
+function tqReset(s){
+  s.tq.hub=false;s.termNear=false;s.termFar=false;
+  s.tq.dev=[{occupied:false,nodeTerm:false},{occupied:false,nodeTerm:false}];
+  s.ports.forEach(p=>{p.occupied=true;p.cable='6wire';p.nodeTerm=false;p.bypass=false;});
+}
+const PRESET_LIST={
+  hub:[['recommended','Recommended 6-wire'],['typical','Typical 4-wire hub'],['lastterm','Last toolhead terminated']],
+  toquecan:[['tq1','1 CAN device'],['tq2','2 CAN devices'],['tqhub','MOAR_CAN hub, 6-wire'],
+            ['tqhub4','MOAR_CAN hub, typical 4-wire'],['tqhublast','MOAR_CAN hub, last toolhead terminated']]
+};
+function presetKind(board){return board==='toquecan'?'toquecan':'hub';}
+let presetKindShown=null;
+function fillPresets(board){
+  const kind=presetKind(board);
+  if(kind===presetKindShown)return;
+  presetKindShown=kind;
+  document.getElementById('preset').innerHTML=
+    PRESET_LIST[kind].map(([v,l])=>`<option value="${v}">${l}</option>`).join('')+
+    '<option value="custom" disabled>Custom</option>';
+}
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const st={
   board:defaultBoard(), termNear:true, termFar:true,
   ports:Array.from({length:NPORTS},()=>({occupied:true,cable:'6wire',nodeTerm:false,bypass:false})),
+  tq:{hub:false,dev:[{occupied:false,nodeTerm:false},{occupied:false,nodeTerm:false}]},
   probe:'interface', preset:'recommended'
 };
-PRESETS.recommended(st);
+st.preset=PRESET_LIST[presetKind(st.board)][0][0];
+PRESETS[st.preset](st);
 let playing=!reducedMotion;
 
 /* ---------------- path builder ---------------- */
@@ -363,98 +416,170 @@ function cableUpD(x2,x1){return `M${x2} ${CARD_Y}C${x2} 270 ${x1} 210 ${x1} 152`
 function walkBus(s){
   const B=BOARD[s.board];
   const main=newPB();
-  const ghosts=[]; const stubTracks=[];
-  const m={board:s.board, inline:[], stubs:[], rings:[], offline:[],
-           breaks:[], endB:null, deadEnd:null, posOf:{}, totalMm:0, ghostFar:false};
-  let posMm=0, connected=true, cur=main;
+  const m={board:s.board, inline:[], stubs:[], rings:[], offline:[], offlineDev:[],
+           breaks:[], endB:null, deadEnd:null, posOf:{}, totalMm:0, ghostFar:false,
+           emitS:0, degenerate:false, retGhost:false};
+  // walk context: the current path (main, or a ghost once the bus is broken), position in mm,
+  // and whether the section being drawn is still electrically connected to the transceiver
+  const c={cur:main, posMm:0, connected:true, m, ghosts:[], stubTracks:[]};
+  c.newGhost=(x,y)=>{const g=newPB();g.M(x,y);c.ghosts.push(g);c.cur=g;return g;};
 
-  // --- end A: interface transceiver ---
-  cur.M(B.startX,BUS_Y);
-  cur.mark('endA',{});
-  m.endA={terminated:s.termNear, name:B.ifLabel, posMm:0};
-  m.posOf['interface']=0;
-  if(s.board==='moar_can') posMm+=MM.adapter;
+  if(s.board==='toquecan') walkTQ(s,B,c); else walkHub(s,B,c);
 
-  const newGhost=(x,y)=>{const g=newPB();g.M(x,y);ghosts.push(g);return g;};
-
-  for(let i=0;i<NPORTS;i++){
-    const p=s.ports[i], cx=PORT_CX[i], ox=cx-PIN_DY, ix=cx+PIN_DY;
-    posMm+=MM.hubTrace;
-    cur.L(ox,BUS_Y);
-    if(p.occupied&&p.cable==='6wire'&&!p.bypass){
-      // in-line node: out to the toolhead and back
-      cableDown(cur,ox,cx-12);
-      cur.L(cx-12,348);cur.L(cx,348);
-      if(connected){posMm+=MM.cable+MM.nodeStub/2;
-        cur.mark('node',{port:i});m.posOf['node:'+i]=posMm;m.inline.push(i);
-        posMm+=MM.nodeStub/2+MM.cable;}
-      else m.offline.push(i);
-      cur.L(cx+12,348);cur.L(cx+12,CARD_Y);
-      cableUp(cur,cx+12,ix);
-    } else if(p.bypass){
-      // bus continuity through the bypass jumpers
-      cur.L(ox,108);
-      if(p.occupied&&connected){
-        const sp=newPB(); sp.M(ox,108); cableDown(sp,ox,cx-12);
-        sp.L(cx-12,348); sp.L(cx,348);
-        if(p.cable==='6wire'){
-          sp.L(cx+12,348);sp.L(cx+12,CARD_Y);cableUp(sp,cx+12,ix);
-          cur.mark('junction',{stub:stubTracks.length,port:i});
-          stubTracks.push({pb:sp,kind:'ring',port:i});
-          m.rings.push(i); m.posOf['node:'+i]=posMm;
-        }else{
-          cur.mark('junction',{stub:stubTracks.length,port:i});
-          stubTracks.push({pb:sp,kind:'stub',port:i,terminated:p.nodeTerm});
-          m.stubs.push({port:i,mm:MM.cable,terminated:p.nodeTerm});
-          m.posOf['node:'+i]=posMm;
-        }
-      } else if(p.occupied){ m.offline.push(i); }
-      cur.L(ix,108);
-      if(p.occupied&&p.cable==='6wire'&&connected) cur.mark('rejoin',{port:i});
-      cur.L(ix,BUS_Y);
-      if(connected) posMm+=MM.jumper;
-    } else if(p.occupied&&p.cable==='4wire'&&!p.bypass){
-      // bus dead-ends at this toolhead
-      cableDown(cur,ox,cx-12);
-      cur.L(cx-12,348);cur.L(cx,348);
-      if(connected){
-        posMm+=MM.cable;
-        cur.mark('node',{port:i});cur.mark('endB',{});
-        m.posOf['node:'+i]=posMm;
-        m.endB={kind:'toolhead',port:i,terminated:p.nodeTerm,
-                name:'Toolhead '+(i+1),posMm};
-        m.deadEnd=i; m.totalMm=posMm;
-        connected=false; cur=newGhost(ix,BUS_Y);
-      } else { m.offline.push(i); cur=newGhost(ix,BUS_Y); }
-    } else {
-      // empty port, no jumpers: bus is open here
-      cur.L(ox,102);
-      if(connected){
-        cur.mark('endB',{});
-        m.endB={kind:'open',port:i,terminated:false,
-                name:'Port '+(i+1)+' (open, no jumpers)',posMm};
-        m.breaks.push({port:i,kind:'open'});
-        m.totalMm=posMm;
-        connected=false; cur=newGhost(ix,102); cur.L(ix,BUS_Y);
-      } else { m.breaks.push({port:i,kind:'open',ghost:true});
-               cur=newGhost(ix,102); cur.L(ix,BUS_Y); }
-    }
-  }
-  posMm+=MM.hubTrace;
-  cur.L(FARX,BUS_Y);
-  if(connected){
-    cur.mark('endB',{});
-    m.endB={kind:'far',terminated:s.termFar,name:"the hub's far 120-ohm termination jumper",posMm};
-    m.posOf['far']=posMm; m.totalMm=posMm;
-  } else m.ghostFar=true;
-
-  finPB(main); ghosts.forEach(finPB);
-  stubTracks.forEach(t=>finPB(t.pb));
-  m.main=main; m.ghosts=ghosts; m.stubTracks=stubTracks;
+  finPB(main); c.ghosts.forEach(finPB);
+  c.stubTracks.forEach(t=>finPB(t.pb));
+  const im=main.markers.find(mk=>mk.type==='iface');
+  m.emitS=im?im.s:0;                 // where the transceiver drives the bus from
+  m.main=main; m.ghosts=c.ghosts; m.stubTracks=c.stubTracks;
 
   // ---- validation ----
   validate(s,m);
   return m;
+}
+
+// MOAR_CAN / Birds' Nest CAN: interface transceiver at end A, hub ports, far jumper at end B
+function walkHub(s,B,c){
+  const m=c.m;
+  c.cur.M(B.startX,BUS_Y);
+  c.cur.mark('endA',{}); c.cur.mark('iface',{});
+  m.endA={terminated:s.termNear, name:B.ifLabel, posMm:0};
+  m.posOf['interface']=0;
+  if(s.board==='moar_can') c.posMm+=MM.adapter;
+
+  walkPorts(s,B,c);
+
+  c.posMm+=MM.hubTrace;
+  c.cur.L(B.farX,BUS_Y);
+  if(c.connected){
+    c.cur.mark('endB',{});
+    m.endB={kind:'far',terminated:s.termFar,name:"the hub's far 120-ohm termination jumper",posMm:c.posMm};
+    m.posOf['far']=c.posMm; m.totalMm=c.posMm;
+  } else m.ghostFar=true;
+}
+
+// ToqueCAN: Device 1 on CAN1 (or the ToqueCAN itself) at end A, the ToqueCAN's transceiver and
+// CAN_120R jumper on the CAN1 net, then either the jumper PCB or the MOAR_CAN hub loop, then the
+// CAN2 net with Device 2 (or an open CAN2 port) at end B.
+function walkTQ(s,B,c){
+  const m=c.m, d=s.tq.dev, H=B.hub, T=TQ.body;
+  if(d[0].occupied){
+    c.cur.M(TQ.c1,348); c.cur.mark('endA',{}); c.cur.mark('node',{led:'d0'});
+    m.endA={terminated:d[0].nodeTerm,name:'Device 1',posMm:0,dev:0};
+    m.posOf['dev:0']=0;
+    c.cur.L(TQ.c1-12,348); c.cur.L(TQ.c1-12,CARD_Y); cableUp(c.cur,TQ.c1-12,TQ.c1-10);
+    c.posMm+=MM.cable;
+  }else{
+    c.cur.M(TQ.c1-10,BUS_Y); c.cur.mark('endA',{});
+    m.endA={terminated:s.termNear,name:"the ToqueCAN's CAN_120R jumper",posMm:0,tq:true};
+  }
+  c.posMm+=MM.tqTrace;
+  c.cur.L(TQ.probeX,BUS_Y); c.cur.mark('iface',{}); m.posOf['interface']=c.posMm;
+  c.posMm+=MM.tqTrace;
+  c.cur.L(TQ.connMx,BUS_Y); c.cur.L(TQ.connMx,T.y);
+  if(!s.tq.hub){
+    // jumper PCB: the two pairs of the MOAR_CAN connector are shorted together
+    c.cur.L(TQ.connMx,TQ.bridgeY); c.cur.L(TQ.connXx,TQ.bridgeY); c.cur.L(TQ.connXx,T.y);
+    c.posMm+=MM.jumper;
+  }else{
+    // out to the hub on one pair, through every port, back on the other pair
+    c.cur.L(TQ.connMx,TQ.outY); c.cur.L(TQ.hubInX,TQ.outY); c.cur.L(TQ.hubInX,BUS_Y); c.cur.L(H.x,BUS_Y);
+    c.posMm+=MM.hubCable;
+    m.hubJumperMm=c.posMm;
+    walkPorts(s,B,c);
+    c.posMm+=MM.hubTrace;
+    c.cur.L(TQ.hubOutX,BUS_Y); c.cur.L(TQ.hubOutX,TQ.retY); c.cur.L(TQ.connXx,TQ.retY); c.cur.L(TQ.connXx,T.y);
+    if(c.connected) c.posMm+=MM.hubCable; else m.retGhost=true;
+  }
+  // CAN2 net
+  c.cur.L(TQ.connXx,TQ.xLaneY); c.cur.L(TQ.c2-10,TQ.xLaneY);
+  if(c.connected) c.posMm+=MM.tqTrace;
+  if(d[1].occupied){
+    cableDown(c.cur,TQ.c2-10,TQ.c2-12);
+    c.cur.L(TQ.c2-12,348); c.cur.L(TQ.c2,348);
+    if(c.connected){
+      c.posMm+=MM.cable;
+      c.cur.mark('node',{led:'d1'}); c.cur.mark('endB',{});
+      m.posOf['dev:1']=c.posMm;
+      m.endB={kind:'device',dev:1,terminated:d[1].nodeTerm,name:'Device 2',posMm:c.posMm};
+      m.totalMm=c.posMm;
+    } else m.offlineDev.push(1);
+  }else if(c.connected){
+    c.cur.mark('endB',{});
+    // with the jumper PCB the CAN2 net is the same node as the CAN_120R jumper
+    const viaJumper=!s.tq.hub&&d[0].occupied;
+    m.endB={kind:'tqopen',terminated:viaJumper&&s.termNear,posMm:c.posMm,
+            name:viaJumper?"the ToqueCAN's CAN_120R jumper":'the open CAN2 port on the ToqueCAN'};
+    m.totalMm=c.posMm;
+  }
+  m.degenerate=!s.tq.hub&&!d[0].occupied&&!d[1].occupied;
+}
+
+// shared hub section: the six 6-pin ports with their toolheads and bypass jumpers
+function walkPorts(s,B,c){
+  const m=c.m;
+  for(let i=0;i<NPORTS;i++){
+    const p=s.ports[i], cx=B.portCx[i], ox=cx-PIN_DY, ix=cx+PIN_DY;
+    c.posMm+=MM.hubTrace;
+    c.cur.L(ox,BUS_Y);
+    if(p.occupied&&p.cable==='6wire'&&!p.bypass){
+      // in-line node: out to the toolhead and back
+      cableDown(c.cur,ox,cx-12);
+      c.cur.L(cx-12,348);c.cur.L(cx,348);
+      if(c.connected){c.posMm+=MM.cable+MM.nodeStub/2;
+        c.cur.mark('node',{port:i,led:i});m.posOf['node:'+i]=c.posMm;m.inline.push(i);
+        c.posMm+=MM.nodeStub/2+MM.cable;}
+      else m.offline.push(i);
+      c.cur.L(cx+12,348);c.cur.L(cx+12,CARD_Y);
+      cableUp(c.cur,cx+12,ix);
+    } else if(p.bypass){
+      // bus continuity through the bypass jumpers
+      c.cur.L(ox,108);
+      if(p.occupied&&c.connected){
+        const sp=newPB(); sp.M(ox,108); cableDown(sp,ox,cx-12);
+        sp.L(cx-12,348); sp.L(cx,348);
+        if(p.cable==='6wire'){
+          sp.L(cx+12,348);sp.L(cx+12,CARD_Y);cableUp(sp,cx+12,ix);
+          c.cur.mark('junction',{stub:c.stubTracks.length,port:i});
+          c.stubTracks.push({pb:sp,kind:'ring',port:i});
+          m.rings.push(i); m.posOf['node:'+i]=c.posMm;
+        }else{
+          c.cur.mark('junction',{stub:c.stubTracks.length,port:i});
+          c.stubTracks.push({pb:sp,kind:'stub',port:i,terminated:p.nodeTerm});
+          m.stubs.push({port:i,mm:MM.cable,terminated:p.nodeTerm});
+          m.posOf['node:'+i]=c.posMm;
+        }
+      } else if(p.occupied){ m.offline.push(i); }
+      c.cur.L(ix,108);
+      if(p.occupied&&p.cable==='6wire'&&c.connected) c.cur.mark('rejoin',{port:i});
+      c.cur.L(ix,BUS_Y);
+      if(c.connected) c.posMm+=MM.jumper;
+    } else if(p.occupied&&p.cable==='4wire'&&!p.bypass){
+      // bus dead-ends at this toolhead
+      cableDown(c.cur,ox,cx-12);
+      c.cur.L(cx-12,348);c.cur.L(cx,348);
+      if(c.connected){
+        c.posMm+=MM.cable;
+        c.cur.mark('node',{port:i,led:i});c.cur.mark('endB',{});
+        m.posOf['node:'+i]=c.posMm;
+        m.endB={kind:'toolhead',port:i,terminated:p.nodeTerm,
+                name:'Toolhead '+(i+1),posMm:c.posMm};
+        m.deadEnd=i; m.totalMm=c.posMm;
+        c.connected=false; c.newGhost(ix,BUS_Y);
+      } else { m.offline.push(i); c.newGhost(ix,BUS_Y); }
+    } else {
+      // empty port, no jumpers: bus is open here
+      c.cur.L(ox,102);
+      if(c.connected){
+        c.cur.mark('endB',{});
+        m.endB={kind:'open',port:i,terminated:false,
+                name:'Port '+(i+1)+' (open, no jumpers)',posMm:c.posMm};
+        m.breaks.push({port:i,kind:'open'});
+        m.totalMm=c.posMm;
+        c.connected=false; c.newGhost(ix,102); c.cur.L(ix,BUS_Y);
+      } else { m.breaks.push({port:i,kind:'open',ghost:true});
+               c.newGhost(ix,102); c.cur.L(ix,BUS_Y); }
+    }
+  }
 }
 
 function thList(arr){ // "Toolhead 2", "Toolheads 2 and 3", "Toolheads 2, 3 and 4"
@@ -462,7 +587,33 @@ function thList(arr){ // "Toolhead 2", "Toolheads 2 and 3", "Toolheads 2, 3 and 
   if(n.length===1)return 'Toolhead '+n[0];
   return 'Toolheads '+n.slice(0,-1).join(', ')+' and '+n[n.length-1];
 }
+function offlineText(m){ // " Toolheads 2 and 3 and Device 2 are offline."
+  const parts=[];
+  if(m.offline.length)parts.push(thList(m.offline));
+  m.offlineDev.forEach(i=>parts.push('Device '+(i+1)));
+  const n=m.offline.length+m.offlineDev.length;
+  return n?` ${parts.join(' and ')} ${n>1?'are':'is'} offline.`:'';
+}
+// ToqueCAN: what to do about an unterminated end of the bus
+function termHint(s,m){
+  const d=s.tq.dev, hints=[];
+  const endHint=e=>{
+    if(!e||e.terminated)return;
+    if(e.dev!=null)hints.push(`Populate the 120-ohm termination on Device ${e.dev+1}.`);
+    else if(e.kind==='tqopen'&&s.tq.hub)hints.push(
+      `The open CAN2 port is the end of the bus and has no termination jumper — `+
+      (d[0].occupied?`move the device to CAN2 (the ToqueCAN's CAN_120R jumper then terminates the CAN1 end)`
+                    :`connect a terminated CAN device to CAN2`)+
+      `, or end the bus at the last toolhead on the hub: 4-wire cable, no bypass jumpers, 120-ohm termination populated on that toolhead.`);
+    else if(e.tq||e.kind==='tqopen')hints.push(`Populate the ToqueCAN's CAN_120R jumper.`);
+    else if(e.kind==='toolhead')hints.push(`Populate the 120-ohm termination on Toolhead ${e.port+1}.`);
+    else if(e.kind==='open')hints.push(`Populate the bypass jumpers behind Port ${e.port+1}, or connect a toolhead there.`);
+  };
+  endHint(m.endA); endHint(m.endB);
+  return hints.length?' '+hints.join(' '):'';
+}
 function validate(s,m){
+  const B=BOARD[s.board], tq=s.board==='toquecan';
   const iss=[];
   const err=t=>iss.push({level:'err',text:t});
   const warn=t=>iss.push({level:'warn',text:t});
@@ -477,52 +628,72 @@ function validate(s,m){
     warn(`Bypass jumpers are populated behind Port ${i+1} while a 6-wire toolhead is connected — the jumpers short the two CAN pairs together, so part of the signal skips the toolhead loop and echoes around it. Remove the jumpers.`);
   });
   // breaks / dead ends
-  const off=m.offline.length?` ${thList(m.offline)} ${m.offline.length>1?'are':'is'} offline.`:'';
+  const anyOff=m.offline.length||m.offlineDev.length;
+  const off=offlineText(m);
   m.breaks.filter(b=>!b.ghost).forEach(b=>{
-    err(`Bus ${m.offline.length?'broken':'ends open'} at Port ${b.port+1} — the port is unused and the pin headers behind it don't have jumpers populated. If a 6-pin connector is not going to be used, the jumpers need to be populated.`+off);
+    err(`Bus ${anyOff?'broken':'ends open'} at Port ${b.port+1} — the port is unused and the pin headers behind it don't have jumpers populated. If a 6-pin connector is not going to be used, the jumpers need to be populated.`+off);
   });
   if(m.deadEnd!=null){
-    if(m.offline.length){
+    if(anyOff){
       err(`Bus broken at Port ${m.deadEnd+1} — Toolhead ${m.deadEnd+1} only uses 4 wires, so the bus dead-ends at the toolhead. If only using 4 wires, the bypass jumpers need to be populated — unless this toolhead is the terminated far end of the bus.`+off);
     } else if(m.endB.terminated){
       info(`Toolhead ${m.deadEnd+1} is the end of the bus — its single CAN pair is the bus itself, not a stub, and its 120-ohm termination terminates this end.`);
     }
   }
-  // terminations on the walked bus
-  const endTerms=[];
-  if(m.endA.terminated)endTerms.push(m.endA.name);
-  if(m.endB&&m.endB.terminated)endTerms.push(m.endB.name);
-  const midTerms=[];
-  m.inline.forEach(i=>{if(s.ports[i].nodeTerm)midTerms.push(
-    `Termination in the middle of the bus — Toolhead ${i+1}'s 120-ohm termination is populated, but Toolhead ${i+1} is not at an end of the bus.`);});
-  m.stubs.forEach(x=>{if(x.terminated)midTerms.push(
-    `Termination on a stub — Toolhead ${x.port+1}'s 120-ohm termination is populated, but Toolhead ${x.port+1} hangs off the bus as a stub, not at an end of the bus.`);});
-  m.rings.forEach(i=>{if(s.ports[i].nodeTerm)midTerms.push(
-    `Termination on a bypassed toolhead — Toolhead ${i+1}'s 120-ohm termination is populated, but with the bypass jumpers populated Toolhead ${i+1} is not at an end of the bus.`);});
-  midTerms.forEach(err);
-  const total=endTerms.length+midTerms.length;
-  if(total>2)err(`Too many terminations — ${total}× 120-ohm resistors are on the bus. Only the two ends of the bus should be terminated.`);
-  if(endTerms.length===1)err(`Missing termination — the bus is only terminated at one end (${endTerms[0]}). The bus needs 120-ohm termination resistors on both ends.`);
-  if(endTerms.length===0)err(`No termination — the bus has no 120-ohm termination on either end. The bus needs 120-ohm termination resistors on both ends.`);
+  if(m.degenerate){
+    warn(`Nothing is connected to the ToqueCAN — add a CAN device on CAN1 or CAN2, or connect a MOAR_CAN hub to the MOAR_CAN connector.`);
+  }else{
+    // terminations on the walked bus
+    const endTerms=[];
+    if(m.endA.terminated)endTerms.push(m.endA.name);
+    if(m.endB&&m.endB.terminated)endTerms.push(m.endB.name);
+    const midTerms=[];
+    m.inline.forEach(i=>{if(s.ports[i].nodeTerm)midTerms.push(
+      `Termination in the middle of the bus — Toolhead ${i+1}'s 120-ohm termination is populated, but Toolhead ${i+1} is not at an end of the bus.`);});
+    m.stubs.forEach(x=>{if(x.terminated)midTerms.push(
+      `Termination on a stub — Toolhead ${x.port+1}'s 120-ohm termination is populated, but Toolhead ${x.port+1} hangs off the bus as a stub, not at an end of the bus.`);});
+    m.rings.forEach(i=>{if(s.ports[i].nodeTerm)midTerms.push(
+      `Termination on a bypassed toolhead — Toolhead ${i+1}'s 120-ohm termination is populated, but with the bypass jumpers populated Toolhead ${i+1} is not at an end of the bus.`);});
+    if(tq){
+      const d=s.tq.dev;
+      // the CAN_120R jumper is only at an end when CAN1 is empty, or when the jumper PCB
+      // joins it to an empty CAN2
+      if(s.termNear&&d[0].occupied&&(s.tq.hub||d[1].occupied))midTerms.push(s.tq.hub
+        ?`Termination in the middle of the bus — the ToqueCAN's CAN_120R jumper is populated, but with a MOAR_CAN hub connected the ToqueCAN's CAN1 side sits between Device 1 and the hub, not at an end of the bus. Remove the jumper.`
+        :`Termination in the middle of the bus — the ToqueCAN's CAN_120R jumper is populated, but with CAN devices on both ports the ToqueCAN sits in the middle of the bus, between Device 1 and Device 2. Remove the jumper; the two devices terminate the bus.`);
+      if(s.tq.hub&&s.termFar)midTerms.push(
+        `Termination in the middle of the bus — the MOAR_CAN's 120-ohm termination jumper is populated, but with a ToqueCAN both ends of the hub's bus run back to the ToqueCAN, so the hub is never at an end of the bus. Remove the jumper.`);
+    }
+    midTerms.forEach(err);
+    const total=endTerms.length+midTerms.length;
+    if(total>2)err(`Too many terminations — ${total}× 120-ohm resistors are on the bus. Only the two ends of the bus should be terminated.`);
+    if(endTerms.length===1)err(`Missing termination — the bus is only terminated at one end (${endTerms[0]}). The bus needs 120-ohm termination resistors on both ends.`+(tq?termHint(s,m):''));
+    if(endTerms.length===0)err(`No termination — the bus has no 120-ohm termination on either end. The bus needs 120-ohm termination resistors on both ends.`+(tq?termHint(s,m):''));
+  }
   // disconnected far jumper
-  if(m.ghostFar&&s.termFar)info(`The far 120-ohm termination jumper is populated, but that section of the hub is disconnected from the bus — it has no effect.`);
+  if(!tq&&m.ghostFar&&s.termFar)info(`The far 120-ohm termination jumper is populated, but that section of the hub is disconnected from the bus — it has no effect.`);
   // stats
-  const nodes=1+m.inline.length+m.stubs.length+m.rings.length+(m.deadEnd!=null?1:0);
-  const longestStub=m.stubs.length?MM.cable:(m.inline.length?MM.nodeStub:0);
+  const devs=tq?s.tq.dev.filter((x,i)=>x.occupied&&!m.offlineDev.includes(i)).length:0;
+  const nodes=1+devs+m.inline.length+m.stubs.length+m.rings.length+(m.deadEnd!=null?1:0);
+  const longestStub=m.stubs.length?MM.cable:(m.inline.length||tq?MM.nodeStub:0);
   m.stats={nodes,busMm:m.totalMm,longestStub};
   m.issues=iss;
-  m.status=m.offline.length?'broken'
-    :(iss.some(x=>x.level==='err')||m.rings.length?'fail':'pass');
+  m.status=anyOff?'broken':(m.degenerate?'empty'
+    :(iss.some(x=>x.level==='err')||m.rings.length?'fail':'pass'));
   // reflection sources for scope + static markers
   m.sources=[];
-  if(!m.endA.terminated)m.sources.push({kind:'endA',amp:.5,posMm:0,x:pointAt(m.main,0).x,y:BUS_Y});
-  if(m.endB&&!m.endB.terminated){const pt=pointAt(m.main,m.main.len);
+  if(!m.endA.terminated&&!m.degenerate){
+    const src={kind:'endA',amp:.5,posMm:0,x:pointAt(m.main,0).x,y:BUS_Y};
+    if(m.endA.tq){src.bx=TQ.c1-10;src.by=BUS_Y+22;}  // open CAN1: mark below the trace
+    m.sources.push(src);
+  }
+  if(m.endB&&!m.endB.terminated&&!m.degenerate){const pt=pointAt(m.main,m.main.len);
     m.sources.push({kind:m.endB.kind==='open'?'open':(m.endB.kind==='far'?'far':'thend'),
       amp:.5,posMm:m.endB.posMm,x:pt.x,y:pt.y});}
   m.stubs.forEach(x=>m.sources.push({kind:'stub',amp:x.terminated?.25:.3,
-    posMm:m.posOf['node:'+x.port],x:PORT_CX[x.port]-PIN_DY,y:108}));
+    posMm:m.posOf['node:'+x.port],x:B.portCx[x.port]-PIN_DY,y:108}));
   m.rings.forEach(i=>m.sources.push({kind:'ring',amp:.15,
-    posMm:m.posOf['node:'+i],x:PORT_CX[i]-PIN_DY,y:108}));
+    posMm:m.posOf['node:'+i],x:B.portCx[i]-PIN_DY,y:108}));
 }
 
 /* ---------------- rendering ---------------- */
@@ -562,22 +733,112 @@ function connGlyph(cx){
 }
 function probeList(m){
   const B=BOARD[m.board];
-  const list=[{key:'interface',label:B.ifLabel,x:B.startX,y:BUS_Y}];
   const nodePorts=[...m.inline,...m.stubs.map(x=>x.port),...(m.deadEnd!=null?[m.deadEnd]:[]),...m.rings]
     .sort((a,b)=>a-b);
-  nodePorts.forEach(i=>list.push({key:'node:'+i,label:'Toolhead '+(i+1),x:PORT_CX[i],y:PROBE_Y}));
-  if(m.endB&&m.endB.kind==='far')list.push({key:'far',label:'far end of the bus',x:1096,y:BUS_Y});
+  if(m.board==='toquecan'){
+    const list=[{key:'interface',label:B.ifLabel,x:TQ.probeX,y:BUS_Y}];
+    if(m.posOf['dev:0']!=null)list.push({key:'dev:0',label:'Device 1',x:TQ.c1,y:PROBE_Y});
+    nodePorts.forEach(i=>list.push({key:'node:'+i,label:'Toolhead '+(i+1),x:B.portCx[i],y:PROBE_Y}));
+    if(m.posOf['dev:1']!=null)list.push({key:'dev:1',label:'Device 2',x:TQ.c2,y:PROBE_Y});
+    return list;
+  }
+  const list=[{key:'interface',label:B.ifLabel,x:B.startX,y:BUS_Y}];
+  nodePorts.forEach(i=>list.push({key:'node:'+i,label:'Toolhead '+(i+1),x:B.portCx[i],y:PROBE_Y}));
+  if(m.endB&&m.endB.kind==='far')list.push({key:'far',label:'far end of the bus',x:B.farProbeX,y:BUS_Y});
   return list;
 }
 
+/* ---- ToqueCAN-only artwork ---- */
+function conn4Glyph(cx){ // 4-pin MX3.0 on the ToqueCAN: one CAN pair + 24V/GND
+  return `<rect class="connb" x="${cx-22}" y="122" width="44" height="30" rx="3"/>
+    <rect class="connc" x="${cx-17}" y="127" width="34" height="20" rx="2"/>
+    <circle cx="${cx-10}" cy="137" r="3" fill="var(--pair-a)" stroke="var(--conn-stroke)" stroke-width=".8"/>
+    <circle cx="${cx}" cy="137" r="2.2" fill="var(--conn-cavity)" stroke="var(--conn-stroke)" stroke-width=".6"/>
+    <circle cx="${cx+10}" cy="137" r="2.2" fill="var(--conn-cavity)" stroke="var(--conn-stroke)" stroke-width=".6"/>`;
+}
+function deviceCard(n,m){ // CAN device on ToqueCAN port CAN1 (n=0) or CAN2 (n=1)
+  const d=st.tq.dev[n], cx=n===0?TQ.c1:TQ.c2, x0=cx-CARD_W/2;
+  const offline=m.offlineDev.includes(n);
+  let out='';
+  if(d.occupied){
+    const ghost=offline?' ghostw':'';
+    out+=`<path class="wire out${ghost}" d="${cableDownD(cx-10,cx-12)}"/>`;
+    out+=`<rect class="cardr${offline?' off':''}" x="${x0}" y="${CARD_Y}" width="${CARD_W}" height="${CARD_H}" rx="9"/>`;
+    out+=`<path class="wire" d="M${cx-12} ${CARD_Y}L${cx-12} 348L${cx+12} 348" opacity="${offline?.45:1}"/>`;
+    out+=`<circle id="led-d${n}" class="led" cx="${cx}" cy="348" r="4"/>`;
+    out+=`<text class="cardt" x="${cx}" y="366" text-anchor="middle">Device ${n+1}</text>`;
+    out+=`<rect class="chip" x="${cx-52}" y="374" width="50" height="22" rx="7"/>
+      <text class="chipt" x="${cx-27}" y="389.5" text-anchor="middle">4-wire</text>`;
+    out+=`<rect class="chip${d.nodeTerm?' on':''}" x="${cx+2}" y="374" width="50" height="22" rx="7"/>
+      <text class="chipt" x="${cx+27}" y="389.5" text-anchor="middle">120&#937;</text>
+      <rect class="hit" x="${cx+1}" y="371" width="54" height="30" rx="7" data-action="tqterm" data-dev="${n}"
+        role="button" tabindex="0" aria-pressed="${d.nodeTerm}" aria-label="Device ${n+1} 120-ohm termination ${d.nodeTerm?'populated':'not populated'}"><title>Toggle 120&#937; termination on this device</title></rect>`;
+    out+=`<text class="sublbl" x="${cx}" y="413" text-anchor="middle"${offline?' style="fill:var(--err)"':''}>${offline?'offline':'1 CAN pair · ~1 m'}</text>`;
+    out+=`<text x="${cx+43}" y="346" text-anchor="middle" font-size="13" style="fill:var(--type-color)">&#10005;</text>
+      <rect class="hit" x="${cx+30}" y="331" width="26" height="26" rx="6" data-action="tqremove" data-dev="${n}"
+        role="button" tabindex="0" aria-label="Remove Device ${n+1}"><title>Remove device</title></rect>`;
+  }else{
+    out+=`<rect class="ghostcard" x="${x0}" y="${CARD_Y}" width="${CARD_W}" height="${CARD_H}" rx="9"/>
+      <text x="${cx}" y="376" text-anchor="middle" font-size="24" style="fill:var(--type-color)">+</text>
+      <text class="sublbl" x="${cx}" y="396" text-anchor="middle">Add CAN device</text>
+      <rect class="hit" x="${x0}" y="${CARD_Y}" width="${CARD_W}" height="${CARD_H}" rx="9" data-action="tqadd" data-dev="${n}"
+        role="button" tabindex="0" aria-label="Add a CAN device on CAN${n+1}"><title>Add a CAN device</title></rect>`;
+  }
+  return out;
+}
+function tqBodyArt(){ // ToqueCAN board, drawn under the bus
+  const T=TQ.body, d=st.tq.dev;
+  let out=`<rect class="boxbody" x="${T.x}" y="${T.y}" width="${T.w}" height="${T.h}" rx="10"/>`;
+  out+=`<text class="hublbl" x="${T.x+T.w-14}" y="60" text-anchor="end">ToqueCAN</text>
+    <text class="sublbl" x="${T.x+T.w-14}" y="75" text-anchor="end">on a Raspberry Pi</text>`;
+  // traces to the open ports (not part of the walked bus)
+  if(!d[0].occupied)out+=`<path class="wire ghostw" d="M${TQ.c1-10} ${BUS_Y}L${TQ.c1-10} 152"/>`;
+  if(!d[1].occupied)out+=`<path class="wire ghostw" d="M${TQ.c2-10} ${TQ.xLaneY}L${TQ.c2-10} 152"/>`;
+  // transceiver: a short stub off the CAN1 net
+  out+=`<path class="wire" d="M${TQ.probeX} ${BUS_Y}L${TQ.probeX} 72"/>
+    <rect class="chip" x="${TQ.probeX-30}" y="46" width="60" height="26" rx="6"/>
+    <text class="sublbl" x="${TQ.probeX}" y="57" text-anchor="middle">CAN</text>
+    <text class="sublbl" x="${TQ.probeX}" y="68" text-anchor="middle">transceiver</text>`;
+  return out;
+}
+function tqOverlayArt(m){ // ports, device cards, MOAR_CAN connector and hub cable, drawn over the bus
+  const T=TQ.body, H=BOARD.toquecan.hub, hub=st.tq.hub;
+  let out=conn4Glyph(TQ.c1)+conn4Glyph(TQ.c2);
+  out+=`<text class="portlbl" x="${TQ.c1+26}" y="141">CAN1<title>CAN1: the CAN port next to the CAN_120R label</title></text>
+    <text class="portlbl" x="${TQ.c2+26}" y="141">CAN2<title>CAN2: the CAN port next to the USB-C connector</title></text>`;
+  out+=deviceCard(0,m)+deviceCard(1,m);
+  // MOAR_CAN connector on the top edge: outer pair (CAN1 net) + inner pair (CAN2 net)
+  const lbl=hub?'MOAR_CAN connector: MOAR_CAN hub connected — click to disconnect the hub and populate the jumper PCB'
+               :'MOAR_CAN connector: jumper PCB populated — click to connect a MOAR_CAN hub';
+  if(hub){
+    out+=`<path class="wire out" d="M${TQ.connMx} ${T.y}L${TQ.connMx} ${TQ.outY}L${TQ.hubInX} ${TQ.outY}L${TQ.hubInX} ${BUS_Y}L${H.x} ${BUS_Y}"/>`;
+    out+=`<path class="wire ret${m.retGhost?' ghostw':''}" d="M${TQ.hubOutX} ${BUS_Y}L${TQ.hubOutX} ${TQ.retY}L${TQ.connXx} ${TQ.retY}L${TQ.connXx} ${T.y}"/>`;
+    out+=`<text class="sublbl" x="${(TQ.connMx+TQ.hubInX)/2}" y="${TQ.outY+12}" text-anchor="middle">2 twisted pairs</text>`;
+  }
+  out+=`<rect class="connb" x="${TQ.connXx-12}" y="26" width="40" height="18" rx="3"/>
+    <circle cx="${TQ.connXx}" cy="35" r="3" fill="var(--pair-b)" stroke="var(--conn-stroke)" stroke-width=".8"/>
+    <circle cx="${TQ.connMx}" cy="35" r="3" fill="var(--pair-a)" stroke="var(--conn-stroke)" stroke-width=".8"/>
+    <text class="sublbl" x="${TQ.connXx-16}" y="31" text-anchor="end">MOAR_CAN</text>`;
+  if(!hub){
+    out+=`<rect class="jcap" x="${TQ.connXx-10}" y="10" width="36" height="16" rx="3"/>
+      <text class="sublbl" x="${TQ.connMx+16}" y="23">jumper PCB</text>`;
+  }
+  out+=`<rect class="hit" x="${TQ.connXx-16}" y="6" width="48" height="40" rx="6" data-action="tqhub"
+      role="button" tabindex="0" aria-pressed="${hub}" aria-label="${lbl}"><title>${lbl}</title></rect>`;
+  return out;
+}
+
 function renderScene(m){
-  const B=BOARD[st.board], H=B.hub;
+  const B=BOARD[st.board], H=B.hub, tq=st.board==='toquecan';
+  const hubOn=!tq||st.tq.hub;
   let out='';
   // bus glow (walked chain only)
   out+=`<path class="glow" d="${m.main.d}"/>`;
   // hub + interface bodies
-  out+=`<rect class="hubbody" x="${H.x}" y="${H.y}" width="${H.w}" height="${H.h}" rx="10"/>`;
-  out+=`<text class="hublbl" x="${H.x+H.w-16}" y="146" text-anchor="end">${B.name}</text>`;
+  if(hubOn){
+    out+=`<rect class="hubbody" x="${H.x}" y="${H.y}" width="${H.w}" height="${H.h}" rx="10"/>`;
+    out+=`<text class="hublbl" x="${H.x+H.w-16}" y="146" text-anchor="end">${B.name}</text>`;
+  }
   if(st.board==='moar_can'){
     out+=`<rect class="boxbody" x="16" y="62" width="196" height="86" rx="8"/>
       <line class="wire" x1="40" y1="62" x2="40" y2="34"/>
@@ -586,20 +847,30 @@ function renderScene(m){
       <circle cx="120" cy="${BUS_Y}" r="5" fill="var(--pulse)"/>
       <rect class="connc" x="244" y="${BUS_Y-9}" width="12" height="18" rx="2"/>
       <text class="sublbl" x="250" y="${BUS_Y+30}" text-anchor="middle">XH2.54</text>`;
-  }else{
+  }else if(st.board==='bnc'){
     out+=`<rect class="boxbody" x="112" y="62" width="132" height="86" rx="8"/>
       <line class="wire" x1="140" y1="62" x2="140" y2="26"/>
       <text class="sublbl" x="140" y="20" text-anchor="middle">USB</text>
       <text class="boxlbl" x="178" y="128" text-anchor="middle">USB&#8596;CAN</text>
       <text class="sublbl" x="178" y="141" text-anchor="middle">bridge</text>
       <circle cx="150" cy="${BUS_Y}" r="5" fill="var(--pulse)"/>`;
+  }else{
+    out+=tqBodyArt();
   }
   // main + ghost wiring (neutral), then colored cable lanes on top
   out+=`<path class="wire" d="${m.main.d}"/>`;
   m.ghosts.forEach(g=>{if(g.pts.length>1)out+=`<path class="wire ghostw" d="${g.d}"/>`;});
+  if(!hubOn){
+    // ToqueCAN without a hub: placeholder where the hub would go
+    out+=`<rect class="ghostcard" x="${H.x}" y="${H.y}" width="${H.w}" height="${H.h}" rx="10"/>
+      <text x="${H.x+H.w/2}" y="${H.y+58}" text-anchor="middle" font-size="24" style="fill:var(--type-color)">+</text>
+      <text class="sublbl" x="${H.x+H.w/2}" y="${H.y+80}" text-anchor="middle">Connect a MOAR_CAN hub to the MOAR_CAN connector</text>
+      <rect class="hit" x="${H.x}" y="${H.y}" width="${H.w}" height="${H.h}" rx="10" data-action="tqhub"
+        role="button" tabindex="0" aria-label="Connect a MOAR_CAN hub"><title>Connect a MOAR_CAN hub</title></rect>`;
+  }
   // per-port: labels, cards, cables, jumpers
-  for(let i=0;i<NPORTS;i++){
-    const p=st.ports[i], cx=PORT_CX[i], ox=cx-PIN_DY, ix=cx+PIN_DY;
+  for(let i=0;hubOn&&i<NPORTS;i++){
+    const p=st.ports[i], cx=B.portCx[i], ox=cx-PIN_DY, ix=cx+PIN_DY;
     out+=`<text class="portlbl" x="${cx}" y="54" text-anchor="middle">Port ${i+1}</text>`;
     const offline=m.offline.includes(i);
     if(p.occupied){
@@ -644,13 +915,17 @@ function renderScene(m){
     if(m.breaks.some(b=>b.port===i&&!b.ghost))
       out+=`<text class="brk" x="${cx}" y="80" text-anchor="middle">break &#9888;</text>`;
   }
+  if(tq)out+=tqOverlayArt(m);
   // terminations
   if(st.board==='moar_can'){
     out+=termGlyph(176,st.termNear,'120-ohm termination on the USB/CAN adapter: '+(st.termNear?'populated':'not populated'),'termnear');
-  }else{
+  }else if(st.board==='bnc'){
     out+=termGlyph(264,st.termNear,'Near 120-ohm termination jumper: '+(st.termNear?'populated':'not populated'),'termnear');
+  }else{
+    out+=termGlyph(TQ.termX,st.termNear,'ToqueCAN CAN_120R termination jumper: '+(st.termNear?'populated':'not populated'),'termnear');
   }
-  out+=termGlyph(FAR_JX,st.termFar,'Far 120-ohm termination jumper: '+(st.termFar?'populated':'not populated'),'termfar');
+  if(!tq)out+=termGlyph(B.farJx,st.termFar,'Far 120-ohm termination jumper: '+(st.termFar?'populated':'not populated'),'termfar');
+  else if(hubOn)out+=termGlyph(B.hubJx,st.termFar,'MOAR_CAN 120-ohm termination jumper: '+(st.termFar?'populated':'not populated'),'termfar');
   // probes
   probeList(m).forEach(pr=>{
     const sel=st.probe===pr.key;
@@ -674,7 +949,7 @@ function renderFx(m){
         transform="translate(${pt.x.toFixed(1)} ${pt.y.toFixed(1)}) rotate(${(pt.ang*180/Math.PI).toFixed(1)})"/>`;
     }
     m.sources.forEach(sr=>{
-      const bx=sr.kind==='open'?sr.x-30:sr.x, by=sr.y-24;
+      const bx=sr.bx!=null?sr.bx:(sr.kind==='open'?sr.x-30:sr.x), by=sr.by!=null?sr.by:sr.y-24;
       out+=`<g class="bang"><circle cx="${bx}" cy="${by}" r="10"/>
         <text x="${bx}" y="${by+4}">!</text></g>`;
     });
@@ -693,6 +968,9 @@ function renderStatus(m,recross){
   }else if(m.status==='broken'){
     head.className='st-h broken';
     head.innerHTML='&#10007; The CAN bus is broken — some devices are offline.';
+  }else if(m.status==='empty'){
+    head.className='st-h';
+    head.innerHTML='No CAN devices are connected to the ToqueCAN.';
   }else{
     head.className='st-h fail';
     head.innerHTML='&#10007; Does not follow the recommended CAN bus topology.';
@@ -822,8 +1100,8 @@ function stepAll(dt,m){ // step every pulse, then merge pulses spawned during th
   spawnQ.length=0;
 }
 function flash(x,y){flashes.push({x,y,t:performance.now()});}
-function blip(port){
-  const el=document.getElementById('led-'+port);
+function blip(id){ // id: hub port index, or 'd0'/'d1' for the ToqueCAN's devices
+  const el=document.getElementById('led-'+id);
   if(el){el.classList.add('on');setTimeout(()=>el.classList.remove('on'),260);}
 }
 function stepPulse(p,dt,m){
@@ -834,7 +1112,7 @@ function stepPulse(p,dt,m){
     for(const mk of m.main.markers){
       const crossed=p.dir>0?(mk.s>s0&&mk.s<=s1):(mk.s<s0&&mk.s>=s1);
       if(!crossed)continue;
-      if(mk.type==='node')blip(mk.port);
+      if(mk.type==='node')blip(mk.led);
       else if(mk.type==='junction'){
         addPulse({track:mk.stub,s:0,dir:1,amp:p.amp*.6,kind:p.kind});
         addPulse({track:'main',s:mk.s,dir:-p.dir,amp:p.amp*.35,kind:'refl'});
@@ -874,8 +1152,12 @@ function frame(t){
   if(document.hidden||!model)return;
   const dt=Math.min(.05,(t-lastT)/1000)||0;lastT=t;
   if(playing){
-    if(t-lastEmit>EMIT_MS&&pulses.length<MAX_PULSES-4){
-      lastEmit=t;addPulse({track:'main',s:0,dir:1,amp:1,kind:'sig'});
+    if(t-lastEmit>EMIT_MS&&pulses.length<MAX_PULSES-4&&!model.degenerate){
+      lastEmit=t;
+      // the transceiver drives both directions when it sits in the middle of the bus
+      const e=model.emitS;
+      if(e<model.main.len-1)addPulse({track:'main',s:e,dir:1,amp:1,kind:'sig'});
+      if(e>1)addPulse({track:'main',s:e,dir:-1,amp:1,kind:'sig'});
     }
     stepAll(dt,model);
     scopePhase=(scopePhase+dt/2.2)%1.25;
@@ -914,23 +1196,38 @@ function update(){
   pulses.length=0;spawnQ.length=0;flashes.length=0;
   // keep probe valid
   if(model.posOf[st.probe]==null&&st.probe!=='interface')st.probe='interface';
+  const B=BOARD[st.board], vb=`0 0 ${B.vbW} 470`;
+  if(svg.getAttribute('viewBox')!==vb){
+    svg.setAttribute('viewBox',vb);
+    window.dispatchEvent(new Event('resize'));   // let the auto-height script re-measure
+  }
   renderScene(model);
   const recross=computeWave(model);
   drawScope(playing?0:null);
   renderStatus(model,recross);
   const pn=probeList(model).find(p=>p.key===st.probe);
-  document.getElementById('probeName').textContent='Signal at: '+(pn?pn.label:BOARD[st.board].ifLabel);
-  document.getElementById('b-moar').setAttribute('aria-pressed',st.board==='moar_can');
-  document.getElementById('b-bnc').setAttribute('aria-pressed',st.board==='bnc');
+  document.getElementById('probeName').textContent='Signal at: '+(pn?pn.label:B.ifLabel);
+  document.querySelectorAll('.seg [data-board]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.board===st.board));
+  fillPresets(st.board);
   document.getElementById('preset').value=st.preset;
+  document.getElementById('hint').textContent=HINT[presetKind(st.board)];
 }
 function custom(){st.preset='custom';}
+function setBoard(b){
+  if(b===st.board)return;
+  // hub boards share their configuration; the ToqueCAN has its own, so start it from a preset
+  const kindChange=presetKind(b)!==presetKind(st.board);
+  st.board=b;
+  if(kindChange){st.preset=PRESET_LIST[presetKind(b)][0][0];PRESETS[st.preset](st);st.probe='interface';}
+  update();
+}
 
 /* ---------------- events ---------------- */
 function onAct(e){
   const t=e.target.closest('[data-action]');
   if(!t)return;
-  const a=t.dataset.action,i=t.dataset.port!=null?+t.dataset.port:null;
+  const a=t.dataset.action,i=t.dataset.port!=null?+t.dataset.port:null,
+        dv=t.dataset.dev!=null?+t.dataset.dev:null;
   switch(a){
     case 'bypass':st.ports[i].bypass=!st.ports[i].bypass;custom();break;
     case 'cable':st.ports[i].cable=st.ports[i].cable==='6wire'?'4wire':'6wire';custom();break;
@@ -939,6 +1236,10 @@ function onAct(e){
     case 'add':st.ports[i].occupied=true;st.ports[i].cable='6wire';st.ports[i].nodeTerm=false;custom();break;
     case 'termnear':st.termNear=!st.termNear;custom();break;
     case 'termfar':st.termFar=!st.termFar;custom();break;
+    case 'tqhub':st.tq.hub=!st.tq.hub;custom();break;
+    case 'tqadd':st.tq.dev[dv]={occupied:true,nodeTerm:true};custom();break;
+    case 'tqremove':st.tq.dev[dv]={occupied:false,nodeTerm:false};custom();break;
+    case 'tqterm':st.tq.dev[dv].nodeTerm=!st.tq.dev[dv].nodeTerm;custom();break;
     case 'probe':st.probe=t.dataset.key;break;
     default:return;
   }
@@ -948,8 +1249,7 @@ svg.addEventListener('click',onAct);
 svg.addEventListener('keydown',e=>{
   if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-action]')){onAct(e);e.preventDefault();}
 });
-document.getElementById('b-moar').addEventListener('click',()=>{st.board='moar_can';update();});
-document.getElementById('b-bnc').addEventListener('click',()=>{st.board='bnc';update();});
+document.querySelectorAll('.seg [data-board]').forEach(b=>b.addEventListener('click',()=>setBoard(b.dataset.board)));
 document.getElementById('preset').addEventListener('change',e=>{
   const v=e.target.value;
   if(PRESETS[v]){st.preset=v;PRESETS[v](st);st.probe='interface';update();}
