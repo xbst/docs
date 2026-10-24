@@ -18,7 +18,15 @@ Hedgehog is a Klipper expansion PCB with 31 I/O pins, designed for cases when yo
 
 Hedgehog uses a STM32G0B1 MCU, supporting Klipper, STM32Duino and many other firmwares.
 
-[Store](https://store.isiks.tech/products/hedgehog)
+## Resellers
+
+### Isik's Tech (US-Based - Ships Globally)
+
+- [Isik's Tech Store](https://store.isiks.tech/products/hedgehog)
+
+### European Union
+
+- [Pjotr3D Shop - Netherlands](https://pjotr3dshop.com/products/isiks-tech-hedgehog-klipper-io-expander)
 
 ## Klipper Setup
 

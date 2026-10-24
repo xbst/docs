@@ -9,6 +9,16 @@ hide:
 
 MOAR_CAN is a CAN bus hub designed for IDEX printers, toolchangers and other 3D printer applications where multiple CAN devices need to be connected together. Unlike most 3D printer CAN bus hubs on the market, MOAR_CAN is designed to follow a linear bus topology with short stub lengths. 1Mbit CAN bus standard (ISO 11898) recommends a maximum bus length of 40 meters, with a maximum of 30 nodes (CAN devices) and a <u>maximum stub length of 300mm</u>, with 120-ohm termination resistors on both ends of the bus.
 
+## Resellers
+
+### Isik's Tech (US-Based - Ships Globally)
+
+- [Isik's Tech Store](https://store.isiks.tech/products/MOAR_CAN)
+
+### European Union
+
+- [Pjotr3D Shop - Netherlands](https://pjotr3dshop.com/products/isiks-tech-moar-can-hub)
+
 ## CAN Bus Topology
 
 Most CAN bus hub PCBs on the market use a very short linear bus (the trace length on the PCB + the length of the wires from the USB to CAN adapter), with the toolhead connectors acting as stubs. As stated earlier, the maximum recommended stub length is 300mm, but the cable run to the toolhead is likely much longer than that. This means, while these CAN hub PCBs may work, they don't follow the recommended topology, meaning CAN bus-related problems like communication errors are more likely to happen.

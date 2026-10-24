@@ -20,6 +20,16 @@ Birds' Nest CAN is a USB CAN hub PCB designed for tool changers with CAN toolhea
 - 6x Thermistor Connectors
 - 2x 5V ARGB Connectors
 
+## Resellers
+
+### Isik's Tech (US-Based - Ships Globally)
+
+- [Isik's Tech Store](https://store.isiks.tech/products/birds-nest-CAN)
+
+### European Union
+
+- [Pjotr3D Shop - Netherlands](https://pjotr3dshop.com/products/isiks-tech-birds-nest-can-toolchanger-hub)
+
 ## Klipper Flashing
 
 !!! info "If you sourced your PCB from an unofficial source, ensure nBOOT_SEL is set to enable BOOT0 before firmware flashing. Official Isik's Tech boards will already have this setting set so you can skip this step."

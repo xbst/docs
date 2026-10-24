@@ -19,6 +19,16 @@ Birds' Nest is a USB hub PCB designed for tool changers with USB toolhead PCBs. 
 - 4x Thermistor Connectors
 - 2x 5V RGB LED Connectors
 
+## Resellers
+
+### Isik's Tech (US-Based - Ships Globally)
+
+- [Isik's Tech Store](https://store.isiks.tech/products/birds-nest)
+
+### European Union
+
+- [Pjotr3D Shop - Netherlands](https://pjotr3dshop.com/products/isiks-tech-birds-nest-usb-toolchanger-hub)
+
 ## Klipper Flashing
 
 !!! info "If you sourced your PCB from an unofficial source, ensure nBOOT_SEL is set to enable BOOT0 before firmware flashing. Official Isik's Tech boards will already have this setting set so you can skip this step."

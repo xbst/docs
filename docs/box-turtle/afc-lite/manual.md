@@ -22,6 +22,16 @@ AFC-Lite is a controller PCB designed for Armored Turtle's Box Turtle multi-fila
 - USB and CAN Support
 - 5V Buck Converter
 
+## Resellers
+
+### Isik's Tech (US-Based - Ships Globally)
+
+- [Isik's Tech Store](https://store.isiks.tech/products/AFC-Lite)
+
+### European Union
+
+- [Pjotr3D Shop - Netherlands](https://pjotr3dshop.com/products/isiks-tech-afc-lite-box-turtle-controller)
+
 ## Pinout
 
 ![AFC-Lite Pinout](../../pinouts/afc-lite/afc-lite.pinout.html){ type=application/pinout style="height:80vh;min-height:500px;width:100%" }
