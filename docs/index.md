@@ -192,6 +192,7 @@ You can find links to our US-based store above (shipping globally). Resellers li
 - [Alchemy 3D](https://alchemy3d.de/)
 - [MyRigs](https://myrigs3d.com/)
 - [Levendigs](https://levendigs.com/collections/vendors?q=Isik%27s%20Tech)
+- [Pjotr3D Shop (Netherlands)](https://pjotr3dshop.com/collections/isiks-tech)
 
 ### Australia
 

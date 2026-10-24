@@ -33,6 +33,9 @@ hide:
 ### Canada
 - [Amazon - Ships from the US](https://www.amazon.ca/dp/B0D33F7GBZ)
 
+### European Union
+- [Pjotr3D Shop - Netherlands](https://pjotr3dshop.com/products/isiks-tech-toquecan-raspberry-pi-can-usb)
+
 ### Australia
 - [DREMC](https://store.dremc.com.au/en-us/products/toquecan-pi-toque-by-isiks-tech?_pos=1&_psq=toquecan&_ss=e&_v=1.0)
 - [Raven3DTech](https://raven3dtech.com.au/product/toquecan/)

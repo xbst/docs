@@ -25,6 +25,10 @@ OwlFC-Mini is a 2-lane filament changer controller PCB designed for [NightOwl](h
 ### United States
 - [Isik's Tech Official Store](https://store.isiks.tech/products/owlfc-mini)
 
+### European Union
+- [Pjotr3D Shop - Netherlands](https://pjotr3dshop.com/products/isiks-tech-owlfc-mini-night-owl-controller)
+- [Pjotr3D Shop - Netherlands: USB Adapter](https://pjotr3dshop.com/products/isiks-tech-usb-toolhead-adapter)
+
 ## Pinout
 
 ![OwlFC-Mini Pinout](../pinouts/owlfc-mini/owlfc-mini.pinout.html){ type=application/pinout style="height:80vh;min-height:500px;width:100%" }
