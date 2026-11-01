@@ -27,13 +27,13 @@
     sim=fake             synthetic FakeWorld instead of the simulation (tests)
     debug=1              frame timing overlay
 
-  Embedding (pinout_embed Markdown extension; the widget posts its height to
-  the page with {pinconnectHeight: N} and follows the page's theme):
-    ![Interactive motor control playground](../interactive/motor-playground/index.html?product=ouroboros){ type=application/pinout style="height:80vh;min-height:640px;width:100%" }
+  Embedding (md-iframe Markdown extension; the widget posts its height to
+  the page with {mdIframeHeight: N} and follows the page's theme):
+    ![Interactive motor control playground](../interactive/motor-playground/index.html?product=ouroboros){ type=iframe style="height:80vh;min-height:640px;width:100%" }
   One chapter inside a collapsed admonition (the embed indented four spaces;
   the widget idles while the admonition is closed):
     ??? info "Interactive: see what each PI loop does"
-        ![Interactive PI loops](../interactive/motor-playground/index.html?chapter=pi-loops&nav=0&product=ouroboros){ type=application/pinout style="height:80vh;min-height:640px;width:100%" }
+        ![Interactive PI loops](../interactive/motor-playground/index.html?chapter=pi-loops&nav=0&product=ouroboros){ type=iframe style="height:80vh;min-height:640px;width:100%" }
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -71,7 +71,7 @@ Birds' Nest CAN is a USB CAN hub PCB designed for tool changers with CAN toolhea
 
 ## Pinout
 
-![Birds' Nest CAN Pinout](../../pinouts/bnc/bnc.pinout.html){ type=application/pinout style="height:80vh;min-height:500px;width:100%" }
+![Birds' Nest CAN Pinout](../../pinouts/bnc/bnc.pinout.html){ type=iframe style="height:80vh;min-height:500px;width:100%" }
 
 ### Important Notes
 
@@ -87,7 +87,7 @@ Birds' Nest CAN is designed to keep the stub length as short as possible, and ne
 
 You can explore this in the interactive simulator below. Add or remove toolheads, switch a toolhead between 6-wire and 4-wire cabling, move the 120-ohm termination jumpers, and toggle the bypass jumpers behind each port to see how the bus and the signals on it react — including what happens when the recommended topology is not followed.
 
-![Interactive CAN bus topology simulator](../../interactive/can-topology.html?board=bnc){ type=application/pinout style="height:80vh;min-height:700px;width:100%" }
+![Interactive CAN bus topology simulator](../../interactive/can-topology.html?board=bnc){ type=iframe style="height:80vh;min-height:700px;width:100%" }
 
 Both twisted pairs can be in the same cable. At the hub end, you use the included 6-pin connector, and at the device end, you use a 4-pin connector. <u>The 2 pairs of CAN wires are joined together on the CAN connector, effectively making it a long linear bus.</u> This, of course, means that you need to run more wires to your CAN devices.
 

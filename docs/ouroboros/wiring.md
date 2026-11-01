@@ -13,7 +13,7 @@ Ouroboros CAD and mounts can be found on [this repo](https://github.com/xbst/Our
 
 ## Ouroboros Wiring
 
-![Pinout](../pinouts/ouroboros/ouroboros.pinout.html){ type=application/pinout style="min-height:80vh;width:100%" }
+![Pinout](../pinouts/ouroboros/ouroboros.pinout.html){ type=iframe style="min-height:80vh;width:100%" }
 
 ### MCU_PWR
 

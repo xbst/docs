@@ -28,9 +28,13 @@ hs-hover    = "rgba(255,191,0,.13)"
 hs-stroke   = "rgba(255,191,0,.75)"
 hs-active   = "rgba(255,191,0,.4)"
 bg = "transparent"
+jumper      = "rgba(255,191,0,.4)"
+jumper-stroke = "#ffbf00"
 
 [colors.dark]
 hs-hover    = "rgba(255,191,0,.13)"
 hs-stroke   = "rgba(255,191,0,.75)"
 hs-active   = "rgba(255,191,0,.4)"
 bg = "transparent"
+jumper      = "rgba(255,191,0,.4)"
+jumper-stroke = "#ffbf00"
