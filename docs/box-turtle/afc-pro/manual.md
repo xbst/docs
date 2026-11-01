@@ -26,7 +26,7 @@ AFC-Pro is a controller PCB designed for Armored Turtle's Box Turtle AFC system.
 
 ## Pinout
 
-![AFC-Pro Pinout](../../pinouts/afc-pro/afc-pro.pinout.html){ type=application/pinout style="height:60vh;min-height:500px;width:100%" }
+![AFC-Pro Pinout](../../pinouts/afc-pro/afc-pro.pinout.html){ type=iframe style="height:60vh;min-height:500px;width:100%" }
 
 ## 5V_SOURCE Jumper
 

@@ -27,7 +27,7 @@ MOAR_CAN is designed to keep the stub length as short as possible, and requires 
 
 You can explore both approaches in the interactive simulator below. Add or remove toolheads, switch a toolhead between 6-wire and 4-wire cabling, move the 120-ohm termination jumpers, and toggle the bypass jumpers behind each port to see how the bus and the signals on it react. The "Typical 4-wire hub" preset shows how most hubs on the market are wired; the "Recommended 6-wire" preset shows how MOAR_CAN is meant to be wired. The termination can be on the hub or on the last CAN device — try the "Last toolhead terminated" preset. The ToqueCAN board in the simulator shows the MOAR_CAN connected to a ToqueCAN, where the hub sits in the middle of the bus instead of at its end.
 
-![Interactive CAN bus topology simulator](../interactive/can-topology.html?board=moar_can){ type=application/pinout style="height:80vh;min-height:700px;width:100%" }
+![Interactive CAN bus topology simulator](../interactive/can-topology.html?board=moar_can){ type=iframe style="height:80vh;min-height:700px;width:100%" }
 
 With this design, the bus wires go to the nodes, and come back, with the hub just joining the wires coming from one node with the wires going to the next node. On the CAN node (like toolhead PCB), the 2 pairs of CAN wires are joined together on the CAN connector, effectively making it a long linear bus. The stub length ends up being the distance of wires (mostly PCB traces) between the connector and the CAN transceiver on the PCB, usually low double-digit millimeters.
 

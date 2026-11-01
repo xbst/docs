@@ -55,4 +55,4 @@ Optional and reference:
 ??? info "FOC Interactive playground [BETA]"
     If you're used to traditional stepper drivers, FOC and closed loop may be new to you. The playground below builds it up from what you already know, in nine short chapters: STEP and DIR, microstepping, what's inside a stepper driver, StealthChop and StallGuard, and why a higher voltage helps, then open vs closed loop, FOC, the four PI loops you tune on Ouroboros, and sensorless homing with FOC. Every chapter is a live simulation: move the controls, break things, and watch the motor, the gantry and the scope react. Where a control matches an Ouroboros config option, its name is shown under it. The motors are a simplified teaching model, so the numbers show how things behave, not your printer's exact values.
     
-    ![Interactive motor control playground](../interactive/motor-playground/index.html?product=ouroboros){ type=application/pinout style="height:80vh;min-height:640px;width:100%" }
+    ![Interactive motor control playground](../interactive/motor-playground/index.html?product=ouroboros){ type=iframe style="height:80vh;min-height:640px;width:100%" }

@@ -1284,7 +1284,7 @@ setTimeout(()=>{
 </script>
 <script>
 /* Auto-height: post the widget's ideal content height to the embedding page so
-   the pinout_embed listener sizes the iframe to fit (no empty space above/below
+   the md-iframe listener sizes the iframe to fit (no empty space above/below
    the diagram). Desktop fills width and letterboxes the fixed-aspect SVG, so we
    compute chrome + width/aspect; the <=720px layout is already natural height,
    so we measure scrollHeight. Only runs when embedded. */
@@ -1305,7 +1305,7 @@ setTimeout(()=>{
   }
   function post(){
     var h=ideal();
-    if(h>0&&Math.abs(h-last)>1){last=h;try{window.parent.postMessage({pinconnectHeight:h},'*');}catch(e){}}
+    if(h>0&&Math.abs(h-last)>1){last=h;try{window.parent.postMessage({mdIframeHeight:h,pinconnectHeight:h},'*');}catch(e){}}
   }
   var raf=0;
   function schedule(){if(raf)cancelAnimationFrame(raf);raf=requestAnimationFrame(function(){raf=0;post();});}

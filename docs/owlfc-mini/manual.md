@@ -34,7 +34,7 @@ OwlFC-Mini is a 2-lane filament changer controller PCB designed for [NightOwl](h
 
 ## Pinout
 
-![OwlFC-Mini Pinout](../pinouts/owlfc-mini/owlfc-mini.pinout.html){ type=application/pinout style="height:80vh;min-height:500px;width:100%" }
+![OwlFC-Mini Pinout](../pinouts/owlfc-mini/owlfc-mini.pinout.html){ type=iframe style="height:80vh;min-height:500px;width:100%" }
 
 - VIN is 4A fused.
 - The fan connector is always-on and runs at VIN voltage.
@@ -49,7 +49,7 @@ OwlFC-Mini carries both power and data over its single Power & Data In connector
 The USB C port on the board is only used for firmware flashing, it's not easy to access when mounted inside a NightOwl.
 
 ??? note "If you're using USB mode with a [USB Adapter](https://store.isiks.tech/products/usb-adapter), expand to see the adapter's pinout"
-    ![USB Adapter Pinout](../pinouts/usb-adapter/usb-adapter.pinout.html){ type=application/pinout style="height:80vh;min-height:500px;width:100%" }
+    ![USB Adapter Pinout](../pinouts/usb-adapter/usb-adapter.pinout.html){ type=iframe style="height:80vh;min-height:500px;width:100%" }
 
 ### CAN Termination Switch
 

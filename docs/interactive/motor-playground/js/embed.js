@@ -1,7 +1,8 @@
 /**
  * Embedding helpers (SPEC 4.10): fullscreen with a new-tab fallback inside an
- * iframe, and auto-height posting to the pinout_embed listener on the docs
- * page, which resizes the iframe when the widget posts {pinconnectHeight: N}.
+ * iframe, and auto-height posting to the md-iframe listener on the docs
+ * page, which resizes the iframe when the widget posts {mdIframeHeight: N}
+ * (pinconnectHeight carries the same value for pages on the old pinout-embed).
  * What N is depends on the layout, so main.js passes in the measuring function.
  * Also a devicePixelRatio watcher for resizing the canvases (SPEC 4.5).
  */
@@ -105,7 +106,7 @@ export function createHeightPoster(measure) {
   function send(h, final = false) {
     if (!final && Math.abs(h - last) <= 1) return;
     last = h;
-    try { window.parent.postMessage({ pinconnectHeight: h }, '*'); } catch (err) { /* parent gone */ }
+    try { window.parent.postMessage({ mdIframeHeight: h, pinconnectHeight: h }, '*'); } catch (err) { /* parent gone */ }
   }
   function animate(now) {
     frame = 0;

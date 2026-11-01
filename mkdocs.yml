@@ -75,7 +75,7 @@ markdown_extensions:
   - admonition
   - pymdownx.details
   - md_in_html
-  - pinout_embed
+  - md_iframe
 
 plugins:
   - meta

@@ -290,7 +290,7 @@ This is why a CAN device on one of the ToqueCAN's CAN ports is not a stub even w
 
 You can explore all of this in the interactive simulator below. Add or remove CAN devices on the two CAN ports, toggle the CAN_120R jumper and the termination on the devices, swap the jumper PCB for a MOAR_CAN hub, and see how the bus and the signals on it react. The presets show the supported configurations.
 
-![Interactive CAN bus topology simulator](../interactive/can-topology.html?board=toquecan){ type=application/pinout style="height:80vh;min-height:700px;width:100%" }
+![Interactive CAN bus topology simulator](../interactive/can-topology.html?board=toquecan){ type=iframe style="height:80vh;min-height:700px;width:100%" }
 
 The rule is always the same: the two ends of the bus are terminated, and nothing else is. Which parts are the ends depends on what is connected where:
 
