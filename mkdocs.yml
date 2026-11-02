@@ -67,6 +67,8 @@ markdown_extensions:
   - pymdownx.snippets
   - pymdownx.tilde
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
   - sane_lists
   - attr_list
   - pymdownx.emoji:
