@@ -1,0 +1,108 @@
+# The repository example: the PiCAN USB to CAN adapter going into its
+# printed two-part shell. pican.glb was written by the designer from the
+# product's STEP export (Y-up from Fusion, normal quality, bodies under 2 mm
+# dropped, the board simplified to 50%); the steps were written here and in
+# the designer. Render it with:
+#
+#     3dstep examples/pican/pican.toml
+
+[assembly]
+title = "Put the PiCAN in its shell"
+description = "Assembling the PiCAN USB to CAN adapter in its two-part printed shell."
+models = ["pican.glb"]
+theme = "isikstech"
+theme_dir = ".."
+up = "y"
+start = "hidden"
+
+[camera]
+position = [88.5, -66.1, 86.5]
+target = [38.0, 0.0, 0.0]
+fov = 35.0
+projection = "orthographic"
+
+[[part]]
+id = "top_body"
+name = "Top shell"
+
+[[part]]
+id = "bottom_body"
+name = "Bottom shell"
+
+[[part]]
+id = "pican2"
+name = "PiCAN board"
+
+[[step]]
+id = "board"
+title = "Lay the board in the top shell"
+text = """
+Turn the top shell over so its open side faces you, then lay the PiCAN board in it, components first.
+
+The XH connector goes through the notch at one end and the USB plug sticks out of the other.
+"""
+show = ["top_body", "pican2"]
+highlight = ["pican2"]
+
+  [step.camera]
+  fit = ["top_body", "pican2"]
+
+  [[step.move]]
+  parts = ["pican2"]
+  offset = [0.0, -14.0, 0.0]
+
+[[step]]
+id = "push"
+title = "Push it toward the USB end"
+text = "Slide the board toward the USB end as far as it goes, so the USB plug sits fully in its opening."
+highlight = ["pican2"]
+
+  [[step.move]]
+  parts = ["pican2"]
+  offset = [-2.0, 0.0, 0.0]
+  arrow = false
+
+  [[step.arrow]]
+  from = [24.0, -4.0, 0.0]
+  to = [40.0, -4.0, 0.0]
+  attach = "pican2"
+
+  [[step.label]]
+  text = "USB end"
+  at = [66.0, 0.5, 0.0]
+  side = "right"
+  attach = "pican2"
+
+[[step]]
+id = "bottom"
+title = "Snap the bottom shell on"
+text = """
+Fit the **lip** at the XH connector end of the bottom shell first, then press the USB end down until the shell snaps shut.
+"""
+note = "If the shell does not close, the board is not pushed all the way toward the USB end."
+show = ["bottom_body"]
+highlight = ["bottom_body"]
+
+  [step.camera]
+  position = [-26.3, -64.3, 84.4]
+  target = [34.0, -4.0, 0.0]
+
+  [[step.move]]
+  parts = ["bottom_body"]
+  offset = [0.0, -12.0, 0.0]
+  rotate = [0.0, 0.0, -10.0]
+
+  [[step.label]]
+  text = "Lip"
+  at = [11.0, 1.0, 0.0]
+  side = "left"
+  attach = "bottom_body"
+
+[[step]]
+id = "done"
+title = "Done"
+text = "The PiCAN is ready to plug into a USB port."
+
+  [step.camera]
+  position = [92.0, 74.0, 79.2]
+  target = [38.0, 2.0, 0.0]

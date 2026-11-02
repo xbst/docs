@@ -1,0 +1,37 @@
+# Isik's Tech docs site 3DStep theme (docs/3d/isikstech.toml).
+#
+# The 3DStep counterpart of docs/pinouts/isikstech.toml (PinConnect): the
+# page and the 3D view are transparent, so the viewer sits on the site's own
+# background (#F8F8F8 light, #131313 dark), with the site's amber for the
+# accent and the parts each step installs, and Roboto like the site.
+
+[theme]
+name = "isikstech"
+
+[font]
+family = "Roboto"
+source = "google"
+weights = "400;500;600"
+
+[font.label]
+family = "Roboto Mono"
+source = "google"
+weights = "400;500"
+
+[colors.light]
+bg             = "transparent"
+view-bg        = "transparent"
+accent         = "#ffa200"
+highlight-fill = "#ffe3a1"
+highlight-edge = "#a36500"
+arrow          = "#ffa200"
+arrow-edge     = "#7a4c00"
+
+[colors.dark]
+bg             = "transparent"
+view-bg        = "transparent"
+accent         = "#ffbf00"
+highlight-fill = "#5c4300"
+highlight-edge = "#ffd24d"
+arrow          = "#ffbf00"
+arrow-edge     = "#ffe8a3"

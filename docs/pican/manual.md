@@ -26,22 +26,16 @@ PiCAN is a compact, USB-drive-shaped USB-to-CAN adapter designed primarily for 3
 
 - [Amazon — Ships from the US](https://www.amazon.ca/dp/B0CGLC87S5)
 
-### European Union
+## 3D Printed Case
+Download and print the [top](https://raw.githubusercontent.com/xbst/PiCAN/refs/heads/master/Shell/Top.stl) and [bottom](https://raw.githubusercontent.com/xbst/PiCAN/refs/heads/master/Shell/Bottom.stl) shell parts from the [PiCAN repo](https://github.com/xbst/PiCAN), then follow the instructions below:
 
-- [Lab4450 — Portugal](https://lab4450.com/product/pican-usb-to-can-adapter/)
-
-### Australia
-
-- [Unique Prints](https://uniqueprints.shop/shop/electronics-electrical/pcb/pican-usb-to-can-adaptor-for-klipper/)
-- [DREMC](https://store.dremc.com.au/products/pican-usb-to-can-bus-adapter)
+![PiCAN shell assembly instructions](../3d/pican/pican.3dstep.html){ type=iframe style="min-height:60vh;width:100%" }
 
 ## Firmware
 
 !!! info "Official PiCAN boards are pre-flashed"
 
     PiCAN boards sold by Isik's Tech arrive with firmware installed. Follow the flashing steps only if your board came from another source, has no firmware, or needs to be reflashed.
-
-### Flashing the Firmware
 
 1. Download the [U2C firmware](https://github.com/bigtreetech/U2C/blob/master/firmware/U2C_V1_STM32F072.bin).
 2. Hold down the **BOOT** button on the PiCAN while connecting it to your computer.
@@ -52,6 +46,18 @@ PiCAN is a compact, USB-drive-shaped USB-to-CAN adapter designed primarily for 3
 7. Click **Download** to flash the firmware.
 
 ## Wiring and CAN Setup
+### CAN Termination
+=== "PiCAN 2"
+    PiCAN 2 features a slide switch behind the XH connector for CAN termination. 
+    
+    Slide it toward the H pin on the XH connector to terminate, toward L to not terminate.
+
+=== "PiCAN"
+    PiCAN's CAN bus is permanently terminated.
+    
+    If you need to remove the termination, you need to cut the trace between the 2 pads behind the XH connector on your PiCAN. If you need to terminate the CAN bus again, jump these 2 pads again with solder.
+
+### CAN Wiring
 
 Connect the CAN wires as shown below:
 
@@ -63,6 +69,3 @@ Connect the CAN wires as shown below:
 
 For CAN interface configuration and Klipper CAN device setup, follow the [official Klipper CAN bus documentation](https://www.klipper3d.org/CANBUS.html).
 
-## More Resources
-- [PiCAN GitHub repository](https://github.com/xbst/PiCAN)
-- [PiCAN store page](https://store.isiks.tech/products/pican-usb-to-can-bus-adapter)

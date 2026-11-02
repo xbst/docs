@@ -1,6 +1,7 @@
-# Generated interactive pinouts — built by CI and by regen-pinouts.ps1
-# from the board TOMLs. The TOML + isikstech theme are the source of truth.
+# Generated interactive pinouts and assembly guides — built by CI and by regen-pinouts.ps1
+# from the board and 3dstep TOMLs. The TOML + isikstech theme are the source of truth.
 docs/pinouts/**/*.pinout.html
+docs/3d/**/*.3dstep.html
 
 # Local (Windows) pinout regeneration helper — not committed
 regen-pinouts.ps1
