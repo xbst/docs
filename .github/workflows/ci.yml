@@ -38,6 +38,14 @@ jobs:
             echo "pinconnect $toml"
             pinconnect "$toml" -i
           done      
+      - run: pip install "git+https://github.com/xbst/3DStep.git@master"
+      - name: Generate 3D assembly instructions
+        run: |
+          shopt -s nullglob
+          for toml in docs/3d/*/*.toml; do
+            echo "3dstep $toml"
+            3dstep "$toml"
+          done
       - run: zensical build --clean 
       - uses: actions/upload-pages-artifact@v5
         with:
