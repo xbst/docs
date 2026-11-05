@@ -23,6 +23,11 @@ Hedgehog uses a STM32G0B1 MCU, supporting Klipper, STM32Duino and many other fir
 ### United States
 
 - [Isik's Tech Official Store](https://store.isiks.tech/products/hedgehog)
+- [West3D](https://west3d.com/products/hedgehog-can-usb-klipper-i-o-expander-isiks-tech)
+
+### United Kingdom
+
+- [OneTwo3D](https://www.onetwo3d.co.uk/product/isiks-tech-hedgehog/)
 
 ### European Union
 

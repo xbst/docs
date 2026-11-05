@@ -26,6 +26,7 @@ Birds' Nest CAN is a USB CAN hub PCB designed for tool changers with CAN toolhea
 
 - [Isik's Tech Official Store](https://store.isiks.tech/products/birds-nest-CAN)
 - [Amazon — Prime Shipping](https://www.amazon.com/dp/B0FK8C8KH3?maas=maas_adg_733B5324C54A6CD56774B0CE0ED81D16_afap_abs&ref_=aa_maas&tag=maas)
+- [West3D](https://west3d.com/products/birds-nest-can-hub-for-toolchangers-pcb-by-isiks-tech)
 
 ### European Union
 

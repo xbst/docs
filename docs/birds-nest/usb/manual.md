@@ -25,6 +25,7 @@ Birds' Nest is a USB hub PCB designed for tool changers with USB toolhead PCBs. 
 
 - [Isik's Tech Official Store](https://store.isiks.tech/products/birds-nest)
 - [Amazon — Prime Shipping](https://www.amazon.com/dp/B0FK8LYMK9?maas=maas_adg_C9A8C640D97E4D4513C451E669D24A5E_afap_abs&ref_=aa_maas&tag=maas)
+- [West3D](https://west3d.com/products/birds-nest-usb-hub-for-toolchangers-pcb-by-isiks-tech)
 
 ### European Union
 
