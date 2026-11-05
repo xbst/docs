@@ -12,8 +12,8 @@ A PCB designed to make [Klipper's](https://github.com/KevinOConnor/klipper) [inp
 
 ## Purchasing a KUSBA
 ### United States
+- [Isik's Tech Official Store](https://store.isiks.tech/products/kusba-klipper-usb-accelerometer)
 - [Amazon - Prime Shipping](https://www.amazon.com/Isiks-Tech-KUSBA-Klipper-Accelerometer/dp/B0C734JL4Z?maas=maas_adg_AABAE123B3C6951B3F1F9BDBBF2BA8C6_afap_abs&ref_=aa_maas&tag=maas)
-- [Isik's Tech Store](https://store.isiks.tech/products/kusba-klipper-usb-accelerometer)
 - [West3D](https://west3d.com/products/kusba-klipper-usb-accelerometer-by-isikstech)
 ### Canada
 - [Amazon](https://www.amazon.ca/dp/B0C734JL4Z)

@@ -13,12 +13,10 @@ PiCAN is a compact, USB-drive-shaped USB-to-CAN adapter designed primarily for 3
 
 ## Resellers
 
-### Isik's Tech (US-Based — Ships Globally)
-
-- [Isik's Tech Store](https://store.isiks.tech/products/pican-usb-to-can-bus-adapter)
-- [Amazon — Prime Shipping](https://www.amazon.com/Isiks-Tech-PiCAN-Adapter-Printers/dp/B0CGLC87S5?maas=maas_adg_67FD4409E83516E2C5BBA977580D0B6B_afap_abs&ref_=aa_maas&tag=maas)
-
 ### United States
+
+- [Isik's Tech Official Store](https://store.isiks.tech/products/pican-usb-to-can-bus-adapter)
+- [Amazon — Prime Shipping](https://www.amazon.com/Isiks-Tech-PiCAN-Adapter-Printers/dp/B0CGLC87S5?maas=maas_adg_67FD4409E83516E2C5BBA977580D0B6B_afap_abs&ref_=aa_maas&tag=maas)
 
 - [West3D](https://west3d.com/products/pican-a-tiny-usb-to-can-bus-adapter-by-isikstech)
 
