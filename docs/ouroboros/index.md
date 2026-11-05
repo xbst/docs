@@ -32,10 +32,21 @@ Ouroboros is a TMC4671 based FOC motor controller board designed for Klipper 3D 
 - [West3D](https://west3d.com/products/ouroboros-tmc4671-stepper-servo-controller)
 
 ### United Kingdom
-- [One Two 3D](https://www.onetwo3d.co.uk/product/isiks-tech-ouroboros-tmc4671-stepper-servo-controller/)
+- [OneTwo3D](https://www.onetwo3d.co.uk/product/isiks-tech-ouroboros-tmc4671-stepper-servo-controller/)
 
 ### Australia
 - [DREMC](https://store.dremc.com.au/en-us/products/ouroboros-tmc4671-stepper-servo-controller-by-isiks-tech)
+
+??? info "Ouroboros Stepper Resellers"
+    
+    **United States**
+    
+    - [Isik's Tech Official Store](https://store.isiks.tech/products/ouroboros-stepper)
+    - [West3D](https://west3d.com/products/nema-17-encoder-stepper-for-ouroboros-klipper-servo-controller-1000-ppr-2-5a-45mm-shaft)
+    
+    **United Kingdom**
+    
+    - [OneTwo3D](https://www.onetwo3d.co.uk/product/isiks-tech-nema-17-encoder-stepper-for-ouroboros/)
 
 ## Documentation
 

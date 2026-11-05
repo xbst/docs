@@ -23,11 +23,10 @@ hide:
 - PWM RPM control for the fan
 
 ## Resellers
-### Isik's Tech (US-Based - Ships Globally)
-- [Isik's Tech](https://store.isiks.tech/products/toquecan)
-- [Amazon - Prime Shipping](https://www.amazon.com/dp/B0D33F7GBZ?maas=maas_adg_4BCCA12678B30071A84EF6315FF9BF74_afap_abs&ref_=aa_maas&tag=maas)
-
 ### United States
+- [Isik's Tech Official Store](https://store.isiks.tech/products/toquecan)
+- [Amazon — Prime Shipping](https://www.amazon.com/dp/B0D33F7GBZ?maas=maas_adg_4BCCA12678B30071A84EF6315FF9BF74_afap_abs&ref_=aa_maas&tag=maas)
+
 - [West3D](https://west3d.com/products/toquecan-pi-toque-with-2xcan-and-24v-5v-regulator)
 
 ### Canada

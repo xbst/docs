@@ -24,6 +24,14 @@ AFC-Pro is a controller PCB designed for Armored Turtle's Box Turtle AFC system.
 - USB and CAN Support with CAN Daisy Chaining Connector
 - 12V & 5V Buck Converters
 
+## Resellers
+
+### United States
+
+- [Isik's Tech Official Store](https://store.isiks.tech/products/AFC-Lite)
+- [Amazon — Prime Shipping](https://www.amazon.com/dp/B0FK8PJPY4?maas=maas_adg_3DF4096686CE85AD71F1067D5B3914EE_afap_abs&ref_=aa_maas&tag=maas)
+- [West3D](https://west3d.com/products/afc-pro-8-lane-box-turtle-multi-filament-controller-pcb)
+
 ## Pinout
 
 ![AFC-Pro Pinout](../../pinouts/afc-pro/afc-pro.pinout.html){ type=iframe style="height:60vh;min-height:500px;width:100%" }

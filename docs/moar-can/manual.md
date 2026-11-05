@@ -11,9 +11,11 @@ MOAR_CAN is a CAN bus hub designed for IDEX printers, toolchangers and other 3D 
 
 ## Resellers
 
-### Isik's Tech (US-Based - Ships Globally)
+### United States
 
-- [Isik's Tech Store](https://store.isiks.tech/products/MOAR_CAN)
+- [Isik's Tech Official Store](https://store.isiks.tech/products/MOAR_CAN)
+- [Amazon — Prime Shipping](https://www.amazon.com/dp/B0FK8Y8FW6?maas=maas_adg_489B1FB60D0CDA417BCCE58161F95D47_afap_abs&ref_=aa_maas&tag=maas)
+- [West3D](https://west3d.com/products/moar_can-8-9-port-can-hub-with-linear-can-bus-topology-by-isiks-tech)
 
 ### European Union
 
